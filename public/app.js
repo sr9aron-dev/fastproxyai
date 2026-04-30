@@ -98,13 +98,39 @@ $("#healthBtn").addEventListener("click", async () => {
 
 $("#loadConfigBtn").addEventListener("click", async () => {
   try {
+    const btn = $("#loadConfigBtn");
+    const originalText = btn.textContent;
+    btn.textContent = "Loading...";
+    btn.disabled = true;
+
     state.adminToken = $("#adminToken").value.trim();
     localStorage.setItem("adminToken", state.adminToken);
+    
     const payload = await api("/api/admin-config", { method: "GET" });
     renderConfig(payload.config);
-    setOutput(payload);
+    
+    // Switch UI
+    $("#loginScreen").classList.add("hidden");
+    $("#dashboard").classList.remove("hidden");
+    setOutput({ ok: true, message: "Login berhasil. Dashboard dimuat." });
+
+    btn.textContent = originalText;
+    btn.disabled = false;
   } catch (error) {
     setOutput(error.message);
+    $("#loadConfigBtn").textContent = "Login & Load Config";
+    $("#loadConfigBtn").disabled = false;
+  }
+});
+
+$("#copyTokenBtn")?.addEventListener("click", () => {
+  const token = $("#newToken").textContent;
+  if (token) {
+    navigator.clipboard.writeText(token).then(() => {
+      const btn = $("#copyTokenBtn");
+      btn.textContent = "Copied!";
+      setTimeout(() => btn.textContent = "Copy", 2000);
+    });
   }
 });
 

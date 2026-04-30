@@ -13,81 +13,84 @@
           <h1>Easy Keyword AI Proxy</h1>
           <p>Kelola provider key dan buat satu API key untuk ekstensi.</p>
         </div>
-        <button id="healthBtn" type="button">Check</button>
       </header>
 
-      <section class="panel">
-        <h2>Admin</h2>
+      <section id="loginScreen" class="panel">
+        <h2>Admin Login</h2>
         <label>
           Admin token
           <input id="adminToken" type="password" autocomplete="off" placeholder="ADMIN_TOKEN dari Netlify env">
         </label>
         <div class="actions">
-          <button id="saveAdminTokenBtn" type="button">Simpan token lokal</button>
-          <button id="loadConfigBtn" type="button">Load config</button>
+          <button id="loadConfigBtn" type="button">Login & Load Config</button>
         </div>
       </section>
 
-      <section class="grid">
-        <section class="panel">
-          <h2>Groq</h2>
-          <label>
-            Model
-            <input id="groqModel" type="text" value="meta-llama/llama-4-scout-17b-16e-instruct">
-          </label>
-          <label>
-            API keys Groq
-            <textarea id="groqKeys" rows="8" spellcheck="false" placeholder="Satu key per baris, atau pisahkan dengan koma"></textarea>
-          </label>
-          <p class="hint">Key disimpan di Netlify Blobs melalui function admin. Browser hanya melihat versi masked setelah disimpan.</p>
+      <div id="dashboard" class="hidden">
+        <section class="grid">
+          <section class="panel">
+            <h2>Groq</h2>
+            <label>
+              Model
+              <input id="groqModel" type="text" value="meta-llama/llama-4-scout-17b-16e-instruct">
+            </label>
+            <label>
+              API keys Groq
+              <textarea id="groqKeys" rows="8" spellcheck="false" placeholder="Satu key per baris, atau pisahkan dengan koma"></textarea>
+            </label>
+            <p class="hint">Key disimpan di Netlify Blobs melalui function admin. Browser hanya melihat versi masked setelah disimpan.</p>
+          </section>
+
+          <section class="panel">
+            <h2>Gemini</h2>
+            <label>
+              Model
+              <input id="geminiModel" type="text" value="gemini-2.5-flash">
+            </label>
+            <label>
+              API keys Gemini
+              <textarea id="geminiKeys" rows="8" spellcheck="false" placeholder="Satu key per baris, atau pisahkan dengan koma"></textarea>
+            </label>
+            <p class="hint">Urutan provider default: Groq lalu Gemini. Jika Groq gagal, proxy mencoba key lain dan fallback ke Gemini.</p>
+          </section>
         </section>
 
         <section class="panel">
-          <h2>Gemini</h2>
-          <label>
-            Model
-            <input id="geminiModel" type="text" value="gemini-2.5-flash">
-          </label>
-          <label>
-            API keys Gemini
-            <textarea id="geminiKeys" rows="8" spellcheck="false" placeholder="Satu key per baris, atau pisahkan dengan koma"></textarea>
-          </label>
-          <p class="hint">Urutan provider default: Groq lalu Gemini. Jika Groq gagal, proxy mencoba key lain dan fallback ke Gemini.</p>
+          <h2>Provider Order</h2>
+          <div class="segmented">
+            <label><input type="radio" name="providerOrder" value="groq,gemini" checked> Groq lalu Gemini</label>
+            <label><input type="radio" name="providerOrder" value="gemini,groq"> Gemini lalu Groq</label>
+            <label><input type="radio" name="providerOrder" value="groq"> Groq saja</label>
+            <label><input type="radio" name="providerOrder" value="gemini"> Gemini saja</label>
+          </div>
+          <div class="actions">
+            <button id="saveConfigBtn" type="button">Simpan provider keys</button>
+          </div>
         </section>
-      </section>
 
-      <section class="panel">
-        <h2>Provider Order</h2>
-        <div class="segmented">
-          <label><input type="radio" name="providerOrder" value="groq,gemini" checked> Groq lalu Gemini</label>
-          <label><input type="radio" name="providerOrder" value="gemini,groq"> Gemini lalu Groq</label>
-          <label><input type="radio" name="providerOrder" value="groq"> Groq saja</label>
-          <label><input type="radio" name="providerOrder" value="gemini"> Gemini saja</label>
-        </div>
-        <div class="actions">
-          <button id="saveConfigBtn" type="button">Simpan provider keys</button>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>Extension API Key</h2>
-        <label>
-          Label key baru
-          <input id="extensionKeyLabel" type="text" value="Local extension">
-        </label>
-        <div class="actions">
-          <button id="createExtensionKeyBtn" type="button">Generate API key ekstensi</button>
-        </div>
-        <div id="newTokenBox" class="token-box hidden">
-          <div class="warning">Simpan token ini sekarang. Setelah halaman direfresh, token penuh tidak bisa dilihat lagi.</div>
-          <code id="newToken"></code>
-        </div>
-        <div id="extensionKeys" class="key-list"></div>
-      </section>
+        <section class="panel">
+          <h2>Extension API Key</h2>
+          <label>
+            Label key baru
+            <input id="extensionKeyLabel" type="text" value="Local extension">
+          </label>
+          <div class="actions">
+            <button id="createExtensionKeyBtn" type="button">Generate API key ekstensi</button>
+          </div>
+          <div id="newTokenBox" class="token-box hidden" style="display: flex; gap: 10px; align-items: center;">
+            <div>
+              <div class="warning">Simpan token ini sekarang. Setelah halaman direfresh, token penuh tidak bisa dilihat lagi.</div>
+              <code id="newToken"></code>
+            </div>
+            <button id="copyTokenBtn" type="button" class="secondary" style="margin-left: auto;">Copy</button>
+          </div>
+          <div id="extensionKeys" class="key-list"></div>
+        </section>
+      </div>
 
       <section class="panel">
         <h2>Status</h2>
-        <pre id="output">Siap.</pre>
+        <pre id="output">Silakan login.</pre>
       </section>
     </main>
 

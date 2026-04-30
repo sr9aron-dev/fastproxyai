@@ -40,9 +40,8 @@ export function configStore() {
 }
 
 function shouldUseLocalStore() {
-  // Jika berjalan di Netlify (AWS Lambda), PASTI tidak bisa menyimpan ke file lokal.
-  // Paksa gunakan Netlify Blobs.
-  if (process.env.AWS_LAMBDA_FUNCTION_NAME) return false;
+  // Jika berjalan di Netlify (ada process.env.NETLIFY, URL, atau AWS_LAMBDA), dilarang pakai local file.
+  if (process.env.NETLIFY || process.env.URL || process.env.AWS_LAMBDA_FUNCTION_NAME) return false;
   
   return process.env.LOCAL_FILE_STORE === "1" || !process.env.NETLIFY_BLOBS_CONTEXT;
 }
@@ -104,16 +103,12 @@ export async function saveConfig(config) {
     updatedAt: new Date().toISOString()
   };
 
-  try {
     if (shouldUseLocalStore()) {
       await writeLocalConfig(next);
     } else {
       const store = configStore();
       await store.setJSON(CONFIG_KEY, next);
     }
-  } catch (err) {
-    console.warn("Failed to save config:", err.message);
-  }
 
   return next;
 }
