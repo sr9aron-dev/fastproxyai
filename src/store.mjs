@@ -18,12 +18,12 @@ const defaultConfig = {
   updatedAt: null,
   providerOrder: ["groq", "gemini"],
   groq: {
-    model: process.env.GROQ_MODEL || "meta-llama/llama-3.3-70b-versatile",
+    model: process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
     keys: parseEnvKeys("GROQ_KEYS"),
     cursor: 0
   },
   gemini: {
-    model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     keys: parseEnvKeys("GEMINI_KEYS"),
     cursor: 0
   },
