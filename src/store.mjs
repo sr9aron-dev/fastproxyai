@@ -36,7 +36,12 @@ const defaultConfig = {
 };
 
 export function configStore() {
-  return getStore(STORE_NAME);
+  // Gunakan konfigurasi manual jika disediakan lewat environment variables
+  return getStore({
+    name: STORE_NAME,
+    siteID: process.env.NETLIFY_SITE_ID || undefined,
+    token: process.env.NETLIFY_API_TOKEN || undefined
+  });
 }
 
 function shouldUseLocalStore() {
