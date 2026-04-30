@@ -2,19 +2,19 @@ import { json, optionsResponse, readJson, requireAdmin } from "../../src/http.mj
 import { maskKey, normalizeKeyList } from "../../src/crypto.mjs";
 import { loadConfig, saveConfig } from "../../src/store.mjs";
 
-function publicConfig(config) {
+export function publicConfig(config) {
   return {
     updatedAt: config.updatedAt,
     providerOrder: config.providerOrder,
     groq: {
       model: config.groq.model,
       keyCount: config.groq.keys.length,
-      keys: config.groq.keys.map(maskKey)
+      keys: config.groq.keys
     },
     gemini: {
       model: config.gemini.model,
       keyCount: config.gemini.keys.length,
-      keys: config.gemini.keys.map(maskKey)
+      keys: config.gemini.keys
     },
     extensionKeys: config.extensionKeys.map((key) => ({
       id: key.id,

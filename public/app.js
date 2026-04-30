@@ -37,10 +37,10 @@ function selectedProviderOrder() {
 function renderConfig(config) {
   $("#groqModel").value = config.groq.model;
   $("#geminiModel").value = config.gemini.model;
-  $("#groqKeys").value = "";
-  $("#geminiKeys").value = "";
-  $("#groqKeys").placeholder = `${config.groq.keyCount || 0} Groq key tersimpan. Paste full list baru hanya jika ingin mengganti.`;
-  $("#geminiKeys").placeholder = `${config.gemini.keyCount || 0} Gemini key tersimpan. Paste full list baru hanya jika ingin mengganti.`;
+  $("#groqKeys").value = config.groq.keys ? config.groq.keys.join("\n") : "";
+  $("#geminiKeys").value = config.gemini.keys ? config.gemini.keys.join("\n") : "";
+  $("#groqKeys").placeholder = "Satu key per baris, atau pisahkan dengan koma";
+  $("#geminiKeys").placeholder = "Satu key per baris, atau pisahkan dengan koma";
 
   const orderValue = config.providerOrder.join(",");
   const radio = document.querySelector(`input[name='providerOrder'][value='${orderValue}']`);
