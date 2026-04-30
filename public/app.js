@@ -81,13 +81,13 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
-$("#saveAdminTokenBtn").addEventListener("click", () => {
+$("#saveAdminTokenBtn")?.addEventListener("click", () => {
   state.adminToken = $("#adminToken").value.trim();
   localStorage.setItem("adminToken", state.adminToken);
   setOutput("Admin token disimpan di browser lokal.");
 });
 
-$("#healthBtn").addEventListener("click", async () => {
+$("#healthBtn")?.addEventListener("click", async () => {
   try {
     const payload = await api("/api/health", { method: "GET", headers: {} });
     setOutput(payload);
