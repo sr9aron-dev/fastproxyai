@@ -7,21 +7,32 @@ const CONFIG_KEY = "config";
 const LOCAL_DATA_DIR = path.join(process.cwd(), ".data");
 const LOCAL_CONFIG_PATH = path.join(LOCAL_DATA_DIR, "config.json");
 
+function parseEnvKeys(key) {
+  const value = process.env[key];
+  if (!value) return [];
+  return value.split(",").map(k => k.trim()).filter(Boolean);
+}
+
 const defaultConfig = {
   version: 1,
   updatedAt: null,
   providerOrder: ["groq", "gemini"],
   groq: {
-    model: "meta-llama/llama-4-scout-17b-16e-instruct",
-    keys: [],
+    model: process.env.GROQ_MODEL || "meta-llama/llama-3.3-70b-versatile",
+    keys: parseEnvKeys("GROQ_KEYS"),
     cursor: 0
   },
   gemini: {
-    model: "gemini-2.5-flash",
-    keys: [],
+    model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+    keys: parseEnvKeys("GEMINI_KEYS"),
     cursor: 0
   },
-  extensionKeys: []
+  extensionKeys: parseEnvKeys("EXTENSION_KEYS").map(k => ({
+    name: "Env Key",
+    hash: k, // Expecting SHA-256 hash in env or raw token if auth.mjs handles it
+    createdAt: new Date().toISOString(),
+    lastUsedAt: null
+  }))
 };
 
 export function configStore() {
@@ -29,7 +40,11 @@ export function configStore() {
 }
 
 function shouldUseLocalStore() {
-  return process.env.LOCAL_FILE_STORE === "1" || (!process.env.NETLIFY && !process.env.NETLIFY_BLOBS_CONTEXT);
+  // Jika berjalan di Netlify (AWS Lambda), PASTI tidak bisa menyimpan ke file lokal.
+  // Paksa gunakan Netlify Blobs.
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME) return false;
+  
+  return process.env.LOCAL_FILE_STORE === "1" || !process.env.NETLIFY_BLOBS_CONTEXT;
 }
 
 async function readLocalConfig() {
@@ -42,26 +57,45 @@ async function readLocalConfig() {
 }
 
 async function writeLocalConfig(config) {
-  await mkdir(LOCAL_DATA_DIR, { recursive: true });
-  await writeFile(LOCAL_CONFIG_PATH, JSON.stringify(config, null, 2), "utf8");
+  try {
+    await mkdir(LOCAL_DATA_DIR, { recursive: true });
+    await writeFile(LOCAL_CONFIG_PATH, JSON.stringify(config, null, 2), "utf8");
+  } catch (err) {
+    console.warn("Failed to write local config (likely read-only filesystem):", err.message);
+  }
 }
 
 export async function loadConfig() {
   let config;
-  if (shouldUseLocalStore()) {
-    config = await readLocalConfig();
-  } else {
-    const store = configStore();
-    config = await store.get(CONFIG_KEY, { type: "json", consistency: "strong" });
+  try {
+    if (shouldUseLocalStore()) {
+      config = await readLocalConfig();
+    } else {
+      const store = configStore();
+      config = await store.get(CONFIG_KEY, { type: "json", consistency: "strong" });
+    }
+  } catch (err) {
+    console.error("Error loading config:", err.message);
   }
 
-  return {
+  // Merge logic: Env variables take precedence if storage is empty
+  const merged = {
     ...defaultConfig,
     ...(config || {}),
-    groq: { ...defaultConfig.groq, ...(config?.groq || {}) },
-    gemini: { ...defaultConfig.gemini, ...(config?.gemini || {}) },
-    extensionKeys: config?.extensionKeys || []
+    groq: { 
+      ...defaultConfig.groq, 
+      ...(config?.groq || {}),
+      keys: (config?.groq?.keys?.length ? config.groq.keys : defaultConfig.groq.keys)
+    },
+    gemini: { 
+      ...defaultConfig.gemini, 
+      ...(config?.gemini || {}),
+      keys: (config?.gemini?.keys?.length ? config.gemini.keys : defaultConfig.gemini.keys)
+    },
+    extensionKeys: (config?.extensionKeys?.length ? config.extensionKeys : defaultConfig.extensionKeys)
   };
+
+  return merged;
 }
 
 export async function saveConfig(config) {
@@ -70,12 +104,17 @@ export async function saveConfig(config) {
     updatedAt: new Date().toISOString()
   };
 
-  if (shouldUseLocalStore()) {
-    await writeLocalConfig(next);
-  } else {
-    const store = configStore();
-    await store.setJSON(CONFIG_KEY, next);
+  try {
+    if (shouldUseLocalStore()) {
+      await writeLocalConfig(next);
+    } else {
+      const store = configStore();
+      await store.setJSON(CONFIG_KEY, next);
+    }
+  } catch (err) {
+    console.warn("Failed to save config:", err.message);
   }
 
   return next;
 }
+
