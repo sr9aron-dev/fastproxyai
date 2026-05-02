@@ -8,9 +8,12 @@ const MAX_BASE64_LENGTH = Number(process.env.MAX_BASE64_LENGTH || 6_000_000);
 
 function validateRequest(body) {
   if (!body || typeof body !== "object") throw new Error("JSON body is required");
-  if (!body.image?.base64 || !body.image?.mime) throw new Error("image.base64 and image.mime are required");
-  if (!/^image\/(png|jpe?g|webp)$/i.test(body.image.mime)) throw new Error("Only png, jpeg, and webp images are supported");
-  if (body.image.base64.length > MAX_BASE64_LENGTH) throw new Error("Image payload is too large");
+  if (!body.prompt || typeof body.prompt !== "string") throw new Error("prompt string is required");
+  if (body.image) {
+    if (!body.image.base64 || !body.image.mime) throw new Error("image.base64 and image.mime are required");
+    if (!/^image\/(png|jpe?g|webp)$/i.test(body.image.mime)) throw new Error("Only png, jpeg, and webp images are supported");
+    if (body.image.base64.length > MAX_BASE64_LENGTH) throw new Error("Image payload is too large");
+  }
 }
 
 export async function handler(event) {
@@ -44,14 +47,7 @@ export async function handler(event) {
       ok: true,
       provider: output.provider,
       model: output.model,
-      result: {
-        title: output.result.title,
-        keywords: output.result.keywords,
-        category: output.result.category,
-        peopleOrProperty: output.result.peopleOrProperty,
-        fileTypeFlag: output.result.fileTypeFlag
-      },
-      legacyResult: output.result.legacyResult,
+      result: output.result,
       usage: output.usage
     });
   } catch (error) {

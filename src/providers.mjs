@@ -1,13 +1,14 @@
 import { buildMetadataPrompt } from "./prompt.mjs";
 import { normalizeMetadata } from "./normalize.mjs";
 
-function assertImage(image) {
-  if (!image?.base64 || !image?.mime) throw new Error("Request image.base64 and image.mime are required");
-}
-
-export async function callGroq({ key, model, image, context, settings }) {
-  assertImage(image);
-  const prompt = buildMetadataPrompt(settings, context);
+export async function callGroq({ key, model, image, prompt }) {
+  const content = [ { type: "text", text: prompt } ];
+  if (image) {
+    content.push({
+      type: "image_url",
+      image_url: { url: `data:${image.mime};base64,${image.base64}` }
+    });
+  }
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -17,19 +18,10 @@ export async function callGroq({ key, model, image, context, settings }) {
     body: JSON.stringify({
       model,
       temperature: 0.2,
-      response_format: { type: "json_object" },
       messages: [
         {
           role: "user",
-          content: [
-            { type: "text", text: prompt },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${image.mime};base64,${image.base64}`
-              }
-            }
-          ]
+          content
         }
       ]
     })
@@ -45,14 +37,21 @@ export async function callGroq({ key, model, image, context, settings }) {
 
   const text = payload?.choices?.[0]?.message?.content || "";
   return {
-    result: normalizeMetadata(text, settings),
+    result: text.trim(),
     usage: payload?.usage || null
   };
 }
 
-export async function callGemini({ key, model, image, context, settings }) {
-  assertImage(image);
-  const prompt = buildMetadataPrompt(settings, context);
+export async function callGemini({ key, model, image, prompt }) {
+  const parts = [ { text: prompt } ];
+  if (image) {
+    parts.push({
+      inlineData: {
+        mimeType: image.mime,
+        data: image.base64
+      }
+    });
+  }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
   const response = await fetch(url, {
     method: "POST",
@@ -61,21 +60,12 @@ export async function callGemini({ key, model, image, context, settings }) {
     },
     body: JSON.stringify({
       generationConfig: {
-        temperature: 0.2,
-        responseMimeType: "application/json"
+        temperature: 0.2
       },
       contents: [
         {
           role: "user",
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: image.mime,
-                data: image.base64
-              }
-            }
-          ]
+          parts
         }
       ]
     })
@@ -91,7 +81,7 @@ export async function callGemini({ key, model, image, context, settings }) {
 
   const text = payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
   return {
-    result: normalizeMetadata(text, settings),
+    result: text.trim(),
     usage: payload?.usageMetadata || null
   };
 }
