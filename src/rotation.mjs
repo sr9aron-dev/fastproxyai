@@ -45,8 +45,7 @@ export async function generateWithRotation(config, request) {
           key: selected.key,
           model: providerConfig.model,
           image: request.image,
-          context: request.context || {},
-          settings: request.settings || {}
+          prompt: request.prompt
         });
 
         await saveConfig(nextConfig);
