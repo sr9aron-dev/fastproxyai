@@ -3,6 +3,8 @@ import { sha256 } from "../../src/crypto.mjs";
 import { validateExtensionToken } from "../../src/auth.mjs";
 import { loadConfig, saveConfig } from "../../src/store.mjs";
 import { generateWithRotation } from "../../src/rotation.mjs";
+import { buildMetadataPrompt } from "../../src/prompt.mjs";
+import { normalizeMetadata } from "../../src/normalize.mjs";
 
 const MAX_BASE64_LENGTH = Number(process.env.MAX_BASE64_LENGTH || 6_000_000);
 
@@ -30,10 +32,27 @@ export async function handler(event) {
     }
 
     const body = readJson(event);
-    validateRequest(body);
+    
+    // Auto-build prompt if not provided as string
+    let prompt = body.prompt;
+    if (!prompt || typeof prompt !== "string") {
+      prompt = buildMetadataPrompt(body.settings, body.context);
+    }
+    
+    validateRequest({ ...body, prompt });
 
     const config = await loadConfig();
-    const { output, config: updatedConfig } = await generateWithRotation(config, body);
+    const { output, config: updatedConfig } = await generateWithRotation(config, { ...body, prompt });
+
+    // Normalize AI output to structured metadata
+    let finalResult;
+    try {
+      finalResult = normalizeMetadata(output.result, body.settings);
+    } catch (err) {
+       // If normalization fails, return raw but with a warning or try to fix
+       console.error("[Proxy] Normalization failed:", err.message);
+       throw new Error(`AI returned invalid format: ${err.message}`);
+    }
 
     // Update lastUsedAt for the specific extension key used
     const tokenHash = sha256(token);
@@ -46,7 +65,10 @@ export async function handler(event) {
 
     return json(200, {
       ok: true,
-      ...output
+      provider: output.provider,
+      model: output.model,
+      ...finalResult,
+      usage: output.usage
     });
   } catch (error) {
     return json(error.statusCode || 500, {
