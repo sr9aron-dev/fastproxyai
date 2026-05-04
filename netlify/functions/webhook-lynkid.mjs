@@ -14,27 +14,30 @@ export default async (req, context) => {
     const body = await req.json();
     console.log("[Webhook] Received from Lynk.id:", JSON.stringify(body));
 
-    // 1. Security Check (Optional but recommended)
-    // Lynk.id usually sends a signature or you can check a specific secret in headers
-    // For now, we'll proceed if status is 'success'
-    if (body.status !== "success" && body.payment_status !== "paid") {
-      return new Response("Ignored: payment not successful", { status: 200 });
+    // 1. Validasi Struktur Lynk.id
+    const isPaymentReceived = body.event === "payment.received";
+    const isSuccess = body.data?.message_action === "SUCCESS";
+
+    if (!isPaymentReceived || !isSuccess) {
+      console.log("[Webhook] Ignored: Not a successful payment event");
+      return new Response("Ignored: Not a successful payment", { status: 200 });
     }
 
-    const email = body.customer_email || body.email;
-    const productId = body.product_id;
-    const transactionId = body.reference_id || body.transaction_id;
+    const msgData = body.data.message_data;
+    const email = msgData?.customer?.email;
+    const transactionId = msgData?.refId || body.data?.message_id;
+    const productName = msgData?.items?.[0]?.title || "Pro Subscription";
 
     if (!email) {
+      console.error("[Webhook] Error: Email not found in payload");
       return new Response("Error: Missing email", { status: 400 });
     }
 
-    // 2. Calculate Expiry (Default 40 days for the $12 package)
-    // In a real scenario, you'd check productId against your price list
+    // 2. Calculate Expiry (40 days)
     const daysToAdd = 40;
     const now = new Date();
     
-    const docRef = db.collection('users').doc(email);
+    const docRef = db.collection('users').doc(email.toLowerCase());
     const doc = await docRef.get();
 
     let expiryDate = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
@@ -45,6 +48,7 @@ export default async (req, context) => {
       if (currentExpiryStr) {
         const currentExpiry = new Date(currentExpiryStr);
         if (currentExpiry > now) {
+          // Tambahkan ke masa aktif yang sudah ada
           expiryDate = new Date(currentExpiry.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
         }
       }
@@ -52,23 +56,27 @@ export default async (req, context) => {
 
     // 3. Update Firestore via Admin SDK
     await docRef.set({
-      email: email,
+      email: email.toLowerCase(),
       subscriptionStatus: "active",
       subscriptionExpiry: expiryDate.toISOString(),
       lastTransactionId: transactionId,
-      plan: body.product_name || "pro_40_days",
+      plan: productName,
       updatedAt: now.toISOString()
     }, { merge: true });
 
     // 4. Also sync to Netlify Blobs for faster edge checking
-    const userStore = getStore("smart-keyword-users");
-    await userStore.setJSON(email.toLowerCase(), {
-      status: "active",
-      expiry: expiryDate.toISOString(),
-      lastUpdate: now.toISOString()
-    });
+    try {
+      const userStore = getStore("smart-keyword-users");
+      await userStore.setJSON(email.toLowerCase(), {
+        status: "active",
+        expiry: expiryDate.toISOString(),
+        lastUpdate: now.toISOString()
+      });
+    } catch (blobErr) {
+      console.warn("[Webhook] Blobs sync failed (non-critical):", blobErr.message);
+    }
 
-    console.log(`[Webhook] Successfully updated subscription for ${email}. New expiry: ${expiryDate.toISOString()}`);
+    console.log(`[Webhook] SUCCESS! User ${email} updated. New expiry: ${expiryDate.toISOString()}`);
     return new Response("Success", { status: 200 });
 
   } catch (err) {
