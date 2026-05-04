@@ -47,7 +47,7 @@ export function configStore() {
 function shouldUseLocalStore() {
   // Jika berjalan di Netlify (ada process.env.NETLIFY, URL, atau AWS_LAMBDA), dilarang pakai local file.
   if (process.env.NETLIFY || process.env.URL || process.env.AWS_LAMBDA_FUNCTION_NAME) return false;
-  
+
   return process.env.LOCAL_FILE_STORE === "1" || !process.env.NETLIFY_BLOBS_CONTEXT;
 }
 
@@ -86,13 +86,13 @@ export async function loadConfig() {
   const merged = {
     ...defaultConfig,
     ...(config || {}),
-    groq: { 
-      ...defaultConfig.groq, 
+    groq: {
+      ...defaultConfig.groq,
       ...(config?.groq || {}),
       keys: (config?.groq?.keys?.length ? config.groq.keys : defaultConfig.groq.keys)
     },
-    gemini: { 
-      ...defaultConfig.gemini, 
+    gemini: {
+      ...defaultConfig.gemini,
       ...(config?.gemini || {}),
       keys: (config?.gemini?.keys?.length ? config.gemini.keys : defaultConfig.gemini.keys)
     },
@@ -108,12 +108,12 @@ export async function saveConfig(config) {
     updatedAt: new Date().toISOString()
   };
 
-    if (shouldUseLocalStore()) {
-      await writeLocalConfig(next);
-    } else {
-      const store = configStore();
-      await store.setJSON(CONFIG_KEY, next);
-    }
+  if (shouldUseLocalStore()) {
+    await writeLocalConfig(next);
+  } else {
+    const store = configStore();
+    await store.setJSON(CONFIG_KEY, next);
+  }
 
   return next;
 }

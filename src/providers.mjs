@@ -2,7 +2,7 @@ import { buildMetadataPrompt } from "./prompt.mjs";
 import { normalizeMetadata } from "./normalize.mjs";
 
 export async function callGroq({ key, model, image, prompt }) {
-  const content = [ { type: "text", text: prompt } ];
+  const content = [{ type: "text", text: prompt }];
   if (image) {
     content.push({
       type: "image_url",
@@ -43,7 +43,7 @@ export async function callGroq({ key, model, image, prompt }) {
 }
 
 export async function callGemini({ key, model, image, prompt }) {
-  const parts = [ { text: prompt } ];
+  const parts = [{ text: prompt }];
   if (image) {
     parts.push({
       inlineData: {
