@@ -4,15 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "netlify dev",
-    "deploy": "netlify deploy",
-    "deploy:prod": "netlify deploy --prod"
+    "dev": "vercel dev",
+    "deploy": "vercel",
+    "deploy:prod": "vercel --prod",
+    "netlify:dev": "netlify dev"
   },
   "dependencies": {
     "@netlify/blobs": "^9.1.0",
+    "@vercel/kv": "^1.0.1",
     "firebase-admin": "^12.0.0"
   },
   "devDependencies": {
-    "netlify-cli": "^17.38.1"
+    "netlify-cli": "^17.38.1",
+    "vercel": "^34.2.0"
   }
 }

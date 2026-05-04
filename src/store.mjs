@@ -1,4 +1,3 @@
-import { getStore } from "@netlify/blobs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -6,6 +5,35 @@ const STORE_NAME = "smart-keyword-ai-proxy";
 const CONFIG_KEY = "config";
 const LOCAL_DATA_DIR = path.join(process.cwd(), ".data");
 const LOCAL_CONFIG_PATH = path.join(LOCAL_DATA_DIR, "config.json");
+
+/**
+ * Netlify Blobs adapter
+ */
+async function getNetlifyStore() {
+  try {
+    const { getStore } = await import("@netlify/blobs");
+    return getStore({
+      name: STORE_NAME,
+      siteID: process.env.NETLIFY_SITE_ID || undefined,
+      token: process.env.NETLIFY_API_TOKEN || undefined
+    });
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Vercel KV adapter
+ */
+async function getVercelKV() {
+  if (!process.env.KV_REST_API_URL) return null;
+  try {
+    const { kv } = await import("@vercel/kv");
+    return kv;
+  } catch (err) {
+    return null;
+  }
+}
 
 function parseEnvKeys(key) {
   const value = process.env[key];
@@ -29,26 +57,17 @@ const defaultConfig = {
   },
   extensionKeys: parseEnvKeys("EXTENSION_KEYS").map(k => ({
     name: "Env Key",
-    hash: k, // Expecting SHA-256 hash in env or raw token if auth.mjs handles it
+    hash: k,
     createdAt: new Date().toISOString(),
     lastUsedAt: null
   }))
 };
 
-export function configStore() {
-  // Gunakan konfigurasi manual jika disediakan lewat environment variables
-  return getStore({
-    name: STORE_NAME,
-    siteID: process.env.NETLIFY_SITE_ID || undefined,
-    token: process.env.NETLIFY_API_TOKEN || undefined
-  });
-}
-
 function shouldUseLocalStore() {
-  // Jika berjalan di Netlify (ada process.env.NETLIFY, URL, atau AWS_LAMBDA), dilarang pakai local file.
-  if (process.env.NETLIFY || process.env.URL || process.env.AWS_LAMBDA_FUNCTION_NAME) return false;
+  // Jika berjalan di Netlify atau Vercel, dilarang pakai local file.
+  if (process.env.NETLIFY || process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) return false;
 
-  return process.env.LOCAL_FILE_STORE === "1" || !process.env.NETLIFY_BLOBS_CONTEXT;
+  return process.env.LOCAL_FILE_STORE === "1" || (!process.env.NETLIFY_BLOBS_CONTEXT && !process.env.KV_REST_API_URL);
 }
 
 async function readLocalConfig() {
@@ -75,14 +94,21 @@ export async function loadConfig() {
     if (shouldUseLocalStore()) {
       config = await readLocalConfig();
     } else {
-      const store = configStore();
-      config = await store.get(CONFIG_KEY, { type: "json", consistency: "strong" });
+      const kv = await getVercelKV();
+      if (kv) {
+        config = await kv.get(CONFIG_KEY);
+      } else {
+        const store = await getNetlifyStore();
+        if (store) {
+          config = await store.get(CONFIG_KEY, { type: "json", consistency: "strong" });
+        }
+      }
     }
   } catch (err) {
     console.error("Error loading config:", err.message);
   }
 
-  // Merge logic: Env variables take precedence if storage is empty
+  // Merge logic
   const merged = {
     ...defaultConfig,
     ...(config || {}),
@@ -111,10 +137,18 @@ export async function saveConfig(config) {
   if (shouldUseLocalStore()) {
     await writeLocalConfig(next);
   } else {
-    const store = configStore();
-    await store.setJSON(CONFIG_KEY, next);
+    const kv = await getVercelKV();
+    if (kv) {
+      await kv.set(CONFIG_KEY, next);
+    } else {
+      const store = await getNetlifyStore();
+      if (store) {
+        await store.setJSON(CONFIG_KEY, next);
+      }
+    }
   }
 
   return next;
 }
+
 
