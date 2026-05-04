@@ -9,7 +9,8 @@
     "deploy:prod": "netlify deploy --prod"
   },
   "dependencies": {
-    "@netlify/blobs": "^9.1.0"
+    "@netlify/blobs": "^9.1.0",
+    "firebase-admin": "^12.0.0"
   },
   "devDependencies": {
     "netlify-cli": "^17.38.1"

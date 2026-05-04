@@ -1,4 +1,5 @@
 import { getStore } from "@netlify/blobs";
+import { db } from "../../src/firebase.mjs";
 
 /**
  * Webhook handler for Lynk.id transactions
@@ -33,52 +34,31 @@ export default async (req, context) => {
     const daysToAdd = 40;
     const now = new Date();
     
-    // Check existing subscription in Firestore first
-    const firebaseKey = process.env.FIREBASE_API_KEY || "AIzaSyCNGYKxyqvqCrduHbl6BJ5a2AbBOJMsrz8";
-    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/fast-proxy-ai/databases/(default)/documents/users/${encodeURIComponent(email)}?key=${firebaseKey}`;
+    const docRef = db.collection('users').doc(email);
+    const doc = await docRef.get();
 
     let expiryDate = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
 
-    try {
-      const getRes = await fetch(firestoreUrl);
-      if (getRes.ok) {
-        const doc = await getRes.json();
-        const currentExpiryStr = doc.fields?.subscriptionExpiry?.stringValue;
-        if (currentExpiryStr) {
-          const currentExpiry = new Date(currentExpiryStr);
-          if (currentExpiry > now) {
-            // Add to existing expiry
-            expiryDate = new Date(currentExpiry.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-          }
+    if (doc.exists) {
+      const data = doc.data();
+      const currentExpiryStr = data.subscriptionExpiry;
+      if (currentExpiryStr) {
+        const currentExpiry = new Date(currentExpiryStr);
+        if (currentExpiry > now) {
+          expiryDate = new Date(currentExpiry.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
         }
       }
-    } catch (e) {
-      console.warn("[Webhook] Failed to fetch existing sub:", e.message);
     }
 
-    // 3. Update Firestore via REST API
-    const updateData = {
-      fields: {
-        email: { stringValue: email },
-        subscriptionStatus: { stringValue: "active" },
-        subscriptionExpiry: { stringValue: expiryDate.toISOString() },
-        lastTransactionId: { stringValue: transactionId },
-        plan: { stringValue: body.product_name || "pro_40_days" },
-        updatedAt: { stringValue: now.toISOString() }
-      }
-    };
-
-    const updateRes = await fetch(firestoreUrl, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updateData)
-    });
-
-    if (!updateRes.ok) {
-      const errText = await updateRes.text();
-      console.error("[Webhook] Firestore update failed:", errText);
-      return new Response("Internal Server Error", { status: 500 });
-    }
+    // 3. Update Firestore via Admin SDK
+    await docRef.set({
+      email: email,
+      subscriptionStatus: "active",
+      subscriptionExpiry: expiryDate.toISOString(),
+      lastTransactionId: transactionId,
+      plan: body.product_name || "pro_40_days",
+      updatedAt: now.toISOString()
+    }, { merge: true });
 
     // 4. Also sync to Netlify Blobs for faster edge checking
     const userStore = getStore("smart-keyword-users");

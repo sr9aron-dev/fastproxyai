@@ -1,5 +1,6 @@
 import { sha256 } from "./crypto.mjs";
 import { loadConfig } from "./store.mjs";
+import { db } from "./firebase.mjs";
 
 export async function validateExtensionToken(token) {
   if (!token) return null;
@@ -17,17 +18,15 @@ export async function checkSubscription(email) {
   if (!email) return { active: true }; // No email linked = unlimited/legacy key
 
   try {
-    const firebaseKey = process.env.FIREBASE_API_KEY || "AIzaSyCNGYKxyqvqCrduHbl6BJ5a2AbBOJMsrz8";
-    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/fast-proxy-ai/databases/(default)/documents/users/${encodeURIComponent(email)}?key=${firebaseKey}`;
+    const docRef = db.collection('users').doc(email);
+    const doc = await docRef.get();
     
-    const res = await fetch(firestoreUrl);
-    if (!res.ok) {
-      if (res.status === 404) return { active: false, status: "none" };
-      throw new Error(`Firestore error: ${res.status}`);
+    if (!doc.exists) {
+      return { active: false, status: "none" };
     }
     
-    const doc = await res.json();
-    const expiryStr = doc.fields?.subscriptionExpiry?.stringValue;
+    const data = doc.data();
+    const expiryStr = data.subscriptionExpiry;
     if (!expiryStr) return { active: false, status: "none" };
     
     const expiry = new Date(expiryStr);

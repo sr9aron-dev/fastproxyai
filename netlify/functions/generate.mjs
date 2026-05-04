@@ -31,21 +31,6 @@ export async function handler(event) {
       return json(401, { ok: false, error: { code: "UNAUTHORIZED", message: "Invalid extension API key" } });
     }
 
-    // Check Subscription
-    if (key.email) {
-      const sub = await checkSubscription(key.email);
-      if (!sub.active) {
-        return json(402, { 
-          ok: false, 
-          error: { 
-            code: "PAYMENT_REQUIRED", 
-            message: sub.status === "expired" ? "Subscription expired" : "No active subscription found",
-            expiry: sub.expiry
-          } 
-        });
-      }
-    }
-
     const body = readJson(event);
     
     // Auto-build prompt if not provided as string
