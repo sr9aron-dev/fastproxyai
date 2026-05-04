@@ -74,7 +74,22 @@ function normalizeKeywords(value, settings = {}) {
 }
 
 export function normalizeMetadata(providerText, settings = {}) {
-  const data = typeof providerText === "string" ? extractJson(providerText) : providerText;
+  let data;
+  try {
+    data = typeof providerText === "string" ? extractJson(providerText) : providerText;
+  } catch (e) {
+    // Fallback for plain text responses (e.g. from older extension versions or specific prompts)
+    const text = String(providerText || "").trim();
+    return {
+      result: text,
+      title: text.slice(0, 200),
+      keywords: text.split(",").map(k => k.trim()).filter(Boolean),
+      category: "business",
+      peopleOrProperty: false,
+      fileTypeFlag: false,
+      legacyResult: text
+    };
+  }
   
   const start = String(settings.startText || "").trim();
   const end = String(settings.endText || "").trim();
@@ -90,12 +105,14 @@ export function normalizeMetadata(providerText, settings = {}) {
   const peopleOrProperty = Boolean(data.peopleOrProperty);
   const fileTypeFlag = Boolean(data.fileTypeFlag);
 
-  if (!title) throw new Error("Generated title is empty");
-  if (keywords.length === 0) throw new Error("Generated keywords are empty");
+  if (!title && keywords.length === 0) {
+    throw new Error("Generated content is empty");
+  }
 
   const legacyResult = `${title}&&${keywords.join(", ")}&&${category}&&${peopleOrProperty}&&${fileTypeFlag}`;
 
   return {
+    result: legacyResult, // For backward compatibility with extension background.js
     title,
     keywords,
     category,
