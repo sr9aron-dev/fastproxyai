@@ -35,6 +35,7 @@ export async function handler(event) {
         id: randomToken("key").slice(0, 18),
         hash: sha256(token),
         label: String(body.label || "Extension key").slice(0, 80),
+        email: body.email ? String(body.email).toLowerCase() : null, // Optional email link
         active: true,
         createdAt: new Date().toISOString()
       };

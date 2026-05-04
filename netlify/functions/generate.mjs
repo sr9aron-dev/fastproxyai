@@ -26,9 +26,24 @@ export async function handler(event) {
 
   try {
     const token = bearerToken(event);
-    const extensionKey = await validateExtensionToken(token);
-    if (!extensionKey) {
+    const key = await validateExtensionToken(token);
+    if (!key) {
       return json(401, { ok: false, error: { code: "UNAUTHORIZED", message: "Invalid extension API key" } });
+    }
+
+    // Check Subscription
+    if (key.email) {
+      const sub = await checkSubscription(key.email);
+      if (!sub.active) {
+        return json(402, { 
+          ok: false, 
+          error: { 
+            code: "PAYMENT_REQUIRED", 
+            message: sub.status === "expired" ? "Subscription expired" : "No active subscription found",
+            expiry: sub.expiry
+          } 
+        });
+      }
     }
 
     const body = readJson(event);
@@ -56,9 +71,9 @@ export async function handler(event) {
 
     // Update lastUsedAt for the specific extension key used
     const tokenHash = sha256(token);
-    const key = updatedConfig.extensionKeys.find((item) => item.hash === tokenHash || item.hash === token);
-    if (key) {
-      key.lastUsedAt = new Date().toISOString();
+    const foundKey = updatedConfig.extensionKeys.find((item) => item.hash === tokenHash || item.hash === token);
+    if (foundKey) {
+      foundKey.lastUsedAt = new Date().toISOString();
     }
     
     await saveConfig(updatedConfig);

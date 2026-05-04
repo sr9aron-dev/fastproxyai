@@ -64,7 +64,7 @@ function renderExtensionKeys(keys) {
     row.innerHTML = `
       <div>
         <strong>${escapeHtml(key.label || key.id)}</strong><br>
-        <small>${key.id} · ${key.active ? "active" : "disabled"} · dibuat ${key.createdAt || "-"}</small>
+        <small>${key.id} · ${key.email ? `📧 ${key.email} · ` : ""}${key.active ? "active" : "disabled"} · dibuat ${key.createdAt || "-"}</small>
       </div>
       <button class="secondary" data-action="toggle" data-id="${key.id}" data-active="${key.active ? "0" : "1"}">${key.active ? "Disable" : "Enable"}</button>
       <button class="danger" data-action="delete" data-id="${key.id}">Delete</button>
@@ -163,7 +163,8 @@ $("#createExtensionKeyBtn").addEventListener("click", async () => {
       method: "POST",
       body: JSON.stringify({
         action: "create",
-        label: $("#extensionKeyLabel").value.trim()
+        label: $("#extensionKeyLabel").value.trim(),
+        email: $("#extensionKeyEmail").value.trim()
       })
     });
     $("#newTokenBox").classList.remove("hidden");
