@@ -30,7 +30,7 @@ export async function handler(event) {
     const body = readJson(event);
 
     if (body.action === "create") {
-      const token = randomToken("ek_live");
+      const token = randomToken("sk_live");
       const item = {
         id: randomToken("key").slice(0, 18),
         hash: sha256(token),

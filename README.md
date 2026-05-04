@@ -1,4 +1,4 @@
-# Easy Keyword AI Proxy
+# Smart Keyword AI Proxy
 
 AKUN NETLIFY : megageta7@gmail.com
 
@@ -110,7 +110,7 @@ Functions directory: netlify/functions
 7. Klik `Simpan provider keys`.
 8. Isi label extension key.
 9. Klik `Generate API key ekstensi`.
-10. Salin token `ek_live_...`.
+10. Salin token `sk_live_...`.
 
 Token extension hanya ditampilkan sekali. Kalau hilang, buat token baru.
 
@@ -123,7 +123,7 @@ POST https://<site>.netlify.app/.netlify/functions/generate
 Header:
 
 ```http
-Authorization: Bearer ek_live_xxx
+Authorization: Bearer sk_live_xxx
 Content-Type: application/json
 ```
 

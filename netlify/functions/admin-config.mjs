@@ -9,12 +9,12 @@ export function publicConfig(config) {
     groq: {
       model: config.groq.model,
       keyCount: config.groq.keys.length,
-      keys: config.groq.keys
+      keys: config.groq.keys.map(maskKey)
     },
     gemini: {
       model: config.gemini.model,
       keyCount: config.gemini.keys.length,
-      keys: config.gemini.keys
+      keys: config.gemini.keys.map(maskKey)
     },
     extensionKeys: config.extensionKeys.map((key) => ({
       id: key.id,
@@ -43,6 +43,18 @@ export async function handler(event) {
 
     const body = readJson(event);
     const config = await loadConfig();
+
+    const restoreKeys = (input, current) => {
+      const inputList = normalizeKeyList(input);
+      return inputList.map(key => {
+        if (key.includes("...")) {
+          const original = current.find(k => maskKey(k) === key);
+          return original || key;
+        }
+        return key;
+      });
+    };
+
     const next = {
       ...config,
       providerOrder: Array.isArray(body.providerOrder) && body.providerOrder.length
@@ -51,13 +63,13 @@ export async function handler(event) {
       groq: {
         ...config.groq,
         model: body.groq?.model || config.groq.model,
-        keys: body.groq?.keys === undefined ? config.groq.keys : normalizeKeyList(body.groq.keys),
+        keys: body.groq?.keys === undefined ? config.groq.keys : restoreKeys(body.groq.keys, config.groq.keys),
         cursor: 0
       },
       gemini: {
         ...config.gemini,
         model: body.gemini?.model || config.gemini.model,
-        keys: body.gemini?.keys === undefined ? config.gemini.keys : normalizeKeyList(body.gemini.keys),
+        keys: body.gemini?.keys === undefined ? config.gemini.keys : restoreKeys(body.gemini.keys, config.gemini.keys),
         cursor: 0
       }
     };

@@ -33,22 +33,20 @@ export async function handler(event) {
     validateRequest(body);
 
     const config = await loadConfig();
-    const output = await generateWithRotation(config, body);
+    const { output, config: updatedConfig } = await generateWithRotation(config, body);
 
-    const latestConfig = await loadConfig();
+    // Update lastUsedAt for the specific extension key used
     const tokenHash = sha256(token);
-    const key = latestConfig.extensionKeys.find((item) => item.hash === tokenHash);
+    const key = updatedConfig.extensionKeys.find((item) => item.hash === tokenHash || item.hash === token);
     if (key) {
       key.lastUsedAt = new Date().toISOString();
-      await saveConfig(latestConfig);
     }
+    
+    await saveConfig(updatedConfig);
 
     return json(200, {
       ok: true,
-      provider: output.provider,
-      model: output.model,
-      result: output.result,
-      usage: output.usage
+      ...output
     });
   } catch (error) {
     return json(error.statusCode || 500, {

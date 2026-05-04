@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-export function randomToken(prefix = "ek_live") {
+export function randomToken(prefix = "sk_live") {
   return `${prefix}_${crypto.randomBytes(32).toString("base64url")}`;
 }
 
@@ -14,9 +14,14 @@ export function maskKey(value) {
 }
 
 export function normalizeKeyList(value) {
-  if (Array.isArray(value)) return value.map(String).map((key) => key.trim()).filter(Boolean);
-  return String(value || "")
-    .split(/\r?\n|,/)
-    .map((key) => key.trim())
-    .filter(Boolean);
+  let list = [];
+  if (Array.isArray(value)) {
+    list = value.map(String).map((key) => key.trim()).filter(Boolean);
+  } else {
+    list = String(value || "")
+      .split(/\r?\n|,/)
+      .map((key) => key.trim())
+      .filter(Boolean);
+  }
+  return [...new Set(list)];
 }

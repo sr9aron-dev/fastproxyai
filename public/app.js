@@ -196,3 +196,34 @@ $("#extensionKeys").addEventListener("click", async (event) => {
     setOutput(error.message);
   }
 });
+$("#testAiBtn")?.addEventListener("click", async () => {
+  try {
+    const btn = $("#testAiBtn");
+    const originalText = btn.textContent;
+    btn.textContent = "Testing...";
+    btn.disabled = true;
+
+    const payload = await api("/api/admin-test", {
+      method: "POST",
+      body: JSON.stringify({
+        providerOrder: selectedProviderOrder(),
+        groq: {
+          model: $("#groqModel").value.trim(),
+          keys: $("#groqKeys").value.trim()
+        },
+        gemini: {
+          model: $("#geminiModel").value.trim(),
+          keys: $("#geminiKeys").value.trim()
+        }
+      })
+    });
+    
+    setOutput(payload);
+    btn.textContent = originalText;
+    btn.disabled = false;
+  } catch (error) {
+    setOutput(error.message);
+    $("#testAiBtn").textContent = "Test AI Connection";
+    $("#testAiBtn").disabled = false;
+  }
+});

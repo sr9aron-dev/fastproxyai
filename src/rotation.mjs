@@ -19,7 +19,7 @@ function nextKey(providerConfig) {
 
 function isRetryable(error) {
   const status = Number(error.statusCode || 0);
-  return status === 0 || status === 408 || status === 409 || status === 429 || status >= 500 || status === 401 || status === 403;
+  return status === 0 || status === 408 || status === 409 || status === 429 || status >= 500 || status === 401 || status === 403 || status === 503 || status === 504;
 }
 
 export async function generateWithRotation(config, request) {
@@ -48,13 +48,16 @@ export async function generateWithRotation(config, request) {
           prompt: request.prompt
         });
 
-        await saveConfig(nextConfig);
         return {
-          provider,
-          model: providerConfig.model,
-          ...output
+          output: {
+            provider,
+            model: providerConfig.model,
+            ...output
+          },
+          config: nextConfig
         };
       } catch (error) {
+        console.warn(`[Proxy] Provider ${provider} (${providerConfig.model}) failed: ${error.message} (Status: ${error.statusCode})`);
         errors.push({
           provider,
           model: providerConfig.model,
@@ -62,11 +65,11 @@ export async function generateWithRotation(config, request) {
           statusCode: error.statusCode || null
         });
         if (!isRetryable(error)) break;
+        console.log(`[Proxy] Rotating to next key for ${provider}...`);
       }
     }
   }
 
-  await saveConfig(nextConfig);
   const error = new Error("No provider key succeeded");
   error.statusCode = 502;
   error.details = errors;
