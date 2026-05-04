@@ -13,7 +13,7 @@ export async function handler(event) {
 
   return json(200, {
     ok: true,
-    service: "easy-keyword-ai-proxy",
+    service: "smart-keyword-ai-proxy",
     version,
     env: process.env.NETLIFY ? "production" : "development",
     time: new Date().toISOString()

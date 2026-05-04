@@ -2,7 +2,7 @@ import { getStore } from "@netlify/blobs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const STORE_NAME = "easy-keyword-ai-proxy";
+const STORE_NAME = "smart-keyword-ai-proxy";
 const CONFIG_KEY = "config";
 const LOCAL_DATA_DIR = path.join(process.cwd(), ".data");
 const LOCAL_CONFIG_PATH = path.join(LOCAL_DATA_DIR, "config.json");

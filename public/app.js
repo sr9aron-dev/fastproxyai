@@ -105,10 +105,10 @@ $("#loadConfigBtn").addEventListener("click", async () => {
 
     state.adminToken = $("#adminToken").value.trim();
     localStorage.setItem("adminToken", state.adminToken);
-    
+
     const payload = await api("/api/admin-config", { method: "GET" });
     renderConfig(payload.config);
-    
+
     // Switch UI
     $("#loginScreen").classList.add("hidden");
     $("#dashboard").classList.remove("hidden");
