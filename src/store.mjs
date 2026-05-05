@@ -99,6 +99,10 @@ export async function saveConfig(config) {
     updatedAt: new Date().toISOString()
   };
 
+  // Ensure AI keys are deduplicated before saving
+  if (next.groq?.keys) next.groq.keys = [...new Set(next.groq.keys)];
+  if (next.gemini?.keys) next.gemini.keys = [...new Set(next.gemini.keys)];
+
   if (shouldUseLocalStore()) {
     await writeLocalConfig(next);
   } else {

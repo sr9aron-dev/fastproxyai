@@ -47,13 +47,15 @@ async function handler(event) {
 
     const restoreKeys = (input, current) => {
       const inputList = normalizeKeyList(input);
-      return inputList.map(key => {
+      const restored = inputList.map(key => {
         if (key.includes("...")) {
           const original = current.find(k => maskKey(k) === key);
           return original || key;
         }
         return key;
       });
+      // Deduplicate
+      return [...new Set(restored)];
     };
 
     const next = {

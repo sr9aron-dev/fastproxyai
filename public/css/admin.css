@@ -205,6 +205,39 @@ textarea {
     margin-bottom: 1rem;
 }
 
+.label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.label-row label {
+    margin-bottom: 0;
+}
+
+.text-btn {
+    background: none;
+    border: none;
+    color: var(--accent-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    opacity: 0.8;
+    transition: 0.3s;
+}
+
+.text-btn:hover {
+    opacity: 1;
+}
+
+.text-btn:disabled {
+    color: var(--text-dim);
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
 .order-section {
     margin: 2rem 0;
 }
@@ -244,6 +277,25 @@ textarea {
 
 .ext-info h4 { margin-bottom: 0.2rem; }
 .ext-info p { margin-bottom: 0; font-size: 0.8rem; }
+
+.console-box {
+    background: #000;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1rem;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    color: #00ff88;
+    max-height: 250px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.console-box .err { color: #ff4d4d; }
+.console-box .warn { color: #ffcc00; }
+.console-box .info { color: #00d2ff; }
+.console-box .success { color: #00ff88; }
 
 .hidden { display: none !important; }
 

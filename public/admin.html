@@ -43,13 +43,19 @@
                         <button class="tab-btn" data-tab="gemini">Gemini</button>
                     </div>
                     <div class="tab-content" id="groq-tab">
-                        <label>Groq API Keys (one per line)</label>
+                        <div class="label-row">
+                            <label>Groq API Keys (one per line)</label>
+                            <button id="test-groq-btn" class="text-btn">Test All Keys</button>
+                        </div>
                         <textarea id="groq-keys" placeholder="gsk_..."></textarea>
                         <label>Model</label>
                         <input type="text" id="groq-model">
                     </div>
                     <div class="tab-content hidden" id="gemini-tab">
-                        <label>Gemini API Keys (one per line)</label>
+                        <div class="label-row">
+                            <label>Gemini API Keys (one per line)</label>
+                            <button id="test-gemini-btn" class="text-btn">Test All Keys</button>
+                        </div>
                         <textarea id="gemini-keys" placeholder="AIza..."></textarea>
                         <label>Model</label>
                         <input type="text" id="gemini-model">
@@ -84,6 +90,15 @@
                     <div id="new-key-display" class="hidden glass-alert">
                         <span>New Token (copy now):</span>
                         <code id="new-key-value"></code>
+                    </div>
+
+                    <!-- Test Console -->
+                    <div id="test-console" class="hidden mt-large">
+                        <div class="label-row">
+                            <label>Endpoint Test Output</label>
+                            <button onclick="$('test-console').classList.add('hidden')" class="text-btn">Clear</button>
+                        </div>
+                        <div class="console-box" id="console-output"></div>
                     </div>
                 </div>
             </div>

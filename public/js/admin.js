@@ -98,6 +98,7 @@ function renderKeys() {
                 <p>Last Used: ${key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : 'Never'}</p>
             </div>
             <div class="ext-actions">
+                <button class="secondary-btn" onclick="testEndpointPrompt()">Test</button>
                 <button class="secondary-btn" onclick="toggleKey('${key.id}', ${!key.active})">${key.active ? 'Disable' : 'Enable'}</button>
                 <button class="secondary-btn" style="color: var(--error)" onclick="deleteKey('${key.id}')">Delete</button>
             </div>
@@ -134,6 +135,11 @@ $('gen-ext-key-btn').addEventListener('click', async () => {
     state.config.extensionKeys = data.keys;
     
     $('new-key-value').textContent = data.token;
+    $('new-key-display').innerHTML = `
+        <span>New Token (copy now):</span>
+        <code id="new-key-value">${data.token}</code>
+        <button class="text-btn" style="margin-top:0.5rem" onclick="testEndpoint('${data.token}')">Test This Key Now</button>
+    `;
     $('new-key-display').classList.remove('hidden');
     $('new-ext-name').value = '';
     $('new-ext-email').value = '';
@@ -154,6 +160,96 @@ window.deleteKey = async (id) => {
     state.config.extensionKeys = data.keys;
     renderKeys();
     showToast('Key deleted');
+};
+
+// Test Keys Logic
+async function testProviderKeys(provider) {
+    const btn = $(`test-${provider}-btn`);
+    const area = $(`${provider}-keys`);
+    const model = $(`${provider}-model`).value;
+    const keys = area.value.split('\n').filter(k => k.trim());
+    
+    if (keys.length === 0) return showToast('No keys to test', 'error');
+    
+    btn.disabled = true;
+    btn.textContent = 'Testing...';
+    
+    try {
+        const data = await api('/api/admin/test-keys', 'POST', { provider, keys, model });
+        const results = data.results;
+        
+        const validKeys = results.filter(r => r.status === 'valid' || r.status === 'skipped').map(r => r.key);
+        const invalidCount = results.filter(r => r.status === 'invalid').length;
+        
+        if (invalidCount > 0) {
+            const remove = confirm(`Found ${invalidCount} invalid keys. Would you like to remove them?`);
+            if (remove) {
+                area.value = validKeys.join('\n');
+                showToast(`Removed ${invalidCount} invalid keys`);
+            } else {
+                showToast(`Test complete: ${invalidCount} keys failed`, 'error');
+            }
+        } else {
+            showToast('All keys are valid!');
+        }
+    } catch (err) {
+        showToast('Testing failed: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Test All Keys';
+    }
+}
+
+$('test-groq-btn').addEventListener('click', () => testProviderKeys('groq'));
+$('test-gemini-btn').addEventListener('click', () => testProviderKeys('gemini'));
+
+// Endpoint Testing Logic
+window.testEndpointPrompt = () => {
+    const token = prompt('Paste the extension token to test:');
+    if (token) testEndpoint(token);
+};
+
+window.testEndpoint = async (token) => {
+    const consoleEl = $('test-console');
+    const output = $('console-output');
+    
+    consoleEl.classList.remove('hidden');
+    output.innerHTML = `<span class="info">[${new Date().toLocaleTimeString()}] Starting test...</span>\n`;
+    
+    try {
+        output.innerHTML += `> POST /api/generate\n`;
+        output.innerHTML += `> Authorization: Bearer ${token.slice(0, 10)}...\n`;
+        
+        const res = await fetch('/api/generate', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                settings: { keywordCount: 5 },
+                prompt: "Test connection. Reply with 'OK'."
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            output.innerHTML += `<span class="success">✓ Success (${res.status})</span>\n`;
+            output.innerHTML += `<span class="info">Provider: ${data.provider} | Model: ${data.model}</span>\n`;
+            output.innerHTML += `Result: ${JSON.stringify(data.result || data, null, 2)}\n`;
+        } else {
+            output.innerHTML += `<span class="err">✗ Failed (${res.status})</span>\n`;
+            output.innerHTML += `<span class="err">Error: ${data.error?.message || 'Unknown error'}</span>\n`;
+            if (data.error?.details) {
+                output.innerHTML += `<span class="warn">Details: ${JSON.stringify(data.error.details, null, 2)}</span>\n`;
+            }
+        }
+    } catch (err) {
+        output.innerHTML += `<span class="err">✗ System Error: ${err.message}</span>\n`;
+    }
+    
+    output.scrollTop = output.scrollHeight;
 };
 
 // Tabs
