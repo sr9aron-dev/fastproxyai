@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="dark-theme">
     <div class="glow-bg"></div>
@@ -73,8 +74,22 @@
                                 <div class="stat-value" id="stat-rate">0%</div>
                             </div>
                             <div class="stat-card">
-                                <h3>Success / Fail</h3>
-                                <div class="stat-value" id="stat-ratio" style="font-size: 1.2rem; color: var(--text-dim)">0 / 0</div>
+                                <h3>Users (Last 24h)</h3>
+                                <div class="stat-value" id="stat-active-users">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Total Users</h3>
+                                <div class="stat-value" id="stat-total-users">0</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-large">
+                            <div class="label-row">
+                                <label>Daily Usage Trends</label>
+                                <span class="text-dim" style="font-size: 0.8rem">Last 14 Days</span>
+                            </div>
+                            <div class="chart-container mt-small">
+                                <canvas id="usageChart" height="150"></canvas>
                             </div>
                         </div>
                         
@@ -94,10 +109,10 @@
                     </div>
                     
                     <div class="order-section">
-                        <label>Rotation Order</label>
+                        <label>Rotation Order (Drag to reorder)</label>
                         <div class="sortable-list" id="provider-order">
-                            <div class="sort-item" data-id="groq">Groq</div>
-                            <div class="sort-item" data-id="gemini">Gemini</div>
+                            <div class="sort-item" data-id="groq" draggable="true">Groq</div>
+                            <div class="sort-item" data-id="gemini" draggable="true">Gemini</div>
                         </div>
                     </div>
                     

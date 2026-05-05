@@ -249,13 +249,28 @@ textarea {
 }
 
 .sort-item {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--glass-border);
-    padding: 1rem;
-    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
     cursor: grab;
-    display: flex;
-    justify-content: space-between;
+    transition: 0.2s;
+    user-select: none;
+}
+
+.sort-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sort-item:active {
+    cursor: grabbing;
+}
+
+.sort-item.dragging {
+    opacity: 0.5;
+    background: var(--accent-primary);
+    border-color: var(--accent-secondary);
 }
 
 .extension-list {
@@ -365,6 +380,14 @@ textarea {
     background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
     width: 0%;
     transition: width 1s ease-out;
+}
+
+.chart-container {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    height: 300px;
 }
 
 .mt-large { margin-top: 2.5rem; }

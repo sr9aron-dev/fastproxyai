@@ -34,7 +34,43 @@ async function api(path, method = 'GET', body = null) {
     }
 }
 
-// Initial Load
+// Drag & Drop Logic
+const sortableList = $('provider-order');
+let dragItem = null;
+
+sortableList.addEventListener('dragstart', (e) => {
+    dragItem = e.target.closest('.sort-item');
+    if (dragItem) dragItem.classList.add('dragging');
+});
+
+sortableList.addEventListener('dragend', (e) => {
+    e.target.classList.remove('dragging');
+});
+
+sortableList.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const afterElement = getDragAfterElement(sortableList, e.clientY);
+    if (afterElement == null) {
+        sortableList.appendChild(dragItem);
+    } else {
+        sortableList.insertBefore(dragItem, afterElement);
+    }
+});
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.sort-item:not(.dragging)')];
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// Config Loader
 if (state.token) {
     $('admin-token').value = state.token;
     loadConfig();
@@ -80,6 +116,7 @@ function renderConfig() {
         const item = document.createElement('div');
         item.className = 'sort-item';
         item.dataset.id = id;
+        item.draggable = true;
         item.innerHTML = `${id.toUpperCase()} <span>⠿</span>`;
         orderList.appendChild(item);
     });
@@ -265,7 +302,11 @@ async function loadStats() {
         
         $('stat-total').textContent = total.toLocaleString();
         $('stat-rate').textContent = rate + '%';
-        $('stat-ratio').textContent = `${success.toLocaleString()} / ${error.toLocaleString()}`;
+        $('stat-active-users').textContent = data.users.onlineToday.toLocaleString();
+        $('stat-total-users').textContent = data.users.total.toLocaleString();
+        
+        // Render Chart
+        renderUsageChart(stats.history || {});
         
         // Render Models
         const modelList = $('model-stats-list');
@@ -311,6 +352,71 @@ async function loadStats() {
     } catch (err) {
         showToast('Failed to load statistics', 'error');
     }
+}
+
+let usageChart = null;
+
+function renderUsageChart(history) {
+    const ctx = document.getElementById('usageChart').getContext('2d');
+    
+    // Last 14 days labels
+    const labels = [];
+    const successData = [];
+    const errorData = [];
+    
+    for (let i = 13; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        labels.push(d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }));
+        successData.push(history[dateStr]?.success || 0);
+        errorData.push(history[dateStr]?.error || 0);
+    }
+
+    if (usageChart) usageChart.destroy();
+
+    usageChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Success',
+                    data: successData,
+                    borderColor: '#00ff88',
+                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Errors',
+                    data: errorData,
+                    borderColor: '#ff4d4d',
+                    backgroundColor: 'rgba(255, 77, 77, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#888' }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { color: '#888' }
+                }
+            }
+        }
+    });
 }
 
 // Tabs
