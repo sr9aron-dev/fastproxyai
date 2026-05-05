@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { db } from "./firebase.mjs";
+import { db, admin } from "./firebase.mjs";
 
 const CONFIG_DOC_ID = "proxy-settings";
 const COLLECTION_NAME = "config";
@@ -115,6 +115,29 @@ export async function saveConfig(config) {
   }
 
   return next;
+}
+
+export async function trackUsage(provider, model, status = "success") {
+  if (shouldUseLocalStore()) return; // Skip local for now to avoid IO overhead
+
+  try {
+    const statsRef = db.collection("stats").doc("global");
+    const dateStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    
+    // Increments using Firestore FieldValue.increment
+    const update = {
+      total: admin.firestore.FieldValue.increment(1),
+      [`providers.${provider}.total`]: admin.firestore.FieldValue.increment(1),
+      [`models.${model.replace(/\./g, '_')}.total`]: admin.firestore.FieldValue.increment(1),
+      [`status.${status}`]: admin.firestore.FieldValue.increment(1),
+      [`history.${dateStr}.total`]: admin.firestore.FieldValue.increment(1),
+      [`history.${dateStr}.${status}`]: admin.firestore.FieldValue.increment(1)
+    };
+
+    await statsRef.set(update, { merge: true });
+  } catch (err) {
+    console.error("Error tracking usage:", err.message);
+  }
 }
 
 

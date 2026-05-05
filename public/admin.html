@@ -41,6 +41,7 @@
                     <div class="tabs">
                         <button class="tab-btn active" data-tab="groq">Groq</button>
                         <button class="tab-btn" data-tab="gemini">Gemini</button>
+                        <button class="tab-btn" data-tab="stats">Statistics</button>
                     </div>
                     <div class="tab-content" id="groq-tab">
                         <div class="label-row">
@@ -59,6 +60,37 @@
                         <textarea id="gemini-keys" placeholder="AIza..."></textarea>
                         <label>Model</label>
                         <input type="text" id="gemini-model">
+                    </div>
+
+                    <div class="tab-content hidden" id="stats-tab">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <h3>Total Requests</h3>
+                                <div class="stat-value" id="stat-total">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Success Rate</h3>
+                                <div class="stat-value" id="stat-rate">0%</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Success / Fail</h3>
+                                <div class="stat-value" id="stat-ratio" style="font-size: 1.2rem; color: var(--text-dim)">0 / 0</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-large">
+                            <label>Model Performance</label>
+                            <div id="model-stats-list" class="stats-list mt-small">
+                                <!-- Model stats will be injected here -->
+                            </div>
+                        </div>
+
+                        <div class="mt-large">
+                            <label>Provider Usage</label>
+                            <div id="provider-stats-list" class="stats-list mt-small">
+                                <!-- Provider stats will be injected here -->
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="order-section">

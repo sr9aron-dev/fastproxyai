@@ -12,11 +12,14 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/generate", "destination": "/api/generate.js" },
+    { "source": "/api/webhook-lynkid", "destination": "/api/webhook-lynkid.js" },
+    { "source": "/api/admin/config", "destination": "/api/admin/config.js" },
+    { "source": "/api/admin/extension-key", "destination": "/api/admin/extension-key.js" },
+    { "source": "/api/admin/test-keys", "destination": "/api/admin/test-keys.js" },
+    { "source": "/api/admin/auth", "destination": "/api/admin/auth.js" },
     { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/.netlify/functions/generate", "destination": "/api/generate" },
-    { "source": "/.netlify/functions/admin-config", "destination": "/api/admin/config" },
-    { "source": "/.netlify/functions/admin-extension-key", "destination": "/api/admin/extension-key" },
-    { "source": "/.netlify/functions/webhook-lynkid", "destination": "/api/webhook-lynkid" }
+    { "source": "/.netlify/functions/:path*", "destination": "/api/:path*" }
   ]
 }
 

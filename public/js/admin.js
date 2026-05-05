@@ -252,6 +252,67 @@ window.testEndpoint = async (token) => {
     output.scrollTop = output.scrollHeight;
 };
 
+// Statistics Logic
+async function loadStats() {
+    try {
+        const data = await api('/api/admin/stats');
+        const stats = data.stats;
+        
+        const total = stats.total || 0;
+        const success = stats.status?.success || 0;
+        const error = stats.status?.error || 0;
+        const rate = total > 0 ? Math.round((success / total) * 100) : 0;
+        
+        $('stat-total').textContent = total.toLocaleString();
+        $('stat-rate').textContent = rate + '%';
+        $('stat-ratio').textContent = `${success.toLocaleString()} / ${error.toLocaleString()}`;
+        
+        // Render Models
+        const modelList = $('model-stats-list');
+        modelList.innerHTML = '';
+        if (stats.models) {
+            Object.entries(stats.models).sort((a,b) => b[1].total - a[1].total).forEach(([name, data]) => {
+                const perc = total > 0 ? Math.round((data.total / total) * 100) : 0;
+                const item = document.createElement('div');
+                item.className = 'stats-item';
+                item.innerHTML = `
+                    <div class="stats-item-header">
+                        <span>${name.replace(/_/g, '.')}</span>
+                        <span>${data.total.toLocaleString()} (${perc}%)</span>
+                    </div>
+                    <div class="stats-bar-bg">
+                        <div class="stats-bar-fill" style="width: ${perc}%"></div>
+                    </div>
+                `;
+                modelList.appendChild(item);
+            });
+        }
+
+        // Render Providers
+        const provList = $('provider-stats-list');
+        provList.innerHTML = '';
+        if (stats.providers) {
+            Object.entries(stats.providers).sort((a,b) => b[1].total - a[1].total).forEach(([name, data]) => {
+                const perc = total > 0 ? Math.round((data.total / total) * 100) : 0;
+                const item = document.createElement('div');
+                item.className = 'stats-item';
+                item.innerHTML = `
+                    <div class="stats-item-header">
+                        <span style="text-transform: capitalize">${name}</span>
+                        <span>${data.total.toLocaleString()} (${perc}%)</span>
+                    </div>
+                    <div class="stats-bar-bg">
+                        <div class="stats-bar-fill" style="width: ${perc}%"></div>
+                    </div>
+                `;
+                provList.appendChild(item);
+            });
+        }
+    } catch (err) {
+        showToast('Failed to load statistics', 'error');
+    }
+}
+
 // Tabs
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -259,5 +320,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
         btn.classList.add('active');
         $(`${btn.dataset.tab}-tab`).classList.remove('hidden');
+        if (btn.dataset.tab === 'stats') loadStats();
     });
 });

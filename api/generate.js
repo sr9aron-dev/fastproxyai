@@ -1,7 +1,7 @@
 import { bearerToken, json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
 import { sha256 } from "../src/crypto.mjs";
 import { validateExtensionToken } from "../src/auth.mjs";
-import { loadConfig, saveConfig } from "../src/store.mjs";
+import { loadConfig, saveConfig, trackUsage } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
 import { buildMetadataPrompt } from "../src/prompt.mjs";
 import { normalizeMetadata } from "../src/normalize.mjs";
@@ -61,6 +61,9 @@ async function handler(event) {
     
     await saveConfig(updatedConfig);
 
+    // Track Success
+    await trackUsage(output.provider, output.model, "success");
+
     return json(200, {
       ok: true,
       provider: output.provider,
@@ -70,6 +73,13 @@ async function handler(event) {
     });
   } catch (error) {
     console.error("[Proxy] Generate Error:", error);
+    // Track Error
+    if (error.details && error.details.length > 0) {
+      // Track the last provider that failed
+      const last = error.details[error.details.length - 1];
+      await trackUsage(last.provider, last.model, "error");
+    }
+
     return json(error.statusCode || 500, {
       ok: false,
       error: {
