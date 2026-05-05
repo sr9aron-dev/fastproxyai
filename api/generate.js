@@ -30,6 +30,7 @@ async function handler(event) {
       return json(401, { ok: false, error: { code: "UNAUTHORIZED", message: "Invalid extension API key" } });
     }
 
+    const config = await loadConfig();
     const body = readJson(event);
     
     // Auto-build prompt if not provided as string
@@ -40,7 +41,6 @@ async function handler(event) {
     
     validateRequest({ ...body, prompt });
 
-    const config = await loadConfig();
     const { output, config: updatedConfig } = await generateWithRotation(config, { ...body, prompt });
 
     // Normalize AI output to structured metadata

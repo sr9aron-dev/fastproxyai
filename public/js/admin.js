@@ -251,42 +251,37 @@ window.testEndpoint = async (token) => {
     const output = $('console-output');
     
     consoleEl.classList.remove('hidden');
-    output.innerHTML = `<span class="info">[${new Date().toLocaleTimeString()}] Starting test...</span>\n`;
+    output.innerHTML = `<span class="info">[${new Date().toLocaleTimeString()}] Starting cross-provider test...</span>\n`;
     
-    try {
-        output.innerHTML += `> POST /api/generate\n`;
-        output.innerHTML += `> Authorization: Bearer ${token.slice(0, 10)}...\n`;
-        
-        const res = await fetch('/api/generate', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                settings: { keywordCount: 5 },
-                prompt: "Test connection. Reply with 'OK'."
-            })
-        });
-        
-        const data = await res.json();
-        
-        if (res.ok) {
-            output.innerHTML += `<span class="success">✓ Success (${res.status})</span>\n`;
-            output.innerHTML += `<span class="info">Provider: ${data.provider} | Model: ${data.model}</span>\n`;
-            output.innerHTML += `Result: ${JSON.stringify(data.result || data, null, 2)}\n`;
-        } else {
-            output.innerHTML += `<span class="err">✗ Failed (${res.status})</span>\n`;
-            output.innerHTML += `<span class="err">Error: ${data.error?.message || 'Unknown error'}</span>\n`;
-            if (data.error?.details) {
-                output.innerHTML += `<span class="warn">Details: ${JSON.stringify(data.error.details, null, 2)}</span>\n`;
+    const runTest = async (provider) => {
+        output.innerHTML += `<span class="info">Testing ${provider.toUpperCase()}...</span>\n`;
+        try {
+            const res = await fetch('/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    forceProvider: provider,
+                    prompt: `Test ${provider}. Reply with 'OK'.`
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                output.innerHTML += `<span class="success">✓ ${provider.toUpperCase()} Success: ${data.result.substring(0, 50)}</span>\n`;
+            } else {
+                output.innerHTML += `<span class="err">✗ ${provider.toUpperCase()} Failed: ${data.error?.message || 'Unknown'}</span>\n`;
             }
+        } catch (err) {
+            output.innerHTML += `<span class="err">✗ ${provider.toUpperCase()} Error: ${err.message}</span>\n`;
         }
-    } catch (err) {
-        output.innerHTML += `<span class="err">✗ System Error: ${err.message}</span>\n`;
-    }
-    
-    output.scrollTop = output.scrollHeight;
+        output.scrollTop = output.scrollHeight;
+    };
+
+    await runTest('groq');
+    await runTest('gemini');
+    output.innerHTML += `<span class="info">[${new Date().toLocaleTimeString()}] Tests complete.</span>\n`;
 };
 
 // Statistics Logic

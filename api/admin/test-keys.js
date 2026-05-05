@@ -24,7 +24,7 @@ async function handler(event) {
 
       try {
         const caller = provider === "groq" ? callGroq : callGemini;
-        await caller({ key, model: model || (provider === "groq" ? "meta-llama/llama-4-scout-17b-16e-instruct" : "gemini-2.5-flash"), prompt: testPrompt });
+        await caller({ key, model: model || (provider === "groq" ? "llama-3.3-70b-versatile" : "gemini-2.5-flash"), prompt: testPrompt });
         return { key, status: "valid" };
       } catch (err) {
         return { key, status: "invalid", message: err.message };

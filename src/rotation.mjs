@@ -23,9 +23,11 @@ function isRetryable(error) {
 }
 
 export async function generateWithRotation(config, request) {
-  const providers = Array.isArray(config.providerOrder) && config.providerOrder.length > 0
-    ? config.providerOrder
-    : ["groq", "gemini"];
+  const providers = request.forceProvider 
+    ? [request.forceProvider] 
+    : (Array.isArray(config.providerOrder) && config.providerOrder.length > 0
+      ? config.providerOrder
+      : ["groq", "gemini"]);
   const errors = [];
   const nextConfig = structuredClone(config);
 
