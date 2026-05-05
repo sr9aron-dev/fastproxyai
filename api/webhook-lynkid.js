@@ -9,7 +9,12 @@ async function handler(event) {
 
   try {
     const body = readJson(event);
-    console.log("[Webhook] Received Lynkid payload:", JSON.stringify(body));
+    console.log("[Webhook] Full Payload:", JSON.stringify(body, null, 2));
+
+    // Handle Ping/Test from Lynkid
+    if (body.event === "ping" || body.event === "test") {
+      return json(200, { ok: true, message: "Ping received" });
+    }
 
     // Lynkid payload structure
     const email = body.data?.message_data?.customer?.email || body.user_email || body.email;
@@ -21,8 +26,12 @@ async function handler(event) {
     const productUuid = items[0]?.uuid || "";
     const expectedUuid = "69f8bc383494a38805ddad8f-3584-3961659950-1777908792574";
 
-    if (!email) {
+    if (!email && eventType === "payment.received") {
       return json(400, { ok: false, message: "No email found in payload" });
+    }
+
+    if (!email) {
+      return json(200, { ok: true, message: "Event ignored (no email/not a payment)" });
     }
 
     // Only process successful payments
