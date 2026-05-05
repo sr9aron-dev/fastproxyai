@@ -1,4 +1,4 @@
-import { json, optionsResponse, readJson, requireAdmin } from "../../src/http.mjs";
+import { json, optionsResponse, readJson, requireAdmin, vercelHandler } from "../../src/http.mjs";
 import { maskKey, normalizeKeyList } from "../../src/crypto.mjs";
 import { loadConfig, saveConfig } from "../../src/store.mjs";
 
@@ -16,9 +16,10 @@ export function publicConfig(config) {
       keyCount: config.gemini.keys.length,
       keys: config.gemini.keys.map(maskKey)
     },
-    extensionKeys: config.extensionKeys.map((key) => ({
+    extensionKeys: (config.extensionKeys || []).map((key) => ({
       id: key.id,
       label: key.label,
+      email: key.email,
       active: key.active !== false,
       createdAt: key.createdAt,
       lastUsedAt: key.lastUsedAt || null
@@ -26,7 +27,7 @@ export function publicConfig(config) {
   };
 }
 
-export async function handler(event) {
+async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
 
   try {
@@ -86,3 +87,5 @@ export async function handler(event) {
     });
   }
 }
+
+export default vercelHandler(handler);

@@ -1,9 +1,9 @@
-import { json, optionsResponse, readJson, requireAdmin } from "../../src/http.mjs";
+import { json, optionsResponse, readJson, requireAdmin, vercelHandler } from "../../src/http.mjs";
 import { randomToken, sha256 } from "../../src/crypto.mjs";
 import { loadConfig, saveConfig } from "../../src/store.mjs";
 
 function publicKeys(config) {
-  return config.extensionKeys.map((key) => ({
+  return (config.extensionKeys || []).map((key) => ({
     id: key.id,
     label: key.label,
     active: key.active !== false,
@@ -12,7 +12,7 @@ function publicKeys(config) {
   }));
 }
 
-export async function handler(event) {
+async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
 
   try {
@@ -35,10 +35,11 @@ export async function handler(event) {
         id: randomToken("key").slice(0, 18),
         hash: sha256(token),
         label: String(body.label || "Extension key").slice(0, 80),
-        email: body.email ? String(body.email).toLowerCase() : null, // Optional email link
+        email: body.email ? String(body.email).toLowerCase() : null,
         active: true,
         createdAt: new Date().toISOString()
       };
+      if (!config.extensionKeys) config.extensionKeys = [];
       config.extensionKeys.push(item);
       const saved = await saveConfig(config);
       return json(200, {
@@ -51,7 +52,7 @@ export async function handler(event) {
     if (body.action === "setActive") {
       const id = String(body.id || "");
       const active = Boolean(body.active);
-      const key = config.extensionKeys.find((item) => item.id === id);
+      const key = (config.extensionKeys || []).find((item) => item.id === id);
       if (!key) return json(404, { ok: false, error: { code: "NOT_FOUND", message: "Extension key not found" } });
       key.active = active;
       const saved = await saveConfig(config);
@@ -60,7 +61,7 @@ export async function handler(event) {
 
     if (body.action === "delete") {
       const id = String(body.id || "");
-      config.extensionKeys = config.extensionKeys.filter((item) => item.id !== id);
+      config.extensionKeys = (config.extensionKeys || []).filter((item) => item.id !== id);
       const saved = await saveConfig(config);
       return json(200, { ok: true, keys: publicKeys(saved) });
     }
@@ -76,3 +77,5 @@ export async function handler(event) {
     });
   }
 }
+
+export default vercelHandler(handler);

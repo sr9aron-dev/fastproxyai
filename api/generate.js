@@ -1,16 +1,15 @@
-import { bearerToken, json, optionsResponse, readJson } from "../../src/http.mjs";
-import { sha256 } from "../../src/crypto.mjs";
-import { validateExtensionToken } from "../../src/auth.mjs";
-import { loadConfig, saveConfig } from "../../src/store.mjs";
-import { generateWithRotation } from "../../src/rotation.mjs";
-import { buildMetadataPrompt } from "../../src/prompt.mjs";
-import { normalizeMetadata } from "../../src/normalize.mjs";
+import { bearerToken, json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
+import { sha256 } from "../src/crypto.mjs";
+import { validateExtensionToken } from "../src/auth.mjs";
+import { loadConfig, saveConfig } from "../src/store.mjs";
+import { generateWithRotation } from "../src/rotation.mjs";
+import { buildMetadataPrompt } from "../src/prompt.mjs";
+import { normalizeMetadata } from "../src/normalize.mjs";
 
 const MAX_BASE64_LENGTH = Number(process.env.MAX_BASE64_LENGTH || 6_000_000);
 
 function validateRequest(body) {
   if (!body || typeof body !== "object") throw new Error("JSON body is required");
-  if (!body.prompt || typeof body.prompt !== "string") throw new Error("prompt string is required");
   if (body.image) {
     if (!body.image.base64 || !body.image.mime) throw new Error("image.base64 and image.mime are required");
     if (!/^image\/(png|jpe?g|webp)$/i.test(body.image.mime)) throw new Error("Only png, jpeg, and webp images are supported");
@@ -18,7 +17,7 @@ function validateRequest(body) {
   }
 }
 
-export async function handler(event) {
+async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
   if (event.httpMethod !== "POST") {
     return json(405, { ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Use POST" } });
@@ -26,8 +25,8 @@ export async function handler(event) {
 
   try {
     const token = bearerToken(event);
-    const key = await validateExtensionToken(token);
-    if (!key) {
+    const keyRecord = await validateExtensionToken(token);
+    if (!keyRecord) {
       return json(401, { ok: false, error: { code: "UNAUTHORIZED", message: "Invalid extension API key" } });
     }
 
@@ -49,7 +48,6 @@ export async function handler(event) {
     try {
       finalResult = normalizeMetadata(output.result, body.settings);
     } catch (err) {
-       // If normalization fails, return raw but with a warning or try to fix
        console.error("[Proxy] Normalization failed:", err.message);
        throw new Error(`AI returned invalid format: ${err.message}`);
     }
@@ -71,6 +69,7 @@ export async function handler(event) {
       usage: output.usage
     });
   } catch (error) {
+    console.error("[Proxy] Generate Error:", error);
     return json(error.statusCode || 500, {
       ok: false,
       error: {
@@ -81,3 +80,5 @@ export async function handler(event) {
     });
   }
 }
+
+export default vercelHandler(handler);

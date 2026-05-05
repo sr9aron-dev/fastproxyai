@@ -1,206 +1,82 @@
-# Smart Keyword AI Proxy
+# AI Proxy V2 (Vercel Edition)
 
-AKUN NETLIFY : megageta7@gmail.com
+Backend canggih untuk Smart Keyword AI, dioptimalkan untuk Vercel dan menggunakan Firebase Firestore sebagai database utama.
 
-Proyek ini adalah backend kecil untuk mengganti bagian Firebase/backend lama. Ekstensi tetap menjalankan UI, setting, queue, dan auto-fill. Netlify hanya menyimpan provider API key dan meneruskan request generate ke Groq/Gemini lewat satu API key internal untuk ekstensi.
+## Fitur Utama
 
-## Fitur
+- **Vercel Native**: Menggunakan Serverless Functions di folder `/api` untuk performa maksimal.
+- **Unified Storage**: Konfigurasi dan data user terpusat di **Firebase Firestore**.
+- **Premium Admin UI**: Dashboard modern dengan desain Glassmorphism dan Dark Mode.
+- **Intelligent Rotation**: Rotasi otomatis API Key Groq dan Gemini dengan fallback cerdas.
+- **Extension Compatible**: Mendukung request dari browser extension dengan format response lama (`legacyResult`).
+- **Lynkid Webhook**: Integrasi otomatis pembayaran Lynkid untuk aktivasi langganan.
 
-- Admin UI untuk memasukkan banyak Groq API key dan Gemini API key.
-- Rotasi key otomatis.
-- Jika satu key gagal/rate limit, proxy mencoba key berikutnya.
-- Fallback antar provider sesuai urutan yang dipilih.
-- Generate satu API key internal yang dimasukkan ke ekstensi.
-- Provider awal:
-  - Groq: `meta-llama/llama-4-scout-17b-16e-instruct`
-  - Gemini: `gemini-2.5-flash`
-
-## Struktur
+## Struktur Proyek
 
 ```text
-public/
-  index.html
-  app.js
-  style.css
-netlify/functions/
-  admin-config.mjs
-  admin-extension-key.mjs
-  generate.mjs
-  health.mjs
-src/
-  auth.mjs
-  crypto.mjs
-  http.mjs
-  normalize.mjs
-  prompt.mjs
-  providers.mjs
-  rotation.mjs
-  store.mjs
+/
+├── api/
+│   ├── admin/
+│   │   ├── config.js      # Endpoint manajemen config
+│   │   └── extension-key.js # Endpoint manajemen key ekstensi
+│   ├── generate.js        # Engine AI utama
+│   └── webhook-lynkid.js  # Handler webhook Lynkid
+├── public/
+│   ├── index.html         # Landing page premium
+│   ├── admin.html         # Dashboard Admin UI
+│   ├── css/admin.css      # Styling dashboard
+│   └── js/admin.js        # Logika dashboard
+├── src/
+│   ├── firebase.mjs       # Inisialisasi Firebase Admin
+│   ├── store.mjs          # Layer akses data Firestore
+│   ├── providers/         # Logika AI providers (Gemini/Groq)
+│   └── ...                # Utilities (crypto, prompt, etc)
+└── vercel.json            # Konfigurasi routing Vercel
 ```
 
-## Environment Variables
+## Persiapan Environment
 
-Set di Netlify dashboard:
+Set variabel berikut di Vercel Dashboard:
 
 ```env
-ADMIN_TOKEN=isi-token-admin-panjang-random
+ADMIN_TOKEN=rahasia-token-admin-anda
+FIREBASE_SERVICE_ACCOUNT={...json_kridensial_firebase...}
 ALLOWED_ORIGIN=*
-MAX_BASE64_LENGTH=6000000
 ```
 
-`ADMIN_TOKEN` dipakai untuk membuka dan menyimpan config dari admin UI. Jangan masukkan provider API key ke env. Provider keys dimasukkan lewat UI dan disimpan di Netlify Blobs.
+## Cara Penggunaan Admin UI
 
-Untuk development lokal, project sudah mendukung fallback file lokal:
-
-```env
-LOCAL_FILE_STORE=1
-```
-
-Dengan mode ini config disimpan ke:
-
-```text
-.data/config.json
-```
-
-Saat deploy Netlify, jangan set `LOCAL_FILE_STORE=1` agar storage kembali memakai Netlify Blobs.
-
-Untuk production setelah extension ID stabil, ganti:
-
-```env
-ALLOWED_ORIGIN=chrome-extension://<extension-id>
-```
-
-## Install Lokal
-
-```bash
-cd netlify-ai-proxy
-npm install
-npm run dev
-```
-
-Buka URL dari `netlify dev`, biasanya:
-
-```text
-http://localhost:8888
-```
-
-## Deploy
-
-```bash
-cd netlify-ai-proxy
-npm install
-npm run deploy:prod
-```
-
-Atau upload repo/folder ini ke Netlify dan set build settings:
-
-```text
-Publish directory: public
-Functions directory: netlify/functions
-```
-
-## Cara Pakai Admin UI
-
-1. Buka root site Netlify.
+1. Buka URL: `https://domain-anda.vercel.app/admin`
 2. Masukkan `ADMIN_TOKEN`.
-3. Klik `Load config`.
-4. Paste Groq keys, satu per baris.
-5. Paste Gemini keys, satu per baris.
-6. Pilih provider order.
-7. Klik `Simpan provider keys`.
-8. Isi label extension key.
-9. Klik `Generate API key ekstensi`.
-10. Salin token `sk_live_...`.
+3. Klik **Initialize Session**.
+4. Kelola API Keys, model, dan urutan rotasi di tab **Provider Keys**.
+5. Buat token baru untuk ekstensi di bagian **Extension Access**.
 
-Token extension hanya ditampilkan sekali. Kalau hilang, buat token baru.
+## Endpoint Ekstensi
 
-## Endpoint untuk Ekstensi
-
-```text
-POST https://<site>.netlify.app/.netlify/functions/generate
-```
+**POST** `/api/generate` (atau `/.netlify/functions/generate` untuk kompatibilitas balik)
 
 Header:
-
 ```http
 Authorization: Bearer sk_live_xxx
 Content-Type: application/json
 ```
 
 Body:
-
 ```json
 {
   "image": {
     "mime": "image/jpeg",
     "base64": "..."
   },
-  "context": {
-    "existingTitle": "optional",
-    "existingKeywords": []
-  },
   "settings": {
-    "keywordCount": 49,
-    "singleWordKeywords": false,
-    "nicheKeywords": false
+    "keywordCount": 49
   }
 }
 ```
 
-Response:
+## Lisensi & Keamanan
 
-```json
-{
-  "ok": true,
-  "provider": "groq",
-  "model": "meta-llama/llama-4-scout-17b-16e-instruct",
-  "result": {
-    "title": "Example Adobe Stock title",
-    "keywords": ["example", "stock"],
-    "category": "business",
-    "peopleOrProperty": false,
-    "fileTypeFlag": false
-  },
-  "legacyResult": "Example Adobe Stock title&&example, stock&&business&&false&&false",
-  "usage": {}
-}
-```
-
-`legacyResult` sengaja dibuat kompatibel dengan format ekstensi lama:
-
-```text
-title&&keywords&&category&&peopleOrProperty&&fileTypeFlag
-```
-
-## Integrasi ke Ekstensi
-
-Untuk tahap berikutnya, ekstensi perlu diganti pada bagian Firebase generate saja:
-
-- Hapus alur upload Firebase Storage.
-- Hapus pembuatan dokumen Firestore `profiles/{uid}/generates`.
-- Saat auto mode trigger, ambil thumbnail/blob.
-- Resize/compress lokal jika perlu.
-- Convert ke base64.
-- Kirim ke endpoint `/generate`.
-- Ambil `legacyResult`.
-- Panggil logic fill lama.
-
-UI setting lama tetap bisa dipakai. Nilai setting dikirim dalam field `settings`.
-
-## Catatan Keamanan
-
-- Provider API key tidak boleh masuk ke bundle ekstensi.
-- Admin UI dilindungi `ADMIN_TOKEN`, tetapi tetap jangan share URL admin ke publik.
-- Netlify Blobs adalah storage sederhana. Untuk sistem multi-admin atau audit serius, gunakan database yang lebih kuat.
-- Jangan log base64 image di production.
-- Rotasi key di sini untuk failover dan distribusi traffic milik sendiri, bukan untuk bypass limit provider.
-
-## Sumber API Netlify Blobs
-
-Project memakai `@netlify/blobs` dengan `getStore`, `get`, dan `setJSON`, sesuai dokumentasi resmi Netlify Blobs.
-#   f a t s p r o x y a i 
- 
- #   f a t s p r o x y a i 
- 
- "# fatsproxyai" 
-"# fatsproxyai" 
+- Jangan membagikan `ADMIN_TOKEN` atau URL Admin ke publik.
+- Pastikan Firestore Security Rules dikonfigurasi dengan benar (meskipun backend menggunakan Admin SDK).
+- Selalu pantau penggunaan kuota AI Anda di dashboard provider masing-masing.

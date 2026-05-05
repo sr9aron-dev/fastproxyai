@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Proxy Admin | Premium Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="dark-theme">
+    <div class="glow-bg"></div>
+    
+    <nav class="glass-nav">
+        <div class="logo">
+            <span class="pulse"></span>
+            <h1>AI PROXY <span>V2</span></h1>
+        </div>
+        <div class="nav-status">
+            <span id="status-dot" class="dot"></span>
+            <span id="status-text">Connecting...</span>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section id="login-section" class="glass-card fade-in">
+            <h2>Admin Authorization</h2>
+            <p>Please enter your secure token to manage proxy configurations.</p>
+            <div class="input-group">
+                <input type="password" id="admin-token" placeholder="Enter ADMIN_TOKEN">
+                <button id="load-config-btn" class="primary-btn">Initialize Session</button>
+            </div>
+        </section>
+
+        <div id="admin-content" class="hidden">
+            <div class="dashboard-grid">
+                <!-- Provider Keys -->
+                <div class="glass-card provider-card">
+                    <h3><img src="https://img.icons8.com/ios-filled/50/ffffff/key.png" width="20"/> Provider Keys</h3>
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="groq">Groq</button>
+                        <button class="tab-btn" data-tab="gemini">Gemini</button>
+                    </div>
+                    <div class="tab-content" id="groq-tab">
+                        <label>Groq API Keys (one per line)</label>
+                        <textarea id="groq-keys" placeholder="gsk_..."></textarea>
+                        <label>Model</label>
+                        <input type="text" id="groq-model">
+                    </div>
+                    <div class="tab-content hidden" id="gemini-tab">
+                        <label>Gemini API Keys (one per line)</label>
+                        <textarea id="gemini-keys" placeholder="AIza..."></textarea>
+                        <label>Model</label>
+                        <input type="text" id="gemini-model">
+                    </div>
+                    
+                    <div class="order-section">
+                        <label>Rotation Order</label>
+                        <div class="sortable-list" id="provider-order">
+                            <div class="sort-item" data-id="groq">Groq</div>
+                            <div class="sort-item" data-id="gemini">Gemini</div>
+                        </div>
+                    </div>
+                    
+                    <button id="save-provider-btn" class="primary-btn glow-btn">Update Provider Config</button>
+                </div>
+
+                <!-- Extension Keys -->
+                <div class="glass-card extension-card">
+                    <h3><img src="https://img.icons8.com/ios-filled/50/ffffff/puzzle.png" width="20"/> Extension Access</h3>
+                    <p>Manage keys authorized to use this proxy.</p>
+                    
+                    <div class="extension-list" id="extension-list">
+                        <!-- Keys will be injected here -->
+                    </div>
+
+                    <div class="input-group mt-large">
+                        <input type="text" id="new-ext-name" placeholder="Key Label (e.g. Chrome Ext)">
+                        <input type="email" id="new-ext-email" placeholder="User Email (optional)">
+                        <button id="gen-ext-key-btn" class="secondary-btn">Generate New Token</button>
+                    </div>
+                    
+                    <div id="new-key-display" class="hidden glass-alert">
+                        <span>New Token (copy now):</span>
+                        <code id="new-key-value"></code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container"></div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>

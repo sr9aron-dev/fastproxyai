@@ -1,39 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { db } from "./firebase.mjs";
 
-const STORE_NAME = "smart-keyword-ai-proxy";
-const CONFIG_KEY = "config";
+const CONFIG_DOC_ID = "proxy-settings";
+const COLLECTION_NAME = "config";
 const LOCAL_DATA_DIR = path.join(process.cwd(), ".data");
 const LOCAL_CONFIG_PATH = path.join(LOCAL_DATA_DIR, "config.json");
-
-/**
- * Netlify Blobs adapter
- */
-async function getNetlifyStore() {
-  try {
-    const { getStore } = await import("@netlify/blobs");
-    return getStore({
-      name: STORE_NAME,
-      siteID: process.env.NETLIFY_SITE_ID || undefined,
-      token: process.env.NETLIFY_API_TOKEN || undefined
-    });
-  } catch (err) {
-    return null;
-  }
-}
-
-/**
- * Vercel KV adapter
- */
-async function getVercelKV() {
-  if (!process.env.KV_REST_API_URL) return null;
-  try {
-    const { kv } = await import("@vercel/kv");
-    return kv;
-  } catch (err) {
-    return null;
-  }
-}
 
 function parseEnvKeys(key) {
   const value = process.env[key];
@@ -42,7 +14,7 @@ function parseEnvKeys(key) {
 }
 
 const defaultConfig = {
-  version: 1,
+  version: 2,
   updatedAt: null,
   providerOrder: ["groq", "gemini"],
   groq: {
@@ -64,10 +36,8 @@ const defaultConfig = {
 };
 
 function shouldUseLocalStore() {
-  // Jika berjalan di Netlify atau Vercel, dilarang pakai local file.
-  if (process.env.NETLIFY || process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) return false;
-
-  return process.env.LOCAL_FILE_STORE === "1" || (!process.env.NETLIFY_BLOBS_CONTEXT && !process.env.KV_REST_API_URL);
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) return false;
+  return process.env.LOCAL_FILE_STORE === "1";
 }
 
 async function readLocalConfig() {
@@ -94,18 +64,13 @@ export async function loadConfig() {
     if (shouldUseLocalStore()) {
       config = await readLocalConfig();
     } else {
-      const kv = await getVercelKV();
-      if (kv) {
-        config = await kv.get(CONFIG_KEY);
-      } else {
-        const store = await getNetlifyStore();
-        if (store) {
-          config = await store.get(CONFIG_KEY, { type: "json", consistency: "strong" });
-        }
+      const doc = await db.collection(COLLECTION_NAME).doc(CONFIG_DOC_ID).get();
+      if (doc.exists) {
+        config = doc.data();
       }
     }
   } catch (err) {
-    console.error("Error loading config:", err.message);
+    console.error("Error loading config from Firestore:", err.message);
   }
 
   // Merge logic
@@ -137,18 +102,16 @@ export async function saveConfig(config) {
   if (shouldUseLocalStore()) {
     await writeLocalConfig(next);
   } else {
-    const kv = await getVercelKV();
-    if (kv) {
-      await kv.set(CONFIG_KEY, next);
-    } else {
-      const store = await getNetlifyStore();
-      if (store) {
-        await store.setJSON(CONFIG_KEY, next);
-      }
+    try {
+      await db.collection(COLLECTION_NAME).doc(CONFIG_DOC_ID).set(next, { merge: true });
+    } catch (err) {
+      console.error("Error saving config to Firestore:", err.message);
+      throw err;
     }
   }
 
   return next;
 }
+
 
 
