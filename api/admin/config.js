@@ -16,6 +16,11 @@ export function publicConfig(config) {
       keyCount: config.gemini.keys.length,
       keys: config.gemini.keys.map(maskKey)
     },
+    mistral: {
+      model: config.mistral?.model || "mistral-tiny",
+      keyCount: config.mistral?.keys?.length || 0,
+      keys: (config.mistral?.keys || []).map(maskKey)
+    },
     extensionKeys: (config.extensionKeys || []).map((key) => ({
       id: key.id,
       label: key.label,
@@ -61,7 +66,7 @@ async function handler(event) {
     const next = {
       ...config,
       providerOrder: Array.isArray(body.providerOrder) && body.providerOrder.length
-        ? body.providerOrder.filter((name) => ["groq", "gemini"].includes(name))
+        ? body.providerOrder.filter((name) => ["groq", "gemini", "mistral"].includes(name))
         : config.providerOrder,
       groq: {
         ...config.groq,
@@ -73,6 +78,12 @@ async function handler(event) {
         ...config.gemini,
         model: body.gemini?.model || config.gemini.model,
         keys: body.gemini?.keys === undefined ? config.gemini.keys : restoreKeys(body.gemini.keys, config.gemini.keys),
+        cursor: 0
+      },
+      mistral: {
+        ...(config.mistral || {}),
+        model: body.mistral?.model || config.mistral?.model || "mistral-tiny",
+        keys: body.mistral?.keys === undefined ? (config.mistral?.keys || []) : restoreKeys(body.mistral.keys, (config.mistral?.keys || [])),
         cursor: 0
       }
     };
