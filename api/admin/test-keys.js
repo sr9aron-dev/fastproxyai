@@ -1,5 +1,5 @@
 import { json, optionsResponse, readJson, requireAdmin, vercelHandler } from "../../src/http.mjs";
-import { callGroq, callGemini } from "../../src/providers.mjs";
+import { callGroq, callGemini, callMistral } from "../../src/providers.mjs";
 
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
@@ -23,8 +23,21 @@ async function handler(event) {
       }
 
       try {
-        const caller = provider === "groq" ? callGroq : callGemini;
-        await caller({ key, model: model || (provider === "groq" ? "llama-3.3-70b-versatile" : "gemini-2.5-flash"), prompt: testPrompt });
+        let caller;
+        let defaultModel;
+
+        if (provider === "groq") {
+          caller = callGroq;
+          defaultModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+        } else if (provider === "gemini") {
+          caller = callGemini;
+          defaultModel = "gemini-2.5-flash";
+        } else if (provider === "mistral") {
+          caller = callMistral;
+          defaultModel = "mistral-tiny";
+        }
+
+        await caller({ key, model: model || defaultModel, prompt: testPrompt });
         return { key, status: "valid" };
       } catch (err) {
         return { key, status: "invalid", message: err.message };
