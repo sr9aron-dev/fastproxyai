@@ -6,13 +6,39 @@ const titleText = document.getElementById('title-text');
 const keywordsText = document.getElementById('keywords-text');
 const rawResponse = document.getElementById('raw-response');
 
+// Image handling
+const dropzone = document.getElementById('dropzone');
+const imageInput = document.getElementById('image-input');
+const imagePreview = document.getElementById('image-preview');
+const modelSelect = document.getElementById('model-select');
+let base64Image = null;
+
+dropzone.addEventListener('click', () => imageInput.click());
+
+imageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            base64Image = event.target.result;
+            imagePreview.src = base64Image;
+            imagePreview.style.display = 'block';
+            dropzone.querySelector('p').textContent = 'Image Selected: ' + file.name;
+            
+            // Auto-select Pixtral for images
+            modelSelect.value = 'pixtral-12b-2409';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
 generateBtn.addEventListener('click', async () => {
     const prompt = document.getElementById('image-desc').value;
-    const model = document.getElementById('model-select').value;
+    const model = modelSelect.value;
     const apiKey = document.getElementById('api-key').value;
 
-    if (!prompt) {
-        alert('Please enter a description!');
+    if (!prompt && !base64Image) {
+        alert('Please enter a description or upload an image!');
         return;
     }
 
@@ -34,7 +60,8 @@ generateBtn.addEventListener('click', async () => {
             body: JSON.stringify({
                 apiKey,
                 model,
-                prompt
+                prompt: prompt || "Describe this image for microstock metadata.",
+                image: base64Image // Send image data
             })
         });
 
@@ -49,7 +76,6 @@ generateBtn.addEventListener('click', async () => {
         rawResponse.textContent = JSON.stringify(data, null, 2);
         resultsArea.style.display = 'block';
         
-        // Smooth scroll to results
         resultsArea.scrollIntoView({ behavior: 'smooth' });
 
     } catch (error) {
@@ -64,7 +90,7 @@ function setLoading(isLoading) {
     if (isLoading) {
         generateBtn.disabled = true;
         loader.style.display = 'block';
-        btnText.textContent = 'Generating...';
+        btnText.textContent = 'Analyzing...';
     } else {
         generateBtn.disabled = false;
         loader.style.display = 'none';

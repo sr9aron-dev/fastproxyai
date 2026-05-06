@@ -213,6 +213,28 @@ select {
   animation: spin 1s ease-in-out infinite;
 }
 
+/* Dropzone Styling */
+.dropzone {
+  width: 100%;
+  border: 2px dashed var(--glass-border);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.dropzone:hover {
+  border-color: var(--accent-primary);
+  background: rgba(124, 58, 237, 0.05);
+}
+
+.dropzone p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

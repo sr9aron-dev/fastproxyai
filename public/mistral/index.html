@@ -18,8 +18,17 @@
 
         <main class="main-card">
             <div class="input-group">
-                <label for="image-desc">Describe your image / content</label>
-                <textarea id="image-desc" placeholder="e.g. A futuristic city skyline at sunset with flying vehicles and neon lights, high resolution, 3d render..."></textarea>
+                <label>Upload Image (Optional)</label>
+                <div id="dropzone" class="dropzone">
+                    <p>Click or Drag & Drop Image Here</p>
+                    <input type="file" id="image-input" accept="image/*" style="display: none;">
+                    <img id="image-preview" src="" alt="Preview" style="display: none; max-width: 100%; border-radius: 8px; margin-top: 1rem;">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="image-desc">Describe your image / content (Optional if image uploaded)</label>
+                <textarea id="image-desc" placeholder="e.g. A futuristic city skyline at sunset..."></textarea>
             </div>
 
             <div class="controls">

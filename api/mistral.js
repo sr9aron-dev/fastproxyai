@@ -3,13 +3,24 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { apiKey, model, prompt } = req.body;
+  const { apiKey, model, prompt, image } = req.body;
 
-  if (!apiKey || !prompt) {
-    return res.status(400).json({ error: 'API Key and Prompt are required' });
+  if (!apiKey || (!prompt && !image)) {
+    return res.status(400).json({ error: 'API Key and either Prompt or Image are required' });
   }
 
   try {
+    const userMessageContent = [];
+    if (prompt) {
+      userMessageContent.push({ type: 'text', text: prompt });
+    }
+    if (image) {
+      userMessageContent.push({
+        type: 'image_url',
+        image_url: image // This is the base64 data URL
+      });
+    }
+
     const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -21,11 +32,11 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: 'You are a microstock metadata expert. Your task is to generate a Title and exactly 50 Keywords for an image description provided by the user. \n\nOutput format:\nTitle: [Generated Title, descriptive and catchy, 50-70 characters]\nKeywords: [50 keywords, comma-separated, most relevant first, no duplicates, all lowercase]'
+            content: 'You are a microstock metadata expert. Your task is to generate a Title and exactly 50 Keywords for the content provided. \n\nOutput format:\nTitle: [Generated Title, descriptive and catchy, 50-70 characters]\nKeywords: [50 keywords, comma-separated, most relevant first, no duplicates, all lowercase]'
           },
           {
             role: 'user',
-            content: prompt
+            content: userMessageContent
           }
         ],
         temperature: 0.7,
