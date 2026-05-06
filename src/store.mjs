@@ -16,7 +16,7 @@ function parseEnvKeys(key) {
 const defaultConfig = {
   version: 2,
   updatedAt: null,
-  providerOrder: ["groq", "gemini"],
+  providerOrder: ["groq", "gemini", "mistral"],
   groq: {
     model: process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
     keys: parseEnvKeys("GROQ_KEYS"),
@@ -25,6 +25,11 @@ const defaultConfig = {
   gemini: {
     model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     keys: parseEnvKeys("GEMINI_KEYS"),
+    cursor: 0
+  },
+  mistral: {
+    model: process.env.MISTRAL_MODEL || "mistral-tiny",
+    keys: parseEnvKeys("MISTRAL_KEYS").length ? parseEnvKeys("MISTRAL_KEYS") : ["tKStvrZoL05yQFlpjh1y1YyB7GXrf5Xv"],
     cursor: 0
   },
   extensionKeys: parseEnvKeys("EXTENSION_KEYS").map(k => ({
@@ -87,6 +92,11 @@ export async function loadConfig() {
       ...(config?.gemini || {}),
       keys: (config?.gemini?.keys?.length ? config.gemini.keys : defaultConfig.gemini.keys)
     },
+    mistral: {
+      ...defaultConfig.mistral,
+      ...(config?.mistral || {}),
+      keys: (config?.mistral?.keys?.length ? config.mistral.keys : defaultConfig.mistral.keys)
+    },
     extensionKeys: (config?.extensionKeys?.length ? config.extensionKeys : defaultConfig.extensionKeys)
   };
 
@@ -102,6 +112,7 @@ export async function saveConfig(config) {
   // Ensure AI keys are deduplicated before saving
   if (next.groq?.keys) next.groq.keys = [...new Set(next.groq.keys)];
   if (next.gemini?.keys) next.gemini.keys = [...new Set(next.gemini.keys)];
+  if (next.mistral?.keys) next.mistral.keys = [...new Set(next.mistral.keys)];
 
   if (shouldUseLocalStore()) {
     await writeLocalConfig(next);

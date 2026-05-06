@@ -85,3 +85,48 @@ export async function callGemini({ key, model, image, prompt }) {
     usage: payload?.usageMetadata || null
   };
 }
+
+export async function callMistral({ key, model, image, prompt }) {
+  const userMessageContent = [];
+  if (prompt) {
+    userMessageContent.push({ type: "text", text: prompt });
+  }
+  if (image) {
+    userMessageContent.push({
+      type: "image_url",
+      image_url: `data:${image.mime};base64,${image.base64}`
+    });
+  }
+
+  const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${key}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      model: model || "mistral-tiny",
+      messages: [
+        {
+          role: "user",
+          content: userMessageContent
+        }
+      ],
+      temperature: 0.2
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = payload?.error?.message || `Mistral request failed with ${response.status}`;
+    const error = new Error(message);
+    error.statusCode = response.status;
+    throw error;
+  }
+
+  const text = payload?.choices?.[0]?.message?.content || "";
+  return {
+    result: text.trim(),
+    usage: payload?.usage || null
+  };
+}

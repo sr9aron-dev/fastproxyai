@@ -108,6 +108,8 @@ function renderConfig() {
     $('groq-model').value = c.groq.model;
     $('gemini-keys').value = c.gemini.keys.join('\n');
     $('gemini-model').value = c.gemini.model;
+    $('mistral-keys').value = (c.mistral?.keys || []).join('\n');
+    $('mistral-model').value = c.mistral?.model || 'mistral-tiny';
     
     // Render provider order
     const orderList = $('provider-order');
@@ -153,6 +155,10 @@ $('save-provider-btn').addEventListener('click', async () => {
         gemini: {
             keys: $('gemini-keys').value.split('\n').filter(k => k.trim()),
             model: $('gemini-model').value.trim()
+        },
+        mistral: {
+            keys: $('mistral-keys').value.split('\n').filter(k => k.trim()),
+            model: $('mistral-model').value.trim()
         },
         providerOrder: Array.from($('provider-order').children).map(el => el.dataset.id)
     };
@@ -239,6 +245,7 @@ async function testProviderKeys(provider) {
 
 $('test-groq-btn').addEventListener('click', () => testProviderKeys('groq'));
 $('test-gemini-btn').addEventListener('click', () => testProviderKeys('gemini'));
+$('test-mistral-btn').addEventListener('click', () => testProviderKeys('mistral'));
 
 // Endpoint Testing Logic
 window.testEndpointPrompt = () => {
@@ -281,6 +288,7 @@ window.testEndpoint = async (token) => {
 
     await runTest('groq');
     await runTest('gemini');
+    await runTest('mistral');
     output.innerHTML += `<span class="info">[${new Date().toLocaleTimeString()}] Tests complete.</span>\n`;
 };
 

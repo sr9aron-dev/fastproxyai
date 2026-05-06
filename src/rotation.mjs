@@ -1,9 +1,10 @@
 import { saveConfig } from "./store.mjs";
-import { callGemini, callGroq } from "./providers.mjs";
+import { callGemini, callGroq, callMistral } from "./providers.mjs";
 
 const callers = {
   groq: callGroq,
-  gemini: callGemini
+  gemini: callGemini,
+  mistral: callMistral
 };
 
 function nextKey(providerConfig) {

@@ -42,6 +42,7 @@
                     <div class="tabs">
                         <button class="tab-btn active" data-tab="groq">Groq</button>
                         <button class="tab-btn" data-tab="gemini">Gemini</button>
+                        <button class="tab-btn" data-tab="mistral">Mistral</button>
                         <button class="tab-btn" data-tab="stats">Statistics</button>
                     </div>
                     <div class="tab-content" id="groq-tab">
@@ -61,6 +62,15 @@
                         <textarea id="gemini-keys" placeholder="AIza..."></textarea>
                         <label>Model</label>
                         <input type="text" id="gemini-model">
+                    </div>
+                    <div class="tab-content hidden" id="mistral-tab">
+                        <div class="label-row">
+                            <label>Mistral API Keys (one per line)</label>
+                            <button id="test-mistral-btn" class="text-btn">Test All Keys</button>
+                        </div>
+                        <textarea id="mistral-keys" placeholder="tKS..."></textarea>
+                        <label>Model</label>
+                        <input type="text" id="mistral-model">
                     </div>
 
                     <div class="tab-content hidden" id="stats-tab">
@@ -113,6 +123,7 @@
                         <div class="sortable-list" id="provider-order">
                             <div class="sort-item" data-id="groq" draggable="true">Groq</div>
                             <div class="sort-item" data-id="gemini" draggable="true">Gemini</div>
+                            <div class="sort-item" data-id="mistral" draggable="true">Mistral</div>
                         </div>
                     </div>
                     
