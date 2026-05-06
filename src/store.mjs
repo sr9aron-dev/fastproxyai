@@ -100,6 +100,15 @@ export async function loadConfig() {
     extensionKeys: (config?.extensionKeys?.length ? config.extensionKeys : defaultConfig.extensionKeys)
   };
 
+  // Reconcile providerOrder: Ensure new system providers are added to the list if missing
+  const currentOrder = Array.isArray(merged.providerOrder) ? merged.providerOrder : defaultConfig.providerOrder;
+  const systemProviders = ["groq", "gemini", "mistral"];
+  const missingProviders = systemProviders.filter(p => !currentOrder.includes(p));
+  
+  if (missingProviders.length > 0) {
+    merged.providerOrder = [...currentOrder, ...missingProviders];
+  }
+
   return merged;
 }
 
