@@ -19,6 +19,8 @@
     { "source": "/api/admin/test-keys", "destination": "/api/admin/test-keys.js" },
     { "source": "/api/admin/auth", "destination": "/api/admin/auth.js" },
     { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/api/mistral", "destination": "/api/mistral.js" },
+    { "source": "/mistral", "destination": "/mistral/index.html" },
     { "source": "/.netlify/functions/:path*", "destination": "/api/:path*" }
   ]
 }

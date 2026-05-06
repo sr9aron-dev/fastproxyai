@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mistral AI Playground | Microstock Metadata</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Mistral Playground</h1>
+            <p>Generate high-quality Microstock Title & Keywords with Mistral AI</p>
+        </header>
+
+        <main class="main-card">
+            <div class="input-group">
+                <label for="image-desc">Describe your image / content</label>
+                <textarea id="image-desc" placeholder="e.g. A futuristic city skyline at sunset with flying vehicles and neon lights, high resolution, 3d render..."></textarea>
+            </div>
+
+            <div class="controls">
+                <div class="input-group">
+                    <label for="model-select">Select Model</label>
+                    <select id="model-select">
+                        <option value="mistral-tiny">Mistral Tiny</option>
+                        <option value="mistral-small-latest">Mistral Small</option>
+                        <option value="mistral-medium-latest">Mistral Medium</option>
+                        <option value="mistral-large-latest" selected>Mistral Large (Recommended)</option>
+                        <option value="pixtral-12b-2409">Pixtral 12B</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="api-key">Mistral API Key</label>
+                    <input type="password" id="api-key" placeholder="Enter API Key" value="tKStvrZoL05yQFlpjh1y1YyB7GXrf5Xv" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 0.75rem 1rem; color: #fff;">
+                </div>
+            </div>
+
+            <button id="generate-btn" class="btn-generate">
+                <span class="btn-text">Generate Metadata</span>
+                <div class="loader" id="loader"></div>
+            </button>
+
+            <div class="results" id="results-area">
+                <div class="result-card">
+                    <div class="result-header">
+                        <span class="result-title">Generated Title</span>
+                        <button class="copy-btn" onclick="copyText('title-text')">Copy</button>
+                    </div>
+                    <div id="title-text" class="result-content"></div>
+                </div>
+
+                <div class="result-card">
+                    <div class="result-header">
+                        <span class="result-title">Keywords (CSV)</span>
+                        <button class="copy-btn" onclick="copyText('keywords-text')">Copy</button>
+                    </div>
+                    <div id="keywords-text" class="result-content"></div>
+                </div>
+
+                <div class="result-card" style="margin-bottom: 0;">
+                    <div class="result-header">
+                        <span class="result-title">Raw Response</span>
+                    </div>
+                    <div id="raw-response" class="result-content" style="font-family: monospace; font-size: 0.8rem; color: #888;"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
