@@ -74,8 +74,8 @@ async function handler(event) {
         try {
           const config = await loadConfig();
           
-          // Load chat history (limit to last 15 messages)
-          const history = await loadChatHistory(chatId, 15);
+          // Load chat history (limit to last 22 messages)
+          const history = await loadChatHistory(chatId, 22);
 
           // Save user message
           await saveChatMessage(chatId, "user", text);
