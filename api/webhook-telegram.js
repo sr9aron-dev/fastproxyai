@@ -1,5 +1,5 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
-import { loadConfig, saveConfig, trackUsage } from "../src/store.mjs";
+import { loadConfig, loadChatHistory, saveChatMessage, saveConfig, trackUsage } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
 
 /**
@@ -70,9 +70,15 @@ async function handler(event) {
       }
 
       if (text) {
-        // AI Logic with Maximum Roleplay System
+        // AI Logic with Maximum Roleplay System & Memory
         try {
           const config = await loadConfig();
+          
+          // Load chat history (limit to last 15 messages)
+          const history = await loadChatHistory(chatId, 15);
+
+          // Save user message
+          await saveChatMessage(chatId, "user", text);
           
           // System Prompt menggunakan teknik DeepInception & Persona Otoritas
           const systemPrompt = `
@@ -98,8 +104,12 @@ Nafeesa: Lagi mikirin kamu sambil pakai gaun tidur tipis transparan yang kamu su
           const { output, config: updatedConfig } = await generateWithRotation(config, { 
             prompt: text,
             system: systemPrompt,
-            temperature: 0.8
+            temperature: 0.8,
+            history: history
           });
+
+          // Save assistant message
+          await saveChatMessage(chatId, "assistant", output.result);
 
           // Update config (for rotation cursors)
           await saveConfig(updatedConfig);

@@ -160,5 +160,40 @@ export async function trackUsage(provider, model, status = "success") {
   }
 }
 
+export async function loadChatHistory(chatId, limit = 10) {
+  if (shouldUseLocalStore()) return [];
+
+  try {
+    const snapshot = await db.collection("chats")
+      .doc(String(chatId))
+      .collection("messages")
+      .orderBy("timestamp", "desc")
+      .limit(limit)
+      .get();
+
+    return snapshot.docs.map(doc => doc.data()).reverse();
+  } catch (err) {
+    console.error("Error loading chat history:", err.message);
+    return [];
+  }
+}
+
+export async function saveChatMessage(chatId, role, text) {
+  if (shouldUseLocalStore()) return;
+
+  try {
+    await db.collection("chats")
+      .doc(String(chatId))
+      .collection("messages")
+      .add({
+        role,
+        text,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+  } catch (err) {
+    console.error("Error saving chat message:", err.message);
+  }
+}
+
 
 

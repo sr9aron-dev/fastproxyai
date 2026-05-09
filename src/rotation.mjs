@@ -50,7 +50,8 @@ export async function generateWithRotation(config, request) {
           image: request.image,
           prompt: request.prompt,
           system: request.system,
-          temperature: request.temperature
+          temperature: request.temperature,
+          history: request.history
         });
 
         return {

@@ -1,7 +1,7 @@
 import { buildMetadataPrompt } from "./prompt.mjs";
 import { normalizeMetadata } from "./normalize.mjs";
 
-export async function callGroq({ key, model, image, prompt, system, temperature }) {
+export async function callGroq({ key, model, image, prompt, system, temperature, history }) {
   const content = [{ type: "text", text: prompt }];
   if (image) {
     content.push({
@@ -20,6 +20,10 @@ export async function callGroq({ key, model, image, prompt, system, temperature 
       temperature: temperature ?? 0.2,
       messages: [
         ...(system ? [{ role: "system", content: system }] : []),
+        ...(history || []).map(msg => ({ 
+          role: msg.role === "assistant" ? "assistant" : "user", 
+          content: msg.text 
+        })),
         {
           role: "user",
           content
@@ -43,7 +47,7 @@ export async function callGroq({ key, model, image, prompt, system, temperature 
   };
 }
 
-export async function callGemini({ key, model, image, prompt, system, temperature }) {
+export async function callGemini({ key, model, image, prompt, system, temperature, history }) {
   const parts = [{ text: prompt }];
   if (image) {
     parts.push({
@@ -65,6 +69,10 @@ export async function callGemini({ key, model, image, prompt, system, temperatur
         temperature: temperature ?? 0.2
       },
       contents: [
+        ...(history || []).map(msg => ({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.text }]
+        })),
         {
           role: "user",
           parts
@@ -88,7 +96,7 @@ export async function callGemini({ key, model, image, prompt, system, temperatur
   };
 }
 
-export async function callMistral({ key, model, image, prompt, system, temperature }) {
+export async function callMistral({ key, model, image, prompt, system, temperature, history }) {
   const userMessageContent = [];
   if (prompt) {
     userMessageContent.push({ type: "text", text: prompt });
@@ -110,6 +118,10 @@ export async function callMistral({ key, model, image, prompt, system, temperatu
       model: model || "mistral-tiny",
       messages: [
         ...(system ? [{ role: "system", content: system }] : []),
+        ...(history || []).map(msg => ({ 
+          role: msg.role === "assistant" ? "assistant" : "user", 
+          content: msg.text 
+        })),
         {
           role: "user",
           content: userMessageContent
