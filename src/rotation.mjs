@@ -48,7 +48,9 @@ export async function generateWithRotation(config, request) {
           key: selected.key,
           model: providerConfig.model,
           image: request.image,
-          prompt: request.prompt
+          prompt: request.prompt,
+          system: request.system,
+          temperature: request.temperature
         });
 
         return {

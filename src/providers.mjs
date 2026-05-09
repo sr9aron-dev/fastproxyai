@@ -1,7 +1,7 @@
 import { buildMetadataPrompt } from "./prompt.mjs";
 import { normalizeMetadata } from "./normalize.mjs";
 
-export async function callGroq({ key, model, image, prompt }) {
+export async function callGroq({ key, model, image, prompt, system, temperature }) {
   const content = [{ type: "text", text: prompt }];
   if (image) {
     content.push({
@@ -17,8 +17,9 @@ export async function callGroq({ key, model, image, prompt }) {
     },
     body: JSON.stringify({
       model,
-      temperature: 0.2,
+      temperature: temperature ?? 0.2,
       messages: [
+        ...(system ? [{ role: "system", content: system }] : []),
         {
           role: "user",
           content
@@ -42,7 +43,7 @@ export async function callGroq({ key, model, image, prompt }) {
   };
 }
 
-export async function callGemini({ key, model, image, prompt }) {
+export async function callGemini({ key, model, image, prompt, system, temperature }) {
   const parts = [{ text: prompt }];
   if (image) {
     parts.push({
@@ -59,8 +60,9 @@ export async function callGemini({ key, model, image, prompt }) {
       "content-type": "application/json"
     },
     body: JSON.stringify({
+      system_instruction: system ? { parts: [{ text: system }] } : undefined,
       generationConfig: {
-        temperature: 0.2
+        temperature: temperature ?? 0.2
       },
       contents: [
         {
@@ -86,7 +88,7 @@ export async function callGemini({ key, model, image, prompt }) {
   };
 }
 
-export async function callMistral({ key, model, image, prompt }) {
+export async function callMistral({ key, model, image, prompt, system, temperature }) {
   const userMessageContent = [];
   if (prompt) {
     userMessageContent.push({ type: "text", text: prompt });
@@ -107,12 +109,13 @@ export async function callMistral({ key, model, image, prompt }) {
     body: JSON.stringify({
       model: model || "mistral-tiny",
       messages: [
+        ...(system ? [{ role: "system", content: system }] : []),
         {
           role: "user",
           content: userMessageContent
         }
       ],
-      temperature: 0.2
+      temperature: temperature ?? 0.2
     })
   });
 
