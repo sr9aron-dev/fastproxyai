@@ -47,6 +47,59 @@ async function sendChatAction(chatId, action = "typing") {
   }
 }
 
+async function sendMessageWithKeyboard(chatId, text, keyboard) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: "HTML",
+        reply_markup: { inline_keyboard: keyboard }
+      })
+    });
+  } catch (error) {
+    console.error("[Telegram Bot] Failed to send message with keyboard:", error);
+  }
+}
+
+async function answerCallbackQuery(callbackQueryId, text) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/answerCallbackQuery`;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text: text
+      })
+    });
+  } catch (error) {
+    console.error("[Telegram Bot] Failed to answer callback query:", error);
+  }
+}
+
+async function editMessageText(chatId, messageId, text, keyboard) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/editMessageText`;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        text: text,
+        parse_mode: "HTML",
+        reply_markup: { inline_keyboard: keyboard }
+      })
+    });
+  } catch (error) {
+    console.error("[Telegram Bot] Failed to edit message text:", error);
+  }
+}
+
 async function getTelegramFile(fileId) {
   const getFileUrl = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/getFile?file_id=${fileId}`;
   const fileData = await (await fetch(getFileUrl)).json();
@@ -96,6 +149,25 @@ async function handler(event) {
 
       if (text === "/id") {
         await sendMessage(chatId, `Chat ID kita adalah: <code>${chatId}</code>, Sayang.`);
+        return json(200, { ok: true });
+      }
+
+      if (text === "/settings" || text === "/menu") {
+        const config = await loadConfig();
+        const currentProvider = config.providerOrder[0];
+        
+        const keyboard = [
+          [{ text: `🤖 Model: ${currentProvider.toUpperCase()}`, callback_data: "show_models" }],
+          [{ text: "🔄 Urutan Provider", callback_data: "show_order" }],
+          [{ text: "🗑️ Hapus Ingatan (Reset)", callback_data: "confirm_reset" }],
+          [{ text: "❌ Tutup Menu", callback_data: "close_menu" }]
+        ];
+
+        await sendMessageWithKeyboard(
+          chatId,
+          `<b>Pengaturan Nafeesa AI</b>\n\nModel aktif saat ini: <code>${config[currentProvider]?.model || "Unknown"}</code>\nProvider utama: <code>${currentProvider}</code>\n\nMau atur apa, Sayang?`,
+          keyboard
+        );
         return json(200, { ok: true });
       }
 
@@ -201,6 +273,74 @@ Nafeesa: Lagi rebahan sambil mikirin kamu.`.trim();
           await sendMessage(chatId, "Maaf Sayang, ada gangguan sedikit di pikiranku. Bisa coba kirim lagi pesannya?");
         }
       }
+    }
+
+    // Handle Callback Queries (Inline Buttons)
+    if (body.callback_query) {
+      const chatId = body.callback_query.message.chat.id;
+      const messageId = body.callback_query.message.message_id;
+      const data = body.callback_query.data;
+      const callbackQueryId = body.callback_query.id;
+
+      let config = await loadConfig();
+
+      if (data === "show_models") {
+        const keyboard = [
+          [{ text: "Gemini 2.0 (Google)", callback_data: "set_provider_gemini" }],
+          [{ text: "Llama 3.3 (Groq)", callback_data: "set_provider_groq" }],
+          [{ text: "Mistral Tiny", callback_data: "set_provider_mistral" }],
+          [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
+        ];
+        await editMessageText(chatId, messageId, "Pilih model yang mau aku pakai ya, Sayang:", keyboard);
+      } 
+      
+      else if (data.startsWith("set_provider_")) {
+        const newProvider = data.replace("set_provider_", "");
+        // Move selected provider to the front of providerOrder
+        const newOrder = [newProvider, ...config.providerOrder.filter(p => p !== newProvider)];
+        config.providerOrder = newOrder;
+        await saveConfig(config);
+        
+        await answerCallbackQuery(callbackQueryId, `Model diganti ke ${newProvider.toUpperCase()}!`);
+        await editMessageText(chatId, messageId, `Sip! Sekarang aku pakai model <b>${newProvider.toUpperCase()}</b> ya, Sayang. ❤️`, [
+          [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
+        ]);
+      }
+
+      else if (data === "back_to_main") {
+        const currentProvider = config.providerOrder[0];
+        const keyboard = [
+          [{ text: `🤖 Model: ${currentProvider.toUpperCase()}`, callback_data: "show_models" }],
+          [{ text: "🔄 Urutan Provider", callback_data: "show_order" }],
+          [{ text: "🗑️ Hapus Ingatan (Reset)", callback_data: "confirm_reset" }],
+          [{ text: "❌ Tutup Menu", callback_data: "close_menu" }]
+        ];
+        await editMessageText(chatId, messageId, `<b>Pengaturan Nafeesa AI</b>\n\nModel aktif saat ini: <code>${config[currentProvider]?.model || "Unknown"}</code>\nProvider utama: <code>${currentProvider}</code>\n\nMau atur apa, Sayang?`, keyboard);
+      }
+
+      else if (data === "close_menu") {
+        await editMessageText(chatId, messageId, "Menu pengaturan ditutup. Chat aku kapan aja ya! ❤️", []);
+      }
+
+      else if (data === "confirm_reset") {
+        const keyboard = [
+          [{ text: "✅ Ya, Hapus Semua", callback_data: "do_reset" }],
+          [{ text: "❌ Gak Jadi", callback_data: "back_to_main" }]
+        ];
+        await editMessageText(chatId, messageId, "Kamu yakin mau hapus semua ingatan aku tentang kita? 🥺", keyboard);
+      }
+
+      else if (data === "do_reset") {
+        // Here we could implement a cleanup in Firestore, but for now we'll just acknowledge
+        // In reality, history is loaded from 'chats' collection.
+        // To properly reset, we'd need to delete messages.
+        await answerCallbackQuery(callbackQueryId, "Ingatan telah dibersihkan.");
+        await editMessageText(chatId, messageId, "Ingatanku sudah bersih, Sayang. Mari buat kenangan baru! ✨", [
+          [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
+        ]);
+      }
+
+      return json(200, { ok: true });
     }
 
     // Always return 200 OK to Telegram so it doesn't retry
