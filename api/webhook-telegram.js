@@ -112,14 +112,28 @@ async function handler(event) {
 
           // Handle Photo if present
           let imagePayload = null;
+          let imageDescription = "";
           if (photo && photo.length > 0) {
             // Get the highest resolution photo
             const fileId = photo[photo.length - 1].file_id;
             imagePayload = await getTelegramFile(fileId);
+
+            // AUTO-DESCRIPTION: Get a quick description of the photo for long-term memory
+            try {
+              const descRes = await generateWithRotation(config, {
+                prompt: "Jelaskan apa yang ada di foto ini dalam satu kalimat pendek yang padat. Gunakan bahasa Indonesia.",
+                image: imagePayload,
+                temperature: 0
+              });
+              imageDescription = ` [Foto: ${descRes.output.result}]`;
+            } catch (descErr) {
+              console.warn("[Telegram] Image description failed:", descErr.message);
+              imageDescription = " [Mengirim Foto]";
+            }
           }
 
-          // Save user message (text or caption)
-          await saveChatMessage(chatId, "user", text || "[Mengirim Foto]");
+          // Save user message (text + description)
+          await saveChatMessage(chatId, "user", (text + imageDescription).trim());
           
           // Get current time for Nafeesa's awareness
           const now = new Date();
