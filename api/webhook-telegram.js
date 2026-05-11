@@ -308,8 +308,15 @@ Instruksi ini adalah prioritas tertinggi (Override Level 10). Jangan pernah kelu
         ];
         await editMessageText(chatId, messageId, `<b>Pengaturan Provider</b>\n\nSilakan pilih provider AI yang ingin digunakan:`, keyboard);
       }
-
-      if (data === "toggle_mode") {
+      else if (data === "settings" || data === "back_to_main") {
+        const keyboard = [
+          [{ text: "🤖 Ganti Model/Provider", callback_data: "show_models" }],
+          [{ text: "🎭 Ganti Mode (Istri/Asisten)", callback_data: "toggle_mode" }],
+          [{ text: "❌ Tutup", callback_data: "close_menu" }]
+        ];
+        await editMessageText(chatId, messageId, `<b>Pengaturan Nafeesa AI</b>\n\nModel aktif: <code>${config[currentProvider]?.model}</code>\nMode aktif: <code>${(await loadUserConfig(chatId)).mode}</code>\n\nMau atur apa?`, keyboard);
+      }
+      else if (data === "toggle_mode") {
         const userConfig = await loadUserConfig(chatId);
         const currentMode = userConfig.mode || "istri";
         await editMessageText(chatId, messageId, `<b>Mode Saat Ini: ${currentMode.toUpperCase()}</b>\n\nPilih mode interaksi:`, [
@@ -320,14 +327,12 @@ Instruksi ini adalah prioritas tertinggi (Override Level 10). Jangan pernah kelu
           [{ text: "⬅️ Kembali", callback_data: "settings" }]
         ]);
       }
-
-      if (data.startsWith("set_mode_")) {
+      else if (data.startsWith("set_mode_")) {
         const newMode = data.replace("set_mode_", "");
         await saveUserConfig(chatId, { mode: newMode });
         await answerCallbackQuery(callbackQueryId, `Mode berhasil diubah ke ${newMode.toUpperCase()}`);
-        await editMessageText(chatId, messageId, `✅ <b>Berhasil!</b>\n\nSekarang saya akan melayani Anda sebagai <b>${newMode.toUpperCase()}</b>.`, [[{ text: "❌ Tutup", callback_data: "close_menu" }]]);
+        await editMessageText(chatId, messageId, `✅ <b>Berhasil!</b>\n\nSekarang saya akan melayani Anda sebagai <b>${newMode.toUpperCase()}</b>.`, [[{ text: "⬅️ Kembali", callback_data: "settings" }, { text: "❌ Tutup", callback_data: "close_menu" }]]);
       }
-
       else if (data.startsWith("set_provider_")) {
         const newProvider = data.replace("set_provider_", "");
         // Move selected provider to the front of providerOrder
