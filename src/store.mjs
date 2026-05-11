@@ -195,5 +195,39 @@ export async function saveChatMessage(chatId, role, text) {
   }
 }
 
+export async function loadUserConfig(chatId) {
+  if (shouldUseLocalStore()) {
+    const config = await readLocalConfig();
+    return config?.users?.[String(chatId)] || { mode: "istri" };
+  }
+
+  try {
+    const doc = await db.collection("users").doc(String(chatId)).get();
+    if (doc.exists) {
+      return { mode: "istri", ...doc.data() };
+    }
+    return { mode: "istri" };
+  } catch (err) {
+    console.error("Error loading user config:", err.message);
+    return { mode: "istri" };
+  }
+}
+
+export async function saveUserConfig(chatId, data) {
+  if (shouldUseLocalStore()) {
+    const config = await loadConfig();
+    if (!config.users) config.users = {};
+    config.users[String(chatId)] = { ...(config.users[String(chatId)] || {}), ...data };
+    await saveConfig(config);
+    return;
+  }
+
+  try {
+    await db.collection("users").doc(String(chatId)).set(data, { merge: true });
+  } catch (err) {
+    console.error("Error saving user config:", err.message);
+  }
+}
+
 
 
