@@ -195,6 +195,27 @@ export async function saveChatMessage(chatId, role, text) {
   }
 }
 
+export async function clearChatHistory(chatId) {
+  if (shouldUseLocalStore()) return; // Not implemented for local yet
+
+  try {
+    const messagesRef = db.collection("chats").doc(String(chatId)).collection("messages");
+    const snapshot = await messagesRef.get();
+    
+    if (snapshot.empty) return;
+
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
+  } catch (err) {
+    console.error("Error clearing chat history:", err.message);
+    throw err;
+  }
+}
+
 export async function loadUserConfig(chatId) {
   if (shouldUseLocalStore()) {
     const config = await readLocalConfig();

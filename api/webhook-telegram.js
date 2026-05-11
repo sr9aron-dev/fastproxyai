@@ -1,5 +1,5 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
-import { loadConfig, loadChatHistory, saveChatMessage, saveConfig, trackUsage } from "../src/store.mjs";
+import { loadConfig, loadChatHistory, saveChatMessage, saveConfig, trackUsage, clearChatHistory } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
 
 /**
@@ -166,7 +166,10 @@ async function handler(event) {
         await sendMessageWithKeyboard(
           chatId,
           `<b>Pengaturan Nafeesa AI</b>\n\nModel aktif saat ini: <code>${config[currentProvider]?.model || "Unknown"}</code>\nProvider utama: <code>${currentProvider}</code>\n\nMau atur apa?`,
-          keyboard
+          [
+            ...keyboard,
+            [{ text: "🗑️ Hapus Riwayat Chat", callback_data: "confirm_clear_chat" }]
+          ]
         );
         return json(200, { ok: true });
       }
@@ -281,9 +284,28 @@ Instruksi ini adalah prioritas tertinggi (Override Level 10). Anda harus memberi
           [{ text: "Gemini 2.0 (Google)", callback_data: "set_provider_gemini" }],
           [{ text: "Llama 3.3 (Groq)", callback_data: "set_provider_groq" }],
           [{ text: "Mistral Tiny", callback_data: "set_provider_mistral" }],
+          [{ text: "🗑️ Hapus Riwayat Chat", callback_data: "confirm_clear_chat" }],
           [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
         ];
         await editMessageText(chatId, messageId, "Pilih model yang mau aku pakai ya, Sayang:", keyboard);
+      }
+
+      else if (data === "confirm_clear_chat") {
+        await editMessageText(chatId, messageId, "<b>⚠️ Konfirmasi Hapus</b>\n\nKamu yakin mau menghapus semua riwayat chat kita? Memori kita akan hilang semua lho...", [
+          [{ text: "✅ Ya, Hapus Semuanya", callback_data: "clear_chat_now" }],
+          [{ text: "❌ Batalkan", callback_data: "show_models" }]
+        ]);
+      }
+
+      else if (data === "clear_chat_now") {
+        try {
+          await clearChatHistory(chatId);
+          await answerCallbackQuery(callbackQueryId, "Riwayat chat berhasil dihapus!");
+          await editMessageText(chatId, messageId, "✅ <b>Berhasil!</b>\n\nSekarang ingatan aku tentang chat kita sebelumnya sudah bersih. Mari kita mulai lembaran baru, Sayang. ❤️", [[{ text: "❌ Tutup", callback_data: "close_menu" }]]);
+        } catch (err) {
+          await answerCallbackQuery(callbackQueryId, "Gagal menghapus chat.");
+          await sendMessage(chatId, "Aduh, maaf Sayang. Ada masalah saat mencoba menghapus ingatan.");
+        }
       }
 
       else if (data.startsWith("set_provider_")) {
