@@ -189,12 +189,22 @@ async function handleAIMessage(chatId, text, photo) {
       // Tambah hitungan chat saga
       userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
       
-      if (userConfig.chat_count_saga >= 10) {
+      const shouldUpdateSaga = text === "/story" || 
+                               (!userConfig.saga && userConfig.chat_count_saga >= 3) || 
+                               (userConfig.chat_count_saga >= 10);
+
+      if (shouldUpdateSaga) {
         console.log(`[Saga Engine] Triggering story update for ${chatId}...`);
         backgroundTasks.push(
           updateSaga(history, userConfig.saga, config).then(newSaga => {
             userConfig.saga = newSaga;
             userConfig.chat_count_saga = 0; // Reset
+            
+            // Jika dipicu manual, beri tahu user via chat
+            if (text === "/story") {
+              sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${newSaga}`);
+            }
+            
             return saveUserConfig(chatId, userConfig);
           })
         );
