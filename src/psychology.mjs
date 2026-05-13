@@ -80,13 +80,16 @@ Berikan output dalam format JSON murni:
       prompt: prompt,
       system: "Anda adalah Psychological Event Analyzer. Tugas Anda hanya memberikan output JSON dampak emosional.",
       temperature: 0.1,
-      forceProvider: "groq", // Gunakan Groq agar jauh lebih cepat
-      forceModel: "meta-llama/llama-4-scout-17b-16e-instruct" // Menggunakan model Llama 4 Scout terbaru
+      providerOrder: ["mistral", "groq", "gemini"] // Urutan: Mistral -> Groq -> Gemini
     });
 
-    // Clean JSON output if any
-    const jsonStr = output.result.replace(/```json|```/g, "").trim();
-    return JSON.parse(jsonStr);
+    // Robust JSON extraction
+    const jsonMatch = output.result.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.warn("[Psychology] No JSON found in response:", output.result);
+      return null;
+    }
+    return JSON.parse(jsonMatch[0]);
   } catch (e) {
     console.error("[Psychology] Analyzer Error:", e.message);
     return null;
