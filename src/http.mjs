@@ -5,6 +5,45 @@ export const jsonHeaders = {
   "access-control-allow-methods": "GET, POST, OPTIONS"
 };
 
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 60;
+const rateLimitMap = new Map();
+
+let lastCleanup = Date.now();
+
+export function checkRateLimit(ip) {
+  const now = Date.now();
+  
+  // Lazy cleanup every window period
+  if (now - lastCleanup > RATE_LIMIT_WINDOW) {
+    for (const [key, value] of rateLimitMap.entries()) {
+      if (now - value.startTime > RATE_LIMIT_WINDOW) {
+        rateLimitMap.delete(key);
+      }
+    }
+    lastCleanup = now;
+  }
+
+  if (!rateLimitMap.has(ip)) {
+    rateLimitMap.set(ip, { count: 1, startTime: now });
+    return true;
+  }
+
+  const record = rateLimitMap.get(ip);
+  if (now - record.startTime > RATE_LIMIT_WINDOW) {
+    record.count = 1;
+    record.startTime = now;
+    return true;
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return false;
+  }
+
+  record.count += 1;
+  return true;
+}
+
 export function optionsResponse() {
   return {
     statusCode: 204,
@@ -79,6 +118,11 @@ export function vercelHandler(handler) {
       body: req.body,
       queryStringParameters: req.query
     };
+
+    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+    if (!checkRateLimit(ip)) {
+      return res.status(429).json({ ok: false, error: "Too many requests" });
+    }
 
     const result = await handler(event);
 

@@ -33,6 +33,9 @@ export async function checkSubscription(email) {
   if (!email) return { active: true }; // No email linked = unlimited/legacy key
 
   try {
+    if (!db) {
+      throw new Error("Database not initialized");
+    }
     const docRef = db.collection('users').doc(email);
     const doc = await docRef.get();
     
@@ -54,12 +57,20 @@ export async function checkSubscription(email) {
     };
   } catch (e) {
     console.error("[Auth] Sub check failed:", e.message);
-    return { active: true, error: e.message }; // Fallback to active if DB is down
+    // If DB is down, we might want to fail-safe based on config, 
+    // but for now we return false to be safe if it's a paid service.
+    // However, the original code returned active: true as fallback.
+    // Let's stick to a safer fallback or a configurable one.
+    return { active: false, error: e.message, status: "error" };
   }
 }
 
 export async function extendSubscription(email, days = 40) {
   if (!email) throw new Error("Email is required");
+
+  if (!db) {
+    throw new Error("Database not initialized");
+  }
 
   const docRef = db.collection("users").doc(email);
   const doc = await docRef.get();

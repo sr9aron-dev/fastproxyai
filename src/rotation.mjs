@@ -1,4 +1,4 @@
-import { saveConfig } from "./store.mjs";
+import { updateProviderCursor, trackUsage } from "./store.mjs";
 import { callGemini, callGroq, callMistral } from "./providers.mjs";
 
 const callers = {
@@ -30,10 +30,9 @@ export async function generateWithRotation(config, request) {
       ? config.providerOrder
       : ["groq", "gemini"]);
   const errors = [];
-  const nextConfig = structuredClone(config);
 
   for (const provider of providers) {
-    const providerConfig = nextConfig[provider];
+    const providerConfig = config[provider];
     const caller = callers[provider];
     if (!providerConfig || !caller || !providerConfig.keys?.length) continue;
 
@@ -41,7 +40,10 @@ export async function generateWithRotation(config, request) {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       const selected = nextKey(providerConfig);
       if (!selected) break;
+      
+      // Update cursor immediately to avoid race condition as much as possible
       providerConfig.cursor = selected.nextCursor;
+      await updateProviderCursor(provider, selected.nextCursor);
 
       try {
         const output = await caller({
@@ -59,8 +61,7 @@ export async function generateWithRotation(config, request) {
             provider,
             model: providerConfig.model,
             ...output
-          },
-          config: nextConfig
+          }
         };
       } catch (error) {
         console.warn(`[Proxy] Provider ${provider} (${providerConfig.model}) failed: ${error.message} (Status: ${error.statusCode})`);

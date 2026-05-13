@@ -34,8 +34,9 @@ export async function callGroq({ key, model, image, prompt, system, temperature,
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = payload?.error?.message || `Groq request failed with ${response.status}`;
-    const error = new Error(message);
+    const rawMessage = payload?.error?.message || `Status ${response.status}`;
+    console.error(`[Groq] Error: ${rawMessage}`);
+    const error = new Error(`Groq provider error: ${response.status}`);
     error.statusCode = response.status;
     throw error;
   }
@@ -83,8 +84,9 @@ export async function callGemini({ key, model, image, prompt, system, temperatur
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = payload?.error?.message || `Gemini request failed with ${response.status}`;
-    const error = new Error(message);
+    const rawMessage = payload?.error?.message || `Status ${response.status}`;
+    console.error(`[Gemini] Error: ${rawMessage}`);
+    const error = new Error(`Gemini provider error: ${response.status}`);
     error.statusCode = response.status;
     throw error;
   }
@@ -133,8 +135,9 @@ export async function callMistral({ key, model, image, prompt, system, temperatu
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = payload?.error?.message || `Mistral request failed with ${response.status}`;
-    const error = new Error(message);
+    const rawMessage = payload?.error?.message || `Status ${response.status}`;
+    console.error(`[Mistral] Error: ${rawMessage}`);
+    const error = new Error(`Mistral provider error: ${response.status}`);
     error.statusCode = response.status;
     throw error;
   }

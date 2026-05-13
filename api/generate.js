@@ -1,7 +1,7 @@
 import { bearerToken, json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
 import { sha256 } from "../src/crypto.mjs";
 import { validateExtensionToken } from "../src/auth.mjs";
-import { loadConfig, saveConfig, trackUsage } from "../src/store.mjs";
+import { loadConfig, updateKeyLastUsed, trackUsage } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
 import { buildMetadataPrompt } from "../src/prompt.mjs";
 import { normalizeMetadata } from "../src/normalize.mjs";
@@ -10,6 +10,17 @@ const MAX_BASE64_LENGTH = Number(process.env.MAX_BASE64_LENGTH || 6_000_000);
 
 function validateRequest(body) {
   if (!body || typeof body !== "object") throw new Error("JSON body is required");
+  
+  // Validate settings
+  if (body.settings && typeof body.settings !== "object") {
+    throw new Error("settings must be an object");
+  }
+
+  // Validate context
+  if (body.context && typeof body.context !== "string") {
+    throw new Error("context must be a string");
+  }
+
   if (body.image) {
     if (!body.image.base64 || !body.image.mime) throw new Error("image.base64 and image.mime are required");
     if (!/^image\/(png|jpe?g|webp)$/i.test(body.image.mime)) throw new Error("Only png, jpeg, and webp images are supported");
@@ -53,13 +64,7 @@ async function handler(event) {
     }
 
     // Update lastUsedAt for the specific extension key used
-    const tokenHash = sha256(token);
-    const foundKey = updatedConfig.extensionKeys.find((item) => item.hash === tokenHash || item.hash === token);
-    if (foundKey) {
-      foundKey.lastUsedAt = new Date().toISOString();
-    }
-    
-    await saveConfig(updatedConfig);
+    await updateKeyLastUsed(sha256(token) || token);
 
     // Track Success
     await trackUsage(output.provider, output.model, "success");

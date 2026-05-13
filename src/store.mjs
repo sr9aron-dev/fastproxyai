@@ -1,11 +1,17 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { db, admin } from "./firebase.mjs";
+import { sha256 } from "./crypto.mjs";
 
 const CONFIG_DOC_ID = "proxy-settings";
 const COLLECTION_NAME = "config";
 const LOCAL_DATA_DIR = path.join(process.cwd(), ".data");
 const LOCAL_CONFIG_PATH = path.join(LOCAL_DATA_DIR, "config.json");
+const CONFIG_CACHE_TTL = 60 * 1000; // 1 minute
+const USER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let cachedConfig = null;
+let lastCacheUpdate = 0;
+const userConfigCache = new Map();
 
 function parseEnvKeys(key) {
   const value = process.env[key];
@@ -29,7 +35,7 @@ const defaultConfig = {
   },
   mistral: {
     model: process.env.MISTRAL_MODEL || "mistral-tiny",
-    keys: parseEnvKeys("MISTRAL_KEYS").length ? parseEnvKeys("MISTRAL_KEYS") : ["tKStvrZoL05yQFlpjh1y1YyB7GXrf5Xv"],
+    keys: parseEnvKeys("MISTRAL_KEYS"),
     cursor: 0
   },
   extensionKeys: parseEnvKeys("EXTENSION_KEYS").map(k => ({
@@ -63,7 +69,12 @@ async function writeLocalConfig(config) {
   }
 }
 
-export async function loadConfig() {
+export async function loadConfig(force = false) {
+  const now = Date.now();
+  if (!force && cachedConfig && (now - lastCacheUpdate < CONFIG_CACHE_TTL)) {
+    return cachedConfig;
+  }
+
   let config;
   try {
     if (shouldUseLocalStore()) {
@@ -109,6 +120,8 @@ export async function loadConfig() {
     merged.providerOrder = [...currentOrder, ...missingProviders];
   }
 
+  cachedConfig = merged;
+  lastCacheUpdate = now;
   return merged;
 }
 
@@ -134,7 +147,59 @@ export async function saveConfig(config) {
     }
   }
 
+  cachedConfig = next;
+  lastCacheUpdate = Date.now();
   return next;
+}
+
+export async function updateProviderCursor(provider, nextCursor) {
+  if (shouldUseLocalStore()) {
+    const config = await loadConfig();
+    if (config[provider]) {
+      config[provider].cursor = nextCursor;
+      await saveConfig(config);
+    }
+    return;
+  }
+
+  try {
+    await db.collection(COLLECTION_NAME).doc(CONFIG_DOC_ID).update({
+      [`${provider}.cursor`]: nextCursor,
+      updatedAt: new Date().toISOString()
+    });
+    // Update local cache if exists
+    if (cachedConfig && cachedConfig[provider]) {
+      cachedConfig[provider].cursor = nextCursor;
+    }
+  } catch (err) {
+    console.error(`Error updating cursor for ${provider}:`, err.message);
+  }
+}
+
+export async function updateKeyLastUsed(tokenHashOrKey) {
+  const config = await loadConfig();
+  // We need sha256 here, but it's not imported. I'll import it.
+  // Actually, I can just use the provided tokenHash if the caller provides it.
+  const keyIndex = config.extensionKeys.findIndex(k => k.hash === tokenHashOrKey);
+  
+  if (keyIndex === -1) return;
+
+  const now = new Date().toISOString();
+  config.extensionKeys[keyIndex].lastUsedAt = now;
+
+  if (shouldUseLocalStore()) {
+    await saveConfig(config);
+    return;
+  }
+
+  try {
+    await db.collection(COLLECTION_NAME).doc(CONFIG_DOC_ID).update({
+      extensionKeys: config.extensionKeys,
+      updatedAt: now
+    });
+  } catch (err) {
+    console.error("Error updating key lastUsedAt:", err.message);
+  }
 }
 
 export async function trackUsage(provider, model, status = "success") {
@@ -217,17 +282,32 @@ export async function clearChatHistory(chatId) {
 }
 
 export async function loadUserConfig(chatId) {
+  const now = Date.now();
+  if (userConfigCache.has(String(chatId))) {
+    const cached = userConfigCache.get(String(chatId));
+    if (now - cached.timestamp < USER_CACHE_TTL) {
+      return cached.data;
+    }
+  }
+
   if (shouldUseLocalStore()) {
     const config = await readLocalConfig();
-    return config?.users?.[String(chatId)] || { mode: "istri" };
+    const data = config?.users?.[String(chatId)] || { mode: "istri" };
+    userConfigCache.set(String(chatId), { data, timestamp: now });
+    return data;
   }
 
   try {
+    if (!db) throw new Error("Database not initialized");
     const doc = await db.collection("users").doc(String(chatId)).get();
+    let data;
     if (doc.exists) {
-      return { mode: "istri", ...doc.data() };
+      data = { mode: "istri", ...doc.data() };
+    } else {
+      data = { mode: "istri" };
     }
-    return { mode: "istri" };
+    userConfigCache.set(String(chatId), { data, timestamp: now });
+    return data;
   } catch (err) {
     console.error("Error loading user config:", err.message);
     return { mode: "istri" };
@@ -235,6 +315,8 @@ export async function loadUserConfig(chatId) {
 }
 
 export async function saveUserConfig(chatId, data) {
+  userConfigCache.set(String(chatId), { data, timestamp: Date.now() });
+
   if (shouldUseLocalStore()) {
     const config = await loadConfig();
     if (!config.users) config.users = {};
@@ -244,6 +326,7 @@ export async function saveUserConfig(chatId, data) {
   }
 
   try {
+    if (!db) throw new Error("Database not initialized");
     await db.collection("users").doc(String(chatId)).set(data, { merge: true });
   } catch (err) {
     console.error("Error saving user config:", err.message);
