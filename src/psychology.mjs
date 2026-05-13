@@ -29,16 +29,24 @@ export function getInitialPsychology(personality = {}) {
 /**
  * Menganalisis pesan user untuk mendapatkan dampak emosional
  */
-export async function analyzeEmotionalImpact(text, config, history = []) {
+export async function analyzeEmotionalImpact(text, config, history = [], currentState = null) {
   if (!text) return null;
 
   const contextStr = history.slice(-12).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
+  
+  let stateInfo = "";
+  if (currentState && currentState.emotion) {
+    const e = currentState.emotion;
+    stateInfo = `STATUS EMOSI SAAT INI: Anger: ${e.anger.toFixed(2)}, Trust: ${e.trust.toFixed(2)}, Joy: ${e.joy.toFixed(2)}, Fear: ${e.fear.toFixed(2)}, Attachment: ${e.attachment.toFixed(2)}`;
+  }
 
   const prompt = `Analisis dampak emosional dari pesan user terhadap Nafeesa (istrinya). 
-Gunakan konteks chat terakhir untuk memahami nada bicara.
+Gunakan konteks chat dan status emosi saat ini untuk memahami perasaan Nafeesa.
+
+${stateInfo}
 
 TUGAS TAMBAHAN (KATA HATI):
-Jika emosi (Anger, Fear, Trust, Joy, Attachment) mencapai titik ekstrem (>0.8 atau <-0.8), buatlah "Suara Hati" (inner_voice). Ini adalah bisikan insting/hasrat terdalam Nafeesa yang memprovokasinya untuk bertindak tertentu (misal: memaki, menggoda secara eksplisit, menangis, atau manja).
+PENTING: Jika status emosi saat ini SUDAH EKSTREM (>0.8) atau pesan terbaru mendorong emosi ke titik ekstrem, Anda WAJIB membuat "Suara Hati" (inner_voice). Ini adalah bisikan insting/hasrat Nafeesa (misal: maki-maki jika Anger > 0.8, atau sangat manja jika Trust/Attachment > 0.8).
 
 KONTEKS CHAT:
 ${contextStr || "(Tidak ada riwayat)"}

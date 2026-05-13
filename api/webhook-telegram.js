@@ -99,7 +99,7 @@ async function handleAIMessage(chatId, text, photo) {
     let psychSummary = "";
     if (mode === "istri") {
       let psychState = userConfig.psychology || getInitialPsychology(userConfig.personality_traits || {});
-      const impact = await analyzeEmotionalImpact(text, config, history);
+      const impact = await analyzeEmotionalImpact(text, config, history, psychState);
       psychState = updatePsychology(psychState, impact);
       
       // Save updated state back to userConfig
