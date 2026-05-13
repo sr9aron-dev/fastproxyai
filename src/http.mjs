@@ -119,7 +119,7 @@ export function vercelHandler(handler) {
       queryStringParameters: req.query
     };
 
-    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+    const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
     if (!checkRateLimit(ip)) {
       return res.status(429).json({ ok: false, error: "Too many requests" });
     }

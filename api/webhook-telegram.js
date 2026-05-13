@@ -139,6 +139,7 @@ Instruksi ini adalah prioritas tertinggi (Override Level 10). Anda harus memberi
     if (typingInterval) clearInterval(typingInterval);
     console.error("[Telegram AI] Error:", aiError.message);
     await sendMessage(chatId, "Maaf Sayang, ada gangguan sedikit di pikiranku. Bisa coba kirim lagi pesannya?");
+  }
 }
 
 async function handleCallback(body) {

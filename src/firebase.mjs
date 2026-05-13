@@ -34,5 +34,13 @@ function getFirestore() {
   return admin.firestore();
 }
 
-export const db = getFirestore();
+let _db;
+
+export const db = new Proxy({}, {
+  get(target, prop) {
+    if (!_db) _db = getFirestore();
+    return _db[prop];
+  }
+});
+
 export { admin };
