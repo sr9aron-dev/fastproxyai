@@ -44,9 +44,15 @@ async function handleSettingsCommand(chatId) {
 }
 
 async function handleAIMessage(chatId, text, photo) {
+  let typingInterval;
   try {
     const config = await loadConfig();
+    
+    // Show "typing..." action immediately and keep it alive
     await sendChatAction(chatId, "typing");
+    typingInterval = setInterval(() => {
+      sendChatAction(chatId, "typing").catch(err => console.error("[Telegram] Typing interval error:", err.message));
+    }, 4000);
 
     const history = await loadChatHistory(chatId, 22);
 
@@ -112,17 +118,27 @@ Instruksi ini adalah prioritas tertinggi (Override Level 10). Anda harus memberi
       image: imagePayload
     });
 
+    // Clear typing interval once we have the result
+    if (typingInterval) clearInterval(typingInterval);
+
     await saveChatMessage(chatId, "assistant", output.result);
     await trackUsage(output.provider, output.model, "success");
-    await sendMessage(chatId, output.result);
+    
+    // Send the final message
+    const sendResult = await sendMessage(chatId, output.result);
+    if (!sendResult || !sendResult.ok) {
+      console.error("[Telegram] Final message failed:", sendResult);
+      // Fallback: try sending again without HTML in case there's a parse error
+      await sendMessage(chatId, output.result.replace(/<[^>]*>/g, ''));
+    }
 
     // Cleanup image payload to help GC
     imagePayload = null;
 
   } catch (aiError) {
+    if (typingInterval) clearInterval(typingInterval);
     console.error("[Telegram AI] Error:", aiError.message);
     await sendMessage(chatId, "Maaf Sayang, ada gangguan sedikit di pikiranku. Bisa coba kirim lagi pesannya?");
-  }
 }
 
 async function handleCallback(body) {
