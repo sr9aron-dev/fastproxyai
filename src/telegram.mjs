@@ -14,7 +14,7 @@ export async function sendMessage(chatId, text, options = {}) {
       body: JSON.stringify({
         chat_id: chatId,
         text: text,
-        parse_mode: "HTML",
+        parse_mode: "Markdown",
         ...options
       })
     });
@@ -47,7 +47,7 @@ export async function editMessageText(chatId, messageId, text, keyboard) {
         chat_id: chatId,
         message_id: messageId,
         text: text,
-        parse_mode: "HTML",
+        parse_mode: "Markdown",
         reply_markup: keyboard ? { inline_keyboard: keyboard } : undefined
       })
     });
