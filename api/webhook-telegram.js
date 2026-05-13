@@ -184,7 +184,7 @@ async function handleAIMessage(chatId, text, photo) {
       trackUsage(output.provider, output.model, "success")
     ];
 
-    // Logika Pembaruan Saga (Background & Non-Blocking)
+    // Logika Pembaruan Saga (Background tapi WAJIB DITUNGGU agar tidak terbunuh Vercel)
     if (mode === "istri") {
       // Tambah hitungan chat saga
       userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
@@ -196,13 +196,13 @@ async function handleAIMessage(chatId, text, photo) {
       if (shouldUpdateSaga) {
         console.log(`[Saga Engine] Triggering story update for ${chatId}...`);
         backgroundTasks.push(
-          updateSaga(history, userConfig.saga, config).then(newSaga => {
+          updateSaga(history, userConfig.saga, config).then(async (newSaga) => {
             userConfig.saga = newSaga;
             userConfig.chat_count_saga = 0; // Reset
             
             // Jika dipicu manual, beri tahu user via chat
             if (text === "/story") {
-              sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${newSaga}`);
+              await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${newSaga}`);
             }
             
             return saveUserConfig(chatId, userConfig);
@@ -213,7 +213,8 @@ async function handleAIMessage(chatId, text, photo) {
       }
     }
 
-    Promise.all(backgroundTasks).catch(err => console.error("[Background Task Error]", err.message));
+    // WAJIB AWAIT: Agar Vercel tidak mematikan fungsi sebelum simpan data selesai
+    await Promise.all(backgroundTasks).catch(err => console.error("[Background Task Error]", err.message));
 
     imagePayload = null;
 
