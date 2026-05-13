@@ -97,27 +97,18 @@ async function handleAIMessage(chatId, text, photo) {
     const mode = userConfig.mode || "istri";
     
     // --- PSYCHOLOGY ENGINE INTEGRATION ---
+    // 1. Persiapkan Psikologi (Hanya ambil state lama)
     let psychSummary = "";
+    let psychState = null;
     if (mode === "istri") {
-      let psychState = userConfig.psychology || getInitialPsychology(userConfig.personality_traits || {});
-      const impact = await analyzeEmotionalImpact(text, config, history, psychState);
-      psychState = updatePsychology(psychState, impact);
-      
-      // Save updated state back to userConfig
-      userConfig.psychology = psychState;
-      await saveUserConfig(chatId, userConfig);
-      
+      psychState = userConfig.psychology || getInitialPsychology(userConfig.personality_traits || {});
       psychSummary = generatePsychologicalSummary(psychState);
     }
     
-    // Use the main project system prompt builder
     const systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary);
-    // -------------------------------------
-
-    // 2. Single AI Call (Better for Vision)
-    // Adjust history length based on mode
     const finalHistory = mode === "istri" ? history : history.slice(-15);
 
+    // 2. Main AI Call (Sekaligus Analisa Emosi)
     const { output } = await generateWithRotation(config, {
       prompt: text || "Lihat foto yang aku kirim ini",
       system: systemPrompt,
@@ -129,20 +120,49 @@ async function handleAIMessage(chatId, text, photo) {
 
     if (typingInterval) clearInterval(typingInterval);
 
-    // 3. Prioritize Telegram Response
-    const aiResponse = output.result;
-    const sendResult = await sendMessage(chatId, aiResponse);
+    let rawAIResponse = output.result;
+    let cleanAIResponse = rawAIResponse;
+    let extractedImpact = null;
+
+    // Ekstrak JSON Emosi [[ { ... } ]]
+    const impactMatch = rawAIResponse.match(/\[\[\s*(\{[\s\S]*\})\s*\]\]/);
+    if (impactMatch) {
+      try {
+        extractedImpact = JSON.parse(impactMatch[1]);
+        cleanAIResponse = rawAIResponse.replace(/\[\[[\s\S]*\]\]/, "").trim();
+        
+        // Update Psikologi jika ada impact
+        if (mode === "istri" && psychState) {
+          psychState = updatePsychology(psychState, extractedImpact);
+          userConfig.psychology = psychState;
+          await saveUserConfig(chatId, userConfig);
+        }
+      } catch (e) {
+        console.error("[Psychology Extraction Error]", e.message);
+      }
+    }
+
+    // 3. Kirim Pesan Pertama
+    const sendResult = await sendMessage(chatId, cleanAIResponse);
     if (!sendResult || !sendResult.ok) {
-      await sendMessage(chatId, aiResponse, { parse_mode: null });
+      await sendMessage(chatId, cleanAIResponse, { parse_mode: null });
     }
 
     // 4. Proactive "Double Strike" (Refleksi Diri)
-    if (mode === "istri" && userConfig.psychology) {
+    if (mode === "istri" && psychState) {
       try {
-        const secondInnerVoice = await analyzeSelfReflection(aiResponse, config, userConfig.psychology);
+        // Ambil hasutan dari pesan pertama atau panggil refleksi jika ekstrem
+        let secondInnerVoice = extractedImpact?.inner_voice;
+        
+        const e = psychState.emotion;
+        const isExtreme = e.anger > 0.8 || e.trust > 0.8 || e.attachment > 0.8 || e.fear > 0.8 || e.joy > 0.8;
+
+        if (!secondInnerVoice && isExtreme) {
+          secondInnerVoice = await analyzeSelfReflection(cleanAIResponse, config, psychState);
+        }
         
         if (secondInnerVoice) {
-          const tempState = { ...userConfig.psychology, inner_voice: secondInnerVoice };
+          const tempState = { ...psychState, inner_voice: secondInnerVoice };
           const secondSummary = generatePsychologicalSummary(tempState);
           
           await sendChatAction(chatId, "typing");
@@ -151,7 +171,7 @@ async function handleAIMessage(chatId, text, photo) {
             prompt: "Lanjutkan chatmu tadi dengan hasutan insting barumu ini. Jangan mengulang pesan sebelumnya.",
             system: ROLEPLAY_TEMPLATES.istri(timeStr, dateStr, secondSummary),
             temperature: 0.9,
-            history: [...finalHistory, { role: "assistant", text: aiResponse }]
+            history: [...finalHistory, { role: "assistant", text: cleanAIResponse }]
           });
           
           await sendMessage(chatId, secondOutput.result);
@@ -159,14 +179,13 @@ async function handleAIMessage(chatId, text, photo) {
         }
       } catch (err) {
         console.error("[Double-Strike Error]", err.message);
-        // Gagal pesan kedua? Diam saja, jangan kirim pesan error ke user
       }
     }
 
     // 5. Background tasks
     Promise.all([
       saveChatMessage(chatId, "user", text || "[Mengirim Foto]"),
-      saveChatMessage(chatId, "assistant", aiResponse),
+      saveChatMessage(chatId, "assistant", cleanAIResponse),
       trackUsage(output.provider, output.model, "success")
     ]).catch(err => console.error("[Background Task Error]", err.message));
 
