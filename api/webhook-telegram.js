@@ -114,11 +114,14 @@ async function handleAIMessage(chatId, text, photo) {
     // -------------------------------------
 
     // 2. Single AI Call (Better for Vision)
+    // Adjust history length based on mode
+    const finalHistory = mode === "istri" ? history : history.slice(-15);
+
     const { output } = await generateWithRotation(config, {
       prompt: text || "Lihat foto yang aku kirim ini",
       system: systemPrompt,
       temperature: 0.8,
-      history: history,
+      history: finalHistory,
       image: imagePayload,
       forceProvider
     });
