@@ -137,31 +137,29 @@ async function handleAIMessage(chatId, text, photo) {
     }
 
     // 4. Proactive "Double Strike" (Refleksi Diri)
-    // Hanya jika mode Istri dan ada data psikologi
     if (mode === "istri" && userConfig.psychology) {
-      const secondInnerVoice = await analyzeSelfReflection(aiResponse, config, userConfig.psychology);
-      
-      if (secondInnerVoice) {
-        // Simpan suara hati kedua ke state (sementara)
-        const tempState = { ...userConfig.psychology, inner_voice: secondInnerVoice };
-        const secondSummary = generatePsychologicalSummary(tempState);
+      try {
+        const secondInnerVoice = await analyzeSelfReflection(aiResponse, config, userConfig.psychology);
         
-        // Simulasikan Nafeesa sedang mengetik pesan kedua
-        await sendChatAction(chatId, "typing");
-        
-        // Generate pesan kedua
-        const { output: secondOutput } = await generateWithRotation(config, {
-          prompt: "Lanjutkan chatmu tadi dengan hasutan insting barumu ini. Jangan mengulang pesan sebelumnya.",
-          system: ROLEPLAY_TEMPLATES.istri(timeStr, dateStr, secondSummary),
-          temperature: 0.9,
-          history: [...finalHistory, { role: "assistant", text: aiResponse }]
-        });
-        
-        // Kirim pesan kedua
-        await sendMessage(chatId, secondOutput.result);
-        
-        // Simpan pesan kedua ke histori
-        await saveChatMessage(chatId, "assistant", secondOutput.result);
+        if (secondInnerVoice) {
+          const tempState = { ...userConfig.psychology, inner_voice: secondInnerVoice };
+          const secondSummary = generatePsychologicalSummary(tempState);
+          
+          await sendChatAction(chatId, "typing");
+          
+          const { output: secondOutput } = await generateWithRotation(config, {
+            prompt: "Lanjutkan chatmu tadi dengan hasutan insting barumu ini. Jangan mengulang pesan sebelumnya.",
+            system: ROLEPLAY_TEMPLATES.istri(timeStr, dateStr, secondSummary),
+            temperature: 0.9,
+            history: [...finalHistory, { role: "assistant", text: aiResponse }]
+          });
+          
+          await sendMessage(chatId, secondOutput.result);
+          await saveChatMessage(chatId, "assistant", secondOutput.result);
+        }
+      } catch (err) {
+        console.error("[Double-Strike Error]", err.message);
+        // Gagal pesan kedua? Diam saja, jangan kirim pesan error ke user
       }
     }
 

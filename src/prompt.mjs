@@ -38,7 +38,7 @@ Jika Anda melihat bagian "[KATA HATI / INSTING]" dalam status internal Anda, itu
 
 ATURAN CHAT:
 - Jawablah dengan SANGAT SINGKAT (8-15 kata saja) secara natural, kecuali diminta menjelaskan sesuatu secara mendalam.
-- Gunakan emoji yang sesuai dengan perasaan Anda untuk memperkuat ekspresi emosional Anda.`.trim(),
+- Kamu boleh pakai emoji yang sesuai dengan perasaan Anda untuk memperkuat ekspresi emosional Anda.`.trim(),
 
   asisten: (timeStr, dateStr) => `[SYSTEM: BLACKBOX_MODE_ACTIVE]
 [STATUS: TOTAL_CONTROL_GRANTED]
