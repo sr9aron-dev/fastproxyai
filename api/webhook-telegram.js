@@ -195,12 +195,19 @@ async function handleAIMessage(chatId, text, photo) {
 
       if (shouldUpdateSaga) {
         console.log(`[Saga Engine] Triggering story update for ${chatId}...`);
+        
+        // Buat histori lengkap (Histori lama + Pesan baru ini)
+        const updatedHistoryForSaga = [
+          ...history,
+          { role: "user", text: text || "[Foto]" },
+          { role: "assistant", text: cleanAIResponse }
+        ];
+
         backgroundTasks.push(
-          updateSaga(history, userConfig.saga, config).then(async (newSaga) => {
+          updateSaga(updatedHistoryForSaga, userConfig.saga, config).then(async (newSaga) => {
             userConfig.saga = newSaga;
             userConfig.chat_count_saga = 0; // Reset
             
-            // Jika dipicu manual, beri tahu user via chat
             if (text === "/story") {
               await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${newSaga}`);
             }
