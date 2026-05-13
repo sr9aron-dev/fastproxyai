@@ -5,8 +5,6 @@ import { generateWithRotation } from "../src/rotation.mjs";
 import {
   sendMessage,
   sendChatAction,
-  sendSticker,
-  sendPhoto,
   editMessageText,
   answerCallbackQuery,
   getTelegramFile
@@ -111,6 +109,7 @@ async function handleAIMessage(chatId, text, photo) {
     
     // --- PSYCHOLOGY ENGINE INTEGRATION ---
     // 1. Persiapkan Psikologi (Hanya ambil state lama)
+    // --- SISTEM SYARAF 4 TAHAP ---
     let psychSummary = "";
     let psychState = null;
     if (mode === "istri") {
@@ -120,82 +119,41 @@ async function handleAIMessage(chatId, text, photo) {
       psychSummary = generatePsychologicalSummary(psychState);
     }
     
-    const systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary);
+    // TAHAP 1: AI Analyzer Pre-Chat (Membaca Emosi User)
+    // Paksa pakai Groq agar instan
+    const emotionalImpact = await analyzeEmotionalImpact(text, config, history, psychState);
+    if (emotionalImpact) {
+      psychState = updatePsychology(psychState, emotionalImpact);
+      userConfig.psychology = psychState;
+      psychSummary = generatePsychologicalSummary(psychState);
+    }
+
+    // Bangun ulang prompt setelah emosi ter-update
+    const updatedSystemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary);
     const finalHistory = history;
 
-    // 2. Main AI Call (Sekaligus Analisa Emosi)
+    // TAHAP 2: Nafeesa Balas Chat Utama
     const { output } = await generateWithRotation(config, {
       prompt: text || "Lihat foto yang aku kirim ini",
-      system: systemPrompt,
-      temperature: 0.8,
+      system: updatedSystemPrompt,
       history: finalHistory,
       image: imagePayload,
-      forceProvider
+      forceProvider: forceProvider
     });
 
     if (typingInterval) clearInterval(typingInterval);
 
-    let rawAIResponse = output.result;
-    let cleanAIResponse = rawAIResponse;
-    let extractedImpact = null;
-
-    // Ekstrak JSON Emosi [[ { ... } ]]
-    const impactMatch = rawAIResponse.match(/\[\[\s*(\{[\s\S]*\})\s*\]\]/);
-    if (impactMatch) {
-      try {
-        extractedImpact = JSON.parse(impactMatch[1]);
-        cleanAIResponse = rawAIResponse.replace(/\[\[[\s\S]*\]\]/, "").trim();
-        
-        // Update Psikologi jika ada impact
-        if (mode === "istri" && psychState) {
-          psychState = updatePsychology(psychState, extractedImpact);
-          userConfig.psychology = psychState;
-          // Jangan await simpan config di sini, simpan di akhir saja
-        }
-      } catch (e) {
-        console.error("[Psychology Extraction Error]", e.message);
-      }
-    }
-
-    // 3. Kirim Pesan Pertama
-    // Cek apakah ada pesan kedua (dipisah oleh '|')
-    const chatParts = cleanAIResponse.split("|").map(p => p.trim()).filter(Boolean);
+    const rawAIResponse = output.result;
+    const chatParts = rawAIResponse.split("|").map(p => p.trim()).filter(Boolean);
     const firstMessage = chatParts[0];
 
+    // Kirim Balasan Pertama ke User
     const sendResult = await sendMessage(chatId, firstMessage);
     if (!sendResult || !sendResult.ok) {
       await sendMessage(chatId, firstMessage, { parse_mode: null });
     }
 
-    // 4. Proactive "Multi-Burst" (Nyerocos Otomatis)
-    if (chatParts.length > 1) {
-      try {
-        // Mulai dari elemen kedua (index 1) sampai habis
-        for (let i = 1; i < chatParts.length; i++) {
-          const extraMessage = chatParts[i];
-          
-          // Simulasikan Nafeesa sedang mengetik
-          await sendChatAction(chatId, "typing");
-          // Jeda makin lama sedikit agar terasa natural
-          await new Promise(resolve => setTimeout(resolve, 1000 + (i * 200))); 
-          
-          // Kirim pesan tambahan
-          await sendMessage(chatId, extraMessage);
-          
-          // Simpan ke histori
-          await saveChatMessage(chatId, "assistant", extraMessage);
-        }
-      } catch (err) {
-        console.error("[Multi-Burst Error]", err.message);
-      }
-    }
-
-    // 4b. Eksekusi Aksi Fisik (Jika ada dari AI)
-    if (extractedImpact?.action) {
-      backgroundTasks.push(executeAIAction(chatId, extractedImpact.action));
-    }
-
-    // 5. Background tasks (Simpan semua di sini)
+    // Persiapkan Background Tasks (Tahap 3 & 4 masuk ke sini)
     const backgroundTasks = [
       saveChatMessage(chatId, "user", text || "[Mengirim Foto]"),
       saveChatMessage(chatId, "assistant", cleanAIResponse),
@@ -402,31 +360,6 @@ async function handler(event) {
   } catch (error) {
     console.error("[Telegram Webhook] error:", error);
     return json(200, { ok: false, error: error.message });
-  }
-}
-
-/**
- * Eksekutor Aksi Fisik AI
- */
-async function executeAIAction(chatId, actionStr) {
-  try {
-    const [type, data] = actionStr.split(":");
-    if (!type || !data) return;
-
-    console.log(`[AI Action] Executing ${type} for ${chatId}...`);
-
-    switch (type.trim().toLowerCase()) {
-      case "send_sticker":
-        await sendSticker(chatId, data.trim());
-        break;
-      case "send_photo":
-        await sendPhoto(chatId, data.trim(), "Ini buat kamu, Boss... ❤️");
-        break;
-      default:
-        console.warn("[AI Action] Unknown action type:", type);
-    }
-  } catch (err) {
-    console.error("[AI Action Error]", err.message);
   }
 }
 
