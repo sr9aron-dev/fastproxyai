@@ -64,7 +64,20 @@ Berikan output dalam format JSON murni:
     }
     return JSON.parse(jsonMatch[0]);
   } catch (e) {
-    console.error("[Psychology] Analyzer Error:", e.message);
+    console.error("[Psychology] AI Analyzer Error, falling back to keywords...");
+    
+    // Simple Keyword Fallback (Darurat jika API Mati)
+    const lower = text.toLowerCase();
+    if (lower.includes("sayang") || lower.includes("cinta") || lower.includes("makasih") || lower.includes("terima kasih")) {
+      return { event_type: "affection", impact: { trust: 0.05, attachment: 0.08, joy: 0.1, anger: -0.05 }, severity: 0.5 };
+    }
+    if (lower.includes("bodoh") || lower.includes("jelek") || lower.includes("berisik") || lower.includes("diem") || lower.includes("benci")) {
+      return { event_type: "insult", impact: { anger: 0.15, trust: -0.1, attachment: -0.05, joy: -0.1 }, severity: 0.7 };
+    }
+    if (lower.includes("maaf") || lower.includes("sorry")) {
+      return { event_type: "apology", impact: { anger: -0.15, trust: 0.05 }, severity: 0.6 };
+    }
+    
     return null;
   }
 }

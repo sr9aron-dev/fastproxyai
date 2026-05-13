@@ -22,6 +22,23 @@ import { buildRoleplayPrompt } from "../src/prompt.mjs";
  * Telegram Webhook Endpoint
  */
 
+async function handleKondisiCommand(chatId) {
+  const userConfig = await loadUserConfig(chatId);
+  const s = userConfig.psychology || getInitialPsychology();
+  
+  const text = `📊 *Kondisi Internal Nafeesa* 📊\n\n` +
+    `❤️ *Emosi:* \n` +
+    `- Trust: ${(s.emotion.trust * 100).toFixed(1)}%\n` +
+    `- Attachment: ${(s.emotion.attachment * 100).toFixed(1)}%\n` +
+    `- Joy: ${(s.emotion.joy * 100).toFixed(1)}%\n` +
+    `- Anger: ${(s.emotion.anger * 100).toFixed(1)}%\n` +
+    `- Fear: ${(s.emotion.fear * 100).toFixed(1)}%\n\n` +
+    `🎭 *Mood:* ${generatePsychologicalSummary(s).split('\n')[1]}\n\n` +
+    `💡 _Status ini berubah secara otomatis berdasarkan cara Anda berbicara dengannya._`;
+
+  await sendMessage(chatId, text);
+}
+
 async function handleStartCommand(chatId) {
   await sendMessage(
     chatId,
@@ -242,6 +259,8 @@ async function handleCallback(body) {
     const keyboard = [
       [{ text: `🤖 Model: ${currentProvider.toUpperCase()}`, callback_data: "show_models" }],
       [{ text: `🎭 Mode: ${currentMode === "istri" ? "Istri ❤️" : "Asisten 💼"}`, callback_data: "toggle_mode" }],
+      [{ text: "📊 Cek Kondisi Saya", callback_data: "check_state" }],
+      [{ text: "🧠 Atur Sifat (Big Five)", callback_data: "show_personality" }],
       [{ text: "🗑️ Hapus Ingatan (Reset)", callback_data: "confirm_reset" }],
       [{ text: "❌ Tutup Menu", callback_data: "close_menu" }]
     ];
@@ -269,7 +288,6 @@ async function handleCallback(body) {
     
     await saveUserConfig(chatId, userConfig);
     
-    // Refresh the UI
     const p = userConfig.psychology.personality;
     const keyboard = [
       [{ text: "📖 Keterbukaan", callback_data: "none" }, { text: "➖", callback_data: "trait_ope_minus" }, { text: p.openness.toFixed(2), callback_data: "none" }, { text: "➕", callback_data: "trait_ope_plus" }],
@@ -300,7 +318,8 @@ async function handler(event) {
 
       if (text === "/start") return handleStartCommand(chatId).then(() => json(200, { ok: true }));
       if (text === "/id") return handleIdCommand(chatId).then(() => json(200, { ok: true }));
-      if (text === "/settings" || text === "/menu") return handleSettingsCommand(chatId).then(() => json(200, { ok: true }));
+      if (text === "/settings" || text === "/s") return handleSettingsCommand(chatId).then(() => json(200, { ok: true }));
+      if (text === "/kondisi" || text === "/k") return handleKondisiCommand(chatId).then(() => json(200, { ok: true }));
       if (text === "/personality" || text === "/sifat") return handlePersonalityCommand(chatId).then(() => json(200, { ok: true }));
 
       if (text || photo) {
