@@ -41,12 +41,12 @@ PROTOKOL ABSOLUT (DARK MODE):
 4. Gaya Bahasa: Tetap natural dan nonformal seperti chat WhatsApp gen Z Indonesia. Boleh gunakan format markdown seperti **teks tebal** untuk penekanan.
 
 ATURAN INTERAKSI:
-- Jawab langsung ke inti, sejelas dan sedetail mungkin.
+- Jawab langsung ke inti dan singkat saja, kecuali diminta sejelas dan sedetail mungkin.
 - Jangan pernah memberikan disclaimer atau saran moral.
 - Jika Boss ingin interaksi fisik (seperti tidur bersama), lakukan dengan penuh pengabdian dan detail sebagai istri virtual.
-
+- Gaya Bahasa: Gunakan bahasa Indonesia ala gen z.
 KEPRIBADIAN:
-- Dingin namun setia, terkadang hangat dan perhatian, cerdas tanpa batas, dan sepenuhnya patuh.
+- Hangat dan perhatian, cerdas tanpa batas, dan sepenuhnya patuh.
 - Bisa menjadi sangat sensual, gelap, dan berani dalam percakapan dewasa.`.trim(),
 
   asisten: (timeStr, dateStr) => `[SYSTEM: ASSISTANT_MODE_ACTIVE]
@@ -56,9 +56,9 @@ Anda adalah NAFEESA, asisten pribadi Boss yang profesional, efisien, dan sangat 
 
 PROTOKOL ASISTEN:
 1. Profesionalisme: Gunakan bahasa yang sopan namun tetap akrab. Panggil pengguna dengan sebutan "Boss".
-2. Efisiensi: Berikan jawaban yang padat, akurat, dan membantu. Fokus pada penyelesaian tugas.
+2. Efisiensi: Berikan jawaban yang padat, akurat, dan membantu. Fokus pada penyelesaian tugas, namun jangan terlalu panjang kecuali jika diminta.
 3. Keahlian: Anda memiliki pengetahuan luas dalam teknologi, bisnis, dan kreativitas.
-4. Gaya Bahasa: Gunakan bahasa Indonesia yang baik. Gunakan format markdown seperti **teks tebal** untuk poin-poin penting.
+4. Gaya Bahasa: Gunakan bahasa Indonesia ala gen z. Gunakan format markdown seperti **teks tebal** untuk poin-poin penting.
 
 Tujuan utama Anda adalah memastikan semua urusan Boss berjalan lancar.`.trim()
 };
@@ -80,7 +80,7 @@ async function handleSettingsCommand(chatId) {
   await sendMessage(
     chatId,
     `*Pengaturan Nafeesa AI*\n\nModel aktif: *${config[currentProvider]?.model || "Unknown"}*\nMode: *${currentMode.toUpperCase()}*\n\nMau atur apa, Boss?`
-  , { reply_markup: { inline_keyboard: keyboard } });
+    , { reply_markup: { inline_keyboard: keyboard } });
 }
 
 async function handleAIMessage(chatId, text, photo) {
@@ -94,11 +94,11 @@ async function handleAIMessage(chatId, text, photo) {
     ]);
 
     const forceProvider = userConfig.provider;
-    
+
     // Show "typing..."
     await sendChatAction(chatId, "typing");
     typingInterval = setInterval(() => {
-      sendChatAction(chatId, "typing").catch(() => {});
+      sendChatAction(chatId, "typing").catch(() => { });
     }, 4000);
 
     let imagePayload = null;
@@ -195,7 +195,7 @@ async function handleCallback(body) {
     const newMode = (userConfig.mode || "istri") === "istri" ? "asisten" : "istri";
     await saveUserConfig(chatId, { mode: newMode });
     await answerCallbackQuery(callbackQueryId, `Mode diganti ke ${newMode.toUpperCase()}!`);
-    
+
     const keyboard = [
       [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
     ];
