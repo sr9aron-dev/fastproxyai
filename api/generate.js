@@ -5,6 +5,7 @@ import { loadConfig, updateKeyLastUsed, trackUsage } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
 import { buildMetadataPrompt } from "../src/prompt.mjs";
 import { normalizeMetadata } from "../src/normalize.mjs";
+import redis, { KEYS } from "../src/redis.mjs";
 
 const MAX_BASE64_LENGTH = Number(process.env.MAX_BASE64_LENGTH || 6_000_000);
 
@@ -52,7 +53,23 @@ async function handler(event) {
     
     validateRequest({ ...body, prompt });
 
-    const { output, config: updatedConfig } = await generateWithRotation(config, { ...body, prompt });
+    // 1. Check Cache
+    const promptHash = sha256(JSON.stringify({ prompt, settings: body.settings }));
+    const cacheKey = KEYS.cache(promptHash);
+    
+    if (redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        console.log("[Proxy] Cache hit for prompt hash:", promptHash.slice(0, 8));
+        return json(200, {
+          ok: true,
+          cached: true,
+          ...cached
+        });
+      }
+    }
+
+    const { output } = await generateWithRotation(config, { ...body, prompt });
 
     // Normalize AI output to structured metadata
     let finalResult;
@@ -61,6 +78,16 @@ async function handler(event) {
     } catch (err) {
        console.error("[Proxy] Normalization failed:", err.message);
        throw new Error(`AI returned invalid format: ${err.message}`);
+    }
+
+    // 2. Save to Cache
+    if (redis && finalResult) {
+      await redis.set(cacheKey, {
+        provider: output.provider,
+        model: output.model,
+        ...finalResult,
+        usage: output.usage
+      }, { ex: 86400 }); // Cache for 24 hours
     }
 
     // Update lastUsedAt for the specific extension key used
