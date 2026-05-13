@@ -86,40 +86,26 @@ async function handleSettingsCommand(chatId) {
 async function handleAIMessage(chatId, text, photo) {
   let typingInterval;
   try {
-    const config = await loadConfig();
-    const userConfig = await loadUserConfig(chatId);
+    // 1. Load everything in parallel
+    const [config, userConfig, history] = await Promise.all([
+      loadConfig(),
+      loadUserConfig(chatId),
+      loadChatHistory(chatId, 12) // Reduced history for speed
+    ]);
+
     const forceProvider = userConfig.provider;
     
-    // Show "typing..." action immediately and keep it alive
+    // Show "typing..."
     await sendChatAction(chatId, "typing");
     typingInterval = setInterval(() => {
-      sendChatAction(chatId, "typing").catch(err => console.error("[Telegram] Typing interval error:", err.message));
+      sendChatAction(chatId, "typing").catch(() => {});
     }, 4000);
 
-    const history = await loadChatHistory(chatId, 22);
-
     let imagePayload = null;
-    let imageDescription = "";
-
     if (photo && photo.length > 0) {
       const fileId = photo[photo.length - 1].file_id;
       imagePayload = await getTelegramFile(fileId);
-
-      if (imagePayload) {
-        try {
-          const descRes = await generateWithRotation(config, {
-            prompt: "Jelaskan apa yang ada di foto ini dalam satu kalimat pendek yang padat. Gunakan bahasa Indonesia.",
-            image: imagePayload,
-            temperature: 0
-          });
-          imageDescription = ` [Foto: ${descRes.output.result}]`;
-        } catch (descErr) {
-          imageDescription = " [Mengirim Foto]";
-        }
-      }
     }
-
-    await saveChatMessage(chatId, "user", (text + imageDescription).trim());
 
     const now = new Date();
     const timeStr = now.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" });
@@ -128,6 +114,7 @@ async function handleAIMessage(chatId, text, photo) {
     const mode = userConfig.mode || "istri";
     const systemPrompt = SYSTEM_PROMPTS[mode] ? SYSTEM_PROMPTS[mode](timeStr, dateStr) : SYSTEM_PROMPTS.istri(timeStr, dateStr);
 
+    // 2. Single AI Call (Better for Vision)
     const { output } = await generateWithRotation(config, {
       prompt: text || "Lihat foto yang aku kirim ini",
       system: systemPrompt,
@@ -137,22 +124,21 @@ async function handleAIMessage(chatId, text, photo) {
       forceProvider
     });
 
-    // Clear typing interval once we have the result
     if (typingInterval) clearInterval(typingInterval);
 
-    // Send the final message (Prioritize this before DB to avoid timeout issues)
+    // 3. Prioritize Telegram Response
     const sendResult = await sendMessage(chatId, output.result);
-    
     if (!sendResult || !sendResult.ok) {
-      console.error("[Telegram] Final message failed, retrying as plain text...", sendResult?.description);
-      // Fallback: try sending again as PLAIN TEXT in case of Markdown errors
       await sendMessage(chatId, output.result, { parse_mode: null });
     }
 
-    await saveChatMessage(chatId, "assistant", output.result);
-    await trackUsage(output.provider, output.model, "success");
+    // 4. Background tasks (Don't await these to finish the request faster)
+    Promise.all([
+      saveChatMessage(chatId, "user", text || "[Mengirim Foto]"),
+      saveChatMessage(chatId, "assistant", output.result),
+      trackUsage(output.provider, output.model, "success")
+    ]).catch(err => console.error("[Background Task Error]", err.message));
 
-    // Cleanup image payload to help GC
     imagePayload = null;
 
   } catch (aiError) {
