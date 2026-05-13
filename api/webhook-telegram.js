@@ -343,11 +343,19 @@ async function handleCallback(body, event) {
     };
     
     const fullTraitName = traitMap[trait];
-    if (!userConfig.psychology) userConfig.psychology = getInitialPsychology();
+    
+    // Pastikan objek psikologi dan personality ada (PENTING untuk data lama)
+    if (!userConfig.psychology) {
+      userConfig.psychology = getInitialPsychology(userConfig.personality_traits || {});
+    }
+    if (!userConfig.psychology.personality) {
+      const initial = getInitialPsychology(userConfig.personality_traits || {});
+      userConfig.psychology.personality = initial.personality;
+    }
     
     if (action === "plus") {
       userConfig.psychology.personality[fullTraitName] = Math.min(1.0, userConfig.psychology.personality[fullTraitName] + 0.05);
-    } else {
+    } else if (action === "minus") {
       userConfig.psychology.personality[fullTraitName] = Math.max(0.0, userConfig.psychology.personality[fullTraitName] - 0.05);
     }
     
