@@ -140,16 +140,17 @@ async function handleAIMessage(chatId, text, photo) {
     // Clear typing interval once we have the result
     if (typingInterval) clearInterval(typingInterval);
 
+    // Send the final message (Prioritize this before DB to avoid timeout issues)
+    const sendResult = await sendMessage(chatId, output.result);
+    
+    if (!sendResult || !sendResult.ok) {
+      console.error("[Telegram] Final message failed, retrying as plain text...", sendResult?.description);
+      // Fallback: try sending again as PLAIN TEXT in case of Markdown errors
+      await sendMessage(chatId, output.result, { parse_mode: null });
+    }
+
     await saveChatMessage(chatId, "assistant", output.result);
     await trackUsage(output.provider, output.model, "success");
-
-    // Send the final message
-    const sendResult = await sendMessage(chatId, output.result);
-    if (!sendResult || !sendResult.ok) {
-      console.error("[Telegram] Final message failed:", sendResult);
-      // Fallback: try sending again without HTML in case there's a parse error
-      await sendMessage(chatId, output.result.replace(/<[^>]*>/g, ''));
-    }
 
     // Cleanup image payload to help GC
     imagePayload = null;
