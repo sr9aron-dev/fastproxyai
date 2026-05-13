@@ -143,41 +143,29 @@ async function handleAIMessage(chatId, text, photo) {
     }
 
     // 3. Kirim Pesan Pertama
-    const sendResult = await sendMessage(chatId, cleanAIResponse);
+    // Cek apakah ada pesan kedua (dipisah oleh '|')
+    const chatParts = cleanAIResponse.split("|").map(p => p.trim()).filter(Boolean);
+    const firstMessage = chatParts[0];
+
+    const sendResult = await sendMessage(chatId, firstMessage);
     if (!sendResult || !sendResult.ok) {
-      await sendMessage(chatId, cleanAIResponse, { parse_mode: null });
+      await sendMessage(chatId, firstMessage, { parse_mode: null });
     }
 
-    // 4. Proactive "Double Strike" (Refleksi Diri)
-    if (mode === "istri" && psychState) {
+    // 4. Proactive "Double Strike" (Sangat Cepat - Tanpa AI Lagi)
+    if (chatParts.length > 1) {
       try {
-        let secondInnerVoice = extractedImpact?.inner_voice;
-        const e = psychState.emotion;
-        const isExtreme = e.anger > 0.8 || e.trust > 0.8 || e.attachment > 0.8 || e.fear > 0.8 || e.joy > 0.8;
-
-        if (!secondInnerVoice && isExtreme) {
-          // Paksa pakai Groq untuk refleksi agar cepat
-          secondInnerVoice = await analyzeSelfReflection(cleanAIResponse, config, psychState);
-        }
+        const secondMessage = chatParts[1];
         
-        if (secondInnerVoice) {
-          const tempState = { ...psychState, inner_voice: secondInnerVoice };
-          const secondSummary = generatePsychologicalSummary(tempState);
-          
-          await sendChatAction(chatId, "typing");
-          
-          const { output: secondOutput } = await generateWithRotation(config, {
-            prompt: "Lanjutkan chatmu tadi dengan hasutan insting barumu ini. Jangan mengulang pesan sebelumnya.",
-            system: ROLEPLAY_TEMPLATES.istri(timeStr, dateStr, secondSummary),
-            temperature: 0.9,
-            // Pangkas histori jadi sangat pendek agar kilat
-            history: [{ role: "assistant", text: cleanAIResponse }],
-            forceProvider: "groq" // PAKSA GROQ (Sangat Cepat)
-          });
-          
-          await sendMessage(chatId, secondOutput.result);
-          await saveChatMessage(chatId, "assistant", secondOutput.result);
-        }
+        // Simulasikan Nafeesa sedang mengetik pesan kedua
+        await sendChatAction(chatId, "typing");
+        await new Promise(resolve => setTimeout(resolve, 1500)); 
+        
+        // Kirim pesan kedua
+        await sendMessage(chatId, secondMessage);
+        
+        // Simpan pesan kedua ke histori
+        await saveChatMessage(chatId, "assistant", secondMessage);
       } catch (err) {
         console.error("[Double-Strike Error]", err.message);
       }
