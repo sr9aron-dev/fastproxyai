@@ -75,7 +75,15 @@ async function handleAIMessage(chatId, text, photo) {
       loadConfig(),
       loadUserConfig(chatId),
       loadChatHistory(chatId, 15),
-      redis.get(KEYS.innerVoice(chatId))
+      (async () => {
+        try {
+          if (!redis) return null;
+          return await redis.get(KEYS.innerVoice(chatId));
+        } catch (e) {
+          console.warn("[Redis Error] Gagal ambil kata hati:", e.message);
+          return null;
+        }
+      })()
     ]);
 
     const forceProvider = userConfig.provider;
@@ -228,7 +236,13 @@ async function handleAIMessage(chatId, text, photo) {
 
     // Simpan Kata Hati ke Redis (Hanya bertahan 1 jam)
     if (mode === "istri" && extractedImpact?.inner_voice) {
-      await redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 });
+      try {
+        if (redis) {
+          await redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 });
+        }
+      } catch (e) {
+        console.warn("[Redis Error] Gagal simpan kata hati:", e.message);
+      }
     }
 
     imagePayload = null;
