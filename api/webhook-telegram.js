@@ -23,20 +23,13 @@ import { buildRoleplayPrompt } from "../src/prompt.mjs";
  */
 
 async function handleKondisiCommand(chatId) {
-  const userConfig = await loadUserConfig(chatId);
-  const s = userConfig.psychology || getInitialPsychology();
+  const miniAppUrl = `${process.env.BASE_URL || 'https://mega-vercel-ai-proxy.vercel.app'}/miniapp.html`;
   
-  const text = `📊 *Kondisi Internal Nafeesa* 📊\n\n` +
-    `❤️ *Emosi:* \n` +
-    `- Trust: ${(s.emotion.trust * 100).toFixed(1)}%\n` +
-    `- Attachment: ${(s.emotion.attachment * 100).toFixed(1)}%\n` +
-    `- Joy: ${(s.emotion.joy * 100).toFixed(1)}%\n` +
-    `- Anger: ${(s.emotion.anger * 100).toFixed(1)}%\n` +
-    `- Fear: ${(s.emotion.fear * 100).toFixed(1)}%\n\n` +
-    `🎭 *Mood:* ${generatePsychologicalSummary(s).split('\n')[1]}\n\n` +
-    `💡 _Status ini berubah secara otomatis berdasarkan cara Anda berbicara dengannya._`;
-
-  await sendMessage(chatId, text);
+  await sendMessage(chatId, `📊 *Monitor Kondisi Nafeesa*\n\nAnda bisa memantau emosi, mood, dan sifat internal saya secara real-time melalui Dashboard.`, {
+    inline_keyboard: [
+      [{ text: "📊 Buka Dashboard Emosi", web_app: { url: miniAppUrl } }]
+    ]
+  });
 }
 
 async function handleStartCommand(chatId) {
@@ -51,68 +44,20 @@ async function handleIdCommand(chatId) {
 }
 
 async function handleSettingsCommand(chatId) {
-  const config = await loadConfig();
-  const userConfig = await loadUserConfig(chatId);
-  const currentProvider = userConfig.provider || config.providerOrder[0];
-  const currentMode = userConfig.mode || "istri";
-
-  const keyboard = [
-    [{ text: `🤖 Model: ${currentProvider.toUpperCase()}`, callback_data: "show_models" }],
-    [{ text: `🎭 Mode: ${currentMode === "istri" ? "Istri ❤️" : "Asisten 💼"}`, callback_data: "toggle_mode" }],
-    [{ text: "🗑️ Hapus Ingatan (Reset)", callback_data: "confirm_reset" }],
-    [{ text: "❌ Tutup Menu", callback_data: "close_menu" }],
-    [{ text: "🗑️ Hapus Riwayat Chat", callback_data: "confirm_clear_chat" }]
-  ];
-
-  await sendMessage(
-    chatId,
-    `*Pengaturan Nafeesa AI*\n\nModel aktif: *${config[currentProvider]?.model || "Unknown"}*\nMode: *${currentMode.toUpperCase()}*\n\nMau atur apa, Boss?`
-    , { reply_markup: { inline_keyboard: keyboard } });
+  const miniAppUrl = `${process.env.BASE_URL || 'https://mega-vercel-ai-proxy.vercel.app'}/miniapp.html`;
+  
+  await sendMessage(chatId, `✨ *Panel Kontrol Nafeesa* ✨\n\nSemua pengaturan mode, provider AI, dan workshop kepribadian sekarang sudah disatukan dalam satu aplikasi agar lebih mudah digunakan.`, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🚀 Buka Panel Nafeesa", web_app: { url: miniAppUrl } }],
+        [{ text: "🗑️ Hapus Riwayat Chat", callback_data: "confirm_clear_chat" }]
+      ]
+    }
+  });
 }
 
 async function handlePersonalityCommand(chatId) {
-  const userConfig = await loadUserConfig(chatId);
-  const p = userConfig.psychology?.personality || getInitialPsychology().personality;
-
-  const keyboard = [
-    [
-      { text: "📖 Keterbukaan", callback_data: "none" },
-      { text: "➖", callback_data: "trait_ope_minus" },
-      { text: p.openness.toFixed(2), callback_data: "none" },
-      { text: "➕", callback_data: "trait_ope_plus" }
-    ],
-    [
-      { text: "💼 Kedisiplinan", callback_data: "none" },
-      { text: "➖", callback_data: "trait_con_minus" },
-      { text: p.conscientiousness.toFixed(2), callback_data: "none" },
-      { text: "➕", callback_data: "trait_con_plus" }
-    ],
-    [
-      { text: "🎉 Energi Sosial", callback_data: "none" },
-      { text: "➖", callback_data: "trait_ext_minus" },
-      { text: p.extraversion.toFixed(2), callback_data: "none" },
-      { text: "➕", callback_data: "trait_ext_plus" }
-    ],
-    [
-      { text: "🤝 Keramahan", callback_data: "none" },
-      { text: "➖", callback_data: "trait_agr_minus" },
-      { text: p.agreeableness.toFixed(2), callback_data: "none" },
-      { text: "➕", callback_data: "trait_agr_plus" }
-    ],
-    [
-      { text: "🧠 Sensitivitas", callback_data: "none" },
-      { text: "➖", callback_data: "trait_neu_minus" },
-      { text: p.neuroticism.toFixed(2), callback_data: "none" },
-      { text: "➕", callback_data: "trait_neu_plus" }
-    ],
-    [{ text: "✅ Selesai", callback_data: "close_menu" }]
-  ];
-
-  await sendMessage(
-    chatId,
-    `*Workshop Kepribadian Nafeesa* 🛠️\n\nAtur sifat dasar istri virtualmu di sini. Nilai berkisar antara 0.0 (rendah) sampai 1.0 (tinggi).`,
-    { reply_markup: { inline_keyboard: keyboard } }
-  );
+  await handleSettingsCommand(chatId);
 }
 
 async function handleAIMessage(chatId, text, photo) {

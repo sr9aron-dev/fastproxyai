@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nafeesa AI Panel</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff4757;
+            --secondary: #2f3542;
+            --accent: #ffa502;
+            --bg: #0f1116;
+            --card: rgba(255, 255, 255, 0.05);
+            --text: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 10px;
+        }
+
+        .header h1 {
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(45deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 28px;
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: var(--card);
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 25px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+        }
+
+        /* Content Sections */
+        .section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .card h3 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Emotion Bars */
+        .stat-row {
+            margin-bottom: 15px;
+        }
+
+        .stat-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 6px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .stat-bar-bg {
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+
+        /* Sliders */
+        .slider-container {
+            margin-bottom: 20px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--primary);
+            background: rgba(255,255,255,0.1);
+            height: 6px;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        /* Toggles/Options */
+        .option-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .option-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: white;
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+
+        .option-btn.active {
+            background: rgba(255, 71, 87, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Save Button */
+        .save-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(45deg, var(--primary), #ff6b81);
+            border: none;
+            border-radius: 15px;
+            color: white;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 800;
+            margin-top: 10px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(255, 71, 87, 0.2);
+        }
+
+        .save-btn:active {
+            transform: scale(0.98);
+        }
+
+        #loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="loading"><div class="spinner"></div></div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Nafeesa AI</h1>
+            <p id="user-name">Virtual Companion Panel</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="dashboard">Dashboard</div>
+            <div class="tab" data-tab="personality">Sifat</div>
+            <div class="tab" data-tab="settings">Setting</div>
+        </div>
+
+        <!-- DASHBOARD TAB -->
+        <div id="dashboard" class="section active">
+            <div class="card">
+                <h3>❤️ Kondisi Hati</h3>
+                <div id="emotion-list"></div>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3 style="justify-content: center;">🎭 Mood Saat Ini</h3>
+                <p id="current-mood" style="font-size: 20px; font-weight: 600; color: var(--accent); margin: 10px 0;">Relaxed & Happy</p>
+            </div>
+        </div>
+
+        <!-- PERSONALITY TAB -->
+        <div id="personality" class="section">
+            <div class="card">
+                <h3>🧠 Workshop Kepribadian</h3>
+                <div id="traits-list"></div>
+            </div>
+        </div>
+
+        <!-- SETTINGS TAB -->
+        <div id="settings" class="section">
+            <div class="card">
+                <h3>🎭 Pilih Mode</h3>
+                <div class="option-group">
+                    <div class="option-btn mode-btn" data-mode="istri">Mode Istri</div>
+                    <div class="option-btn mode-btn" data-mode="asisten">Mode Asisten</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>⚙️ AI Provider</h3>
+                <div class="option-group" id="provider-list">
+                    <div class="option-btn provider-btn" data-provider="groq">Groq</div>
+                    <div class="option-btn provider-btn" data-provider="gemini">Gemini</div>
+                    <div class="option-btn provider-btn" data-provider="mistral">Mistral</div>
+                </div>
+            </div>
+        </div>
+
+        <button class="save-btn" id="save-btn">Simpan Perubahan</button>
+        <div style="height: 50px;"></div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let config = null;
+        const chatId = tg.initDataUnsafe?.user?.id || "6626573860"; // Default for testing
+
+        async function loadData() {
+            try {
+                const res = await fetch('/api/user/config', {
+                    headers: { 'x-telegram-chat-id': chatId }
+                });
+                const data = await res.json();
+                config = data.config;
+                renderUI();
+                document.getElementById('loading').style.display = 'none';
+            } catch (err) {
+                tg.showAlert('Gagal memuat data: ' + err.message);
+            }
+        }
+
+        function renderUI() {
+            // Render Emotions
+            const emoList = document.getElementById('emotion-list');
+            emoList.innerHTML = '';
+            const emos = config.psychology.emotion;
+            Object.keys(emos).forEach(key => {
+                const val = emos[key] * 100;
+                emoList.innerHTML += `
+                    <div class="stat-row">
+                        <div class="stat-label"><span>${key.toUpperCase()}</span><span>${val.toFixed(0)}%</span></div>
+                        <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${val}%"></div></div>
+                    </div>
+                `;
+            });
+
+            // Render Personality Sliders
+            const traitsList = document.getElementById('traits-list');
+            traitsList.innerHTML = '';
+            const traits = config.psychology.personality;
+            const labels = {
+                openness: "📖 Keterbukaan",
+                conscientiousness: "💼 Kedisiplinan",
+                extraversion: "🎉 Energi Sosial",
+                agreeableness: "🤝 Keramahan",
+                neuroticism: "🧠 Sensitivitas"
+            };
+            Object.keys(traits).forEach(key => {
+                traitsList.innerHTML += `
+                    <div class="slider-container">
+                        <div class="stat-label"><span>${labels[key]}</span><span id="val-${key}">${traits[key].toFixed(2)}</span></div>
+                        <input type="range" min="0" max="1" step="0.05" value="${traits[key]}" 
+                            oninput="updateTrait('${key}', this.value)">
+                    </div>
+                `;
+            });
+
+            // Update Buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === config.mode);
+            });
+            document.querySelectorAll('.provider-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.provider === config.provider);
+            });
+        }
+
+        window.updateTrait = (key, val) => {
+            config.psychology.personality[key] = parseFloat(val);
+            document.getElementById(`val-${key}`).innerText = val;
+        };
+
+        // Tab Switching
+        document.querySelectorAll('.tab').forEach(t => {
+            t.addEventListener('click', () => {
+                document.querySelectorAll('.tab, .section').forEach(el => el.classList.remove('active'));
+                t.classList.add('active');
+                document.getElementById(t.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Toggle Buttons
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                config.mode = btn.dataset.mode;
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        document.querySelectorAll('.provider-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                config.provider = btn.dataset.provider;
+                document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        document.getElementById('save-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('save-btn');
+            btn.innerText = 'Menyimpan...';
+            btn.disabled = true;
+
+            try {
+                await fetch('/api/user/config', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-telegram-chat-id': chatId
+                    },
+                    body: JSON.stringify(config)
+                });
+                tg.HapticFeedback.notificationOccurred('success');
+                tg.close();
+            } catch (err) {
+                tg.showAlert('Gagal menyimpan: ' + err.message);
+                btn.innerText = 'Simpan Perubahan';
+                btn.disabled = false;
+            }
+        });
+
+        loadData();
+    </script>
+</body>
+</html>
