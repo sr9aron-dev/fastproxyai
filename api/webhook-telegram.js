@@ -74,7 +74,7 @@ async function handleAIMessage(chatId, text, photo) {
     const [config, userConfig, history] = await Promise.all([
       loadConfig(),
       loadUserConfig(chatId),
-      loadChatHistory(chatId, 20) // Increased history to 20
+      loadChatHistory(chatId, 15) // Pangkas ke 15 pesan
     ]);
 
     const forceProvider = userConfig.provider;
@@ -108,7 +108,7 @@ async function handleAIMessage(chatId, text, photo) {
     }
     
     const systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary);
-    const finalHistory = mode === "istri" ? history : history.slice(-15);
+    const finalHistory = history;
 
     // 2. Main AI Call (Sekaligus Analisa Emosi)
     const { output } = await generateWithRotation(config, {
