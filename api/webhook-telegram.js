@@ -135,7 +135,7 @@ async function handleAIMessage(chatId, text, photo) {
         if (mode === "istri" && psychState) {
           psychState = updatePsychology(psychState, extractedImpact);
           userConfig.psychology = psychState;
-          await saveUserConfig(chatId, userConfig);
+          // Jangan await simpan config di sini, simpan di akhir saja
         }
       } catch (e) {
         console.error("[Psychology Extraction Error]", e.message);
@@ -151,13 +151,12 @@ async function handleAIMessage(chatId, text, photo) {
     // 4. Proactive "Double Strike" (Refleksi Diri)
     if (mode === "istri" && psychState) {
       try {
-        // Ambil hasutan dari pesan pertama atau panggil refleksi jika ekstrem
         let secondInnerVoice = extractedImpact?.inner_voice;
-        
         const e = psychState.emotion;
         const isExtreme = e.anger > 0.8 || e.trust > 0.8 || e.attachment > 0.8 || e.fear > 0.8 || e.joy > 0.8;
 
         if (!secondInnerVoice && isExtreme) {
+          // Paksa pakai Groq untuk refleksi agar cepat
           secondInnerVoice = await analyzeSelfReflection(cleanAIResponse, config, psychState);
         }
         
@@ -171,7 +170,9 @@ async function handleAIMessage(chatId, text, photo) {
             prompt: "Lanjutkan chatmu tadi dengan hasutan insting barumu ini. Jangan mengulang pesan sebelumnya.",
             system: ROLEPLAY_TEMPLATES.istri(timeStr, dateStr, secondSummary),
             temperature: 0.9,
-            history: [...finalHistory, { role: "assistant", text: cleanAIResponse }]
+            // Pangkas histori jadi sangat pendek agar kilat
+            history: [{ role: "assistant", text: cleanAIResponse }],
+            forceProvider: "groq" // PAKSA GROQ (Sangat Cepat)
           });
           
           await sendMessage(chatId, secondOutput.result);
@@ -182,10 +183,11 @@ async function handleAIMessage(chatId, text, photo) {
       }
     }
 
-    // 5. Background tasks
+    // 5. Background tasks (Simpan semua di sini)
     Promise.all([
       saveChatMessage(chatId, "user", text || "[Mengirim Foto]"),
       saveChatMessage(chatId, "assistant", cleanAIResponse),
+      saveUserConfig(chatId, userConfig), // Simpan config di sini
       trackUsage(output.provider, output.model, "success")
     ]).catch(err => console.error("[Background Task Error]", err.message));
 
