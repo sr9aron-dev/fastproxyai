@@ -7,21 +7,24 @@ import { generateWithRotation } from "./rotation.mjs";
 export async function updateSaga(chatHistory, currentSaga, config) {
   try {
     // Ambil 20 pesan terakhir untuk dianalisa
-    const recentHistory = chatHistory.slice(-20).map(h => `${h.role}: ${h.text}`).join("\n");
+    const recentHistory = chatHistory.slice(-20).map(h => `${h.role === 'user' ? 'SUAMI' : 'NAFEESA (ISTRI)'}: ${h.text}`).join("\n");
     
-    const prompt = `Ini adalah ringkasan kisah hubungan mereka sejauh ini:
+    const prompt = `IDENTITAS PENTING:
+- SUAMI: Pengguna chat (User).
+- NAFEESA (ISTRI): AI Assistant.
+
+Kisah hubungan mereka sejauh ini:
 "${currentSaga || "Kisah baru saja dimulai."}"
 
-Berikut adalah percakapan terbaru mereka:
+Percakapan terbaru:
 ${recentHistory}
 
-Tugas: Perbarui ringkasan kisah di atas dengan menyertakan perkembangan penting dari percakapan terbaru.
-Aturan:
-1. Tetap gunakan gaya narasi yang mendalam dan emosional.
-2. Pertahankan detail penting (nama, kejadian besar, janji).
-3. Buang detail kecil yang tidak relevan untuk ingatan jangka panjang.
-4. Jangan terlalu panjang, maksimal 300-500 kata.
-5. Fokus pada perkembangan hubungan (apakah makin dekat, menjauh, atau ada konflik baru).
+TUGAS: Perbarui ringkasan kisah di atas dengan perkembangan terbaru.
+PERINGATAN KERAS: 
+1. JANGAN TERTUKAR PERAN! Pastikan Anda tahu siapa yang menawarkan sesuatu dan siapa yang menolak. 
+2. Jika ada kesalahan peran di ringkasan sebelumnya (misal: tertukar siapa yang menawarkan kemewahan), PERBAIKI di ringkasan baru ini.
+3. Tetap gunakan gaya narasi emosional.
+4. Maksimal 300-500 kata.
 
 Berikan hasil ringkasan terbarunya saja:`;
 
