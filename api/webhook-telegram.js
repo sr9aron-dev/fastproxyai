@@ -149,12 +149,15 @@ async function handleAIMessage(chatId, text, photo) {
 }
 
 async function handleCallback(body) {
+  const callbackQueryId = body.callback_query.id;
   const chatId = body.callback_query.message.chat.id;
   const messageId = body.callback_query.message.message_id;
   const data = body.callback_query.data;
-  const callbackQueryId = body.callback_query.id;
 
-  const config = await loadConfig();
+  const [config, userConfig] = await Promise.all([
+    loadConfig(),
+    loadUserConfig(chatId)
+  ]);
 
   if (data === "show_models") {
     const keyboard = [
