@@ -8,7 +8,7 @@ export async function updateSaga(chatHistory, currentSaga, config) {
   try {
     // Ambil 20 pesan terakhir untuk dianalisa
     const recentHistory = chatHistory.slice(-20).map(h => `${h.role === 'user' ? 'SUAMI' : 'NAFEESA (ISTRI)'}: ${h.text}`).join("\n");
-    
+
     const prompt = `IDENTITAS PENTING:
 - SUAMI: Pengguna chat (User).
 - NAFEESA (ISTRI): AI Assistant.
@@ -24,7 +24,7 @@ PERINGATAN KERAS:
 1. JANGAN TERTUKAR PERAN! Pastikan Anda tahu siapa yang menawarkan sesuatu dan siapa yang menolak. 
 2. Jika ada kesalahan peran di ringkasan sebelumnya (misal: tertukar siapa yang menawarkan kemewahan), PERBAIKI di ringkasan baru ini.
 3. Tetap gunakan gaya narasi emosional.
-4. Maksimal 300-500 kata.
+4. Maksimal 200-300 kata.
 
 Berikan hasil ringkasan terbarunya saja:`;
 

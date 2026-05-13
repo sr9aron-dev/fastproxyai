@@ -157,10 +157,8 @@ export function updatePsychology(state, impactEvent) {
   // 6. Update Inner Voice (Suara Hati)
   if (impactEvent.inner_voice) {
     state.inner_voice = impactEvent.inner_voice;
-  } else {
-    // Reset jika tidak ada dampak ekstrem baru agar tidak terjebak di satu hasutan
-    state.inner_voice = "";
   }
+  // Jangan di-reset di sini agar persistensi Redis tetap terjaga
 
   return state;
 }
