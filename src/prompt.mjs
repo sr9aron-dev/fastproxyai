@@ -95,7 +95,7 @@ export function buildMetadataPrompt(settings = {}, context = {}) {
     .join("\n");
 }
 
-export function buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary = "") {
+export function buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary = "", sagaSummary = "") {
   const template = ROLEPLAY_TEMPLATES[mode] || ROLEPLAY_TEMPLATES.istri;
-  return template(timeStr, dateStr, psychSummary);
+  return template(timeStr, dateStr, psychSummary, sagaSummary);
 }

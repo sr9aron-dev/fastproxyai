@@ -116,6 +116,11 @@ Berikan output dalam format JSON murni:
 export function updatePsychology(state, impactEvent) {
   if (!impactEvent || !impactEvent.impact) return state;
 
+  // Pastikan field personality ada (untuk data lama di DB)
+  if (!state.personality) {
+    state = { ...getInitialPsychology(), ...state };
+  }
+
   const { personality, emotion, relationship, mood } = state;
   const impact = impactEvent.impact;
   const severity = impactEvent.severity || 0.5;
