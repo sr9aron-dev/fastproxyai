@@ -78,7 +78,7 @@ export async function generateWithRotation(config, request) {
       try {
         const output = await caller({
           key: selected.key,
-          model: providerConfig.model,
+          model: request.forceModel || request.model || providerConfig.model,
           image: request.image,
           prompt: request.prompt,
           system: request.system,

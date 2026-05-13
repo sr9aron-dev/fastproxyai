@@ -80,7 +80,8 @@ Berikan output dalam format JSON murni:
       prompt: prompt,
       system: "Anda adalah Psychological Event Analyzer. Tugas Anda hanya memberikan output JSON dampak emosional.",
       temperature: 0.1,
-      forceProvider: "groq" // Gunakan Groq agar jauh lebih cepat
+      forceProvider: "groq", // Gunakan Groq agar jauh lebih cepat
+      forceModel: "llama-3.3-70b-versatile" // Menggunakan model yang lebih pintar untuk analisa
     });
 
     // Clean JSON output if any
