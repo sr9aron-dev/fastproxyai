@@ -1,55 +1,28 @@
-import redis from "./redis.mjs";
 import { generateWithRotation } from "./rotation.mjs";
 
 /**
- * NAFEESA PSYCHOLOGY ENGINE
- * Berdasarkan Arsitektur Sistem Emosi AI Roleplay
+ * NAFEESA PSYCHOLOGY ENGINE - Core Service
+ * Terintegrasi dengan sistem AI Proxy Utama
  */
 
-const DEFAULT_PSYCHOLOGY = {
-  personality: {
-    openness: 0.5,
-    conscientiousness: 0.5,
-    extraversion: 0.5,
-    agreeableness: 0.8,
-    neuroticism: 0.3
-  },
-  emotion: {
-    anger: 0.0,
-    fear: 0.0,
-    trust: 0.7,
-    attachment: 0.5,
-    curiosity: 0.5,
-    loneliness: 0.2,
-    joy: 0.5
-  },
-  mood: {
-    relaxed: 0.7,
-    anxious: 0.1,
-    romantic: 0.2,
-    sad: 0.1
-  },
-  relationship: {
-    trust: 0.7,
-    attachment: 0.5,
-    respect: 0.7,
-    comfort: 0.8,
-    resentment: 0.0
-  },
-  lastUpdate: Date.now()
+const DEFAULT_STATE = {
+  emotion: { anger: 0, fear: 0, trust: 0.7, attachment: 0.5, joy: 0.5 },
+  mood: { relaxed: 0.7, anxious: 0.1, romantic: 0.2 },
+  relationship: { trust: 0.7, attachment: 0.5, respect: 0.7 },
 };
 
-const REDIS_PREFIX = "psychology:";
-
-export async function getPsychologyState(chatId) {
-  const data = await redis.get(`${REDIS_PREFIX}${chatId}`);
-  if (!data) return JSON.parse(JSON.stringify(DEFAULT_PSYCHOLOGY));
-  return data;
-}
-
-export async function savePsychologyState(chatId, state) {
-  state.lastUpdate = Date.now();
-  await redis.set(`${REDIS_PREFIX}${chatId}`, state);
+export function getInitialPsychology(personality = {}) {
+  return {
+    ...DEFAULT_STATE,
+    personality: {
+      openness: 0.5,
+      conscientiousness: 0.5,
+      extraversion: 0.5,
+      agreeableness: 0.8,
+      neuroticism: 0.3,
+      ...personality
+    }
+  };
 }
 
 /**
