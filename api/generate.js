@@ -53,8 +53,12 @@ async function handler(event) {
     
     validateRequest({ ...body, prompt });
 
-    // 1. Check Cache
-    const promptHash = sha256(JSON.stringify({ prompt, settings: body.settings }));
+    // 1. Check Cache (Include image in hash if present)
+    const promptHash = sha256(JSON.stringify({ 
+      prompt, 
+      settings: body.settings,
+      imageHash: body.image ? sha256(JSON.stringify(body.image)) : null 
+    }));
     const cacheKey = KEYS.cache(promptHash);
     
     if (redis) {
