@@ -71,10 +71,11 @@ async function handleAIMessage(chatId, text, photo) {
   let typingInterval;
   try {
     // 1. Load everything in parallel
-    const [config, userConfig, history] = await Promise.all([
+    const [config, userConfig, history, redisInnerVoice] = await Promise.all([
       loadConfig(),
       loadUserConfig(chatId),
-      loadChatHistory(chatId, 15) // Pangkas ke 15 pesan
+      loadChatHistory(chatId, 15),
+      redis.get(KEYS.innerVoice(chatId))
     ]);
 
     const forceProvider = userConfig.provider;
@@ -104,6 +105,8 @@ async function handleAIMessage(chatId, text, photo) {
     let psychState = null;
     if (mode === "istri") {
       psychState = userConfig.psychology || getInitialPsychology(userConfig.personality_traits || {});
+      // Pakai Kata Hati dari Redis jika ada
+      if (redisInnerVoice) psychState.inner_voice = redisInnerVoice;
       psychSummary = generatePsychologicalSummary(psychState);
     }
     
@@ -222,6 +225,11 @@ async function handleAIMessage(chatId, text, photo) {
 
     // WAJIB AWAIT: Agar Vercel tidak mematikan fungsi sebelum simpan data selesai
     await Promise.all(backgroundTasks).catch(err => console.error("[Background Task Error]", err.message));
+
+    // Simpan Kata Hati ke Redis (Hanya bertahan 1 jam)
+    if (mode === "istri" && extractedImpact?.inner_voice) {
+      await redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 });
+    }
 
     imagePayload = null;
 
