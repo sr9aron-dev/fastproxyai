@@ -18,7 +18,8 @@ import {
   getInitialPsychology,
   analyzeSelfReflection
 } from "../src/psychology.mjs";
-import { buildRoleplayPrompt } from "../src/prompt.mjs";
+import { buildRoleplayPrompt, ROLEPLAY_TEMPLATES } from "../src/prompt.mjs";
+import { updateSaga } from "../src/saga.mjs";
 
 /**
  * Telegram Webhook Endpoint
@@ -95,6 +96,7 @@ async function handleAIMessage(chatId, text, photo) {
     const dateStr = now.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     const mode = userConfig.mode || "istri";
+    const sagaSummary = userConfig.saga || "";
     
     // --- PSYCHOLOGY ENGINE INTEGRATION ---
     // 1. Persiapkan Psikologi (Hanya ambil state lama)
@@ -105,7 +107,7 @@ async function handleAIMessage(chatId, text, photo) {
       psychSummary = generatePsychologicalSummary(psychState);
     }
     
-    const systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary);
+    const systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary);
     const finalHistory = mode === "istri" ? history : history.slice(-15);
 
     // 2. Main AI Call (Sekaligus Analisa Emosi)
@@ -176,12 +178,32 @@ async function handleAIMessage(chatId, text, photo) {
     }
 
     // 5. Background tasks (Simpan semua di sini)
-    Promise.all([
+    const backgroundTasks = [
       saveChatMessage(chatId, "user", text || "[Mengirim Foto]"),
       saveChatMessage(chatId, "assistant", cleanAIResponse),
-      saveUserConfig(chatId, userConfig), // Simpan config di sini
       trackUsage(output.provider, output.model, "success")
-    ]).catch(err => console.error("[Background Task Error]", err.message));
+    ];
+
+    // Logika Pembaruan Saga (Background & Non-Blocking)
+    if (mode === "istri") {
+      // Tambah hitungan chat saga
+      userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
+      
+      if (userConfig.chat_count_saga >= 10) {
+        console.log(`[Saga Engine] Triggering story update for ${chatId}...`);
+        backgroundTasks.push(
+          updateSaga(history, userConfig.saga, config).then(newSaga => {
+            userConfig.saga = newSaga;
+            userConfig.chat_count_saga = 0; // Reset
+            return saveUserConfig(chatId, userConfig);
+          })
+        );
+      } else {
+        backgroundTasks.push(saveUserConfig(chatId, userConfig));
+      }
+    }
+
+    Promise.all(backgroundTasks).catch(err => console.error("[Background Task Error]", err.message));
 
     imagePayload = null;
 
