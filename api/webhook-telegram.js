@@ -107,9 +107,7 @@ async function handleAIMessage(chatId, text, photo) {
     const mode = userConfig.mode || "istri";
     const sagaSummary = userConfig.saga || "";
     
-    // --- PSYCHOLOGY ENGINE INTEGRATION ---
     // 1. Persiapkan Psikologi (Hanya ambil state lama)
-    // --- SISTEM SYARAF 4 TAHAP ---
     let psychSummary = "";
     let psychState = null;
     if (mode === "istri") {
@@ -118,42 +116,88 @@ async function handleAIMessage(chatId, text, photo) {
       if (redisInnerVoice) psychState.inner_voice = redisInnerVoice;
       psychSummary = generatePsychologicalSummary(psychState);
     }
-    
-    // TAHAP 1: AI Analyzer Pre-Chat (Membaca Emosi User)
-    // Paksa pakai Groq agar instan
-    const emotionalImpact = await analyzeEmotionalImpact(text, config, history, psychState);
-    if (emotionalImpact) {
-      psychState = updatePsychology(psychState, emotionalImpact);
-      userConfig.psychology = psychState;
-      psychSummary = generatePsychologicalSummary(psychState);
+
+    // --- 1. AI ANALYZER (Pencatat Emosi & Kata Hati) ---
+    let extractedImpact = null;
+    if (mode === "istri" && psychState && text) {
+      console.log(`[Analyzer] Analyzing emotional impact for ${chatId}...`);
+      // Paksa pakai Groq agar analisa kilat (<1.5s)
+      extractedImpact = await analyzeEmotionalImpact(text, config, history, psychState);
+      
+      if (extractedImpact) {
+        // Update Psikologi secara instan di memori
+        psychState = updatePsychology(psychState, extractedImpact);
+        userConfig.psychology = psychState; // Siapkan untuk disimpan nanti
+        
+        // Update Summary untuk disuntikkan ke Nafeesa sekarang juga
+        psychSummary = generatePsychologicalSummary(psychState);
+        
+        // Simpan Kata Hati terbaru ke Redis agar persisten
+        if (extractedImpact.inner_voice) {
+          try {
+            if (redis) {
+              await redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 });
+            }
+          } catch (e) {
+            console.warn("[Redis Error] Gagal simpan kata hati:", e.message);
+          }
+        }
+      }
     }
 
-    // Bangun ulang prompt setelah emosi ter-update
-    const updatedSystemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary);
+    // --- 2. NAFEESA CHATBOT (Aktor & Balasan) ---
+    const systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary);
     const finalHistory = history;
 
-    // TAHAP 2: Nafeesa Balas Chat Utama
+    // 2. Main AI Call
     const { output } = await generateWithRotation(config, {
       prompt: text || "Lihat foto yang aku kirim ini",
-      system: updatedSystemPrompt,
+      system: systemPrompt,
+      temperature: 0.8,
       history: finalHistory,
       image: imagePayload,
-      forceProvider: forceProvider
+      forceProvider
     });
 
     if (typingInterval) clearInterval(typingInterval);
 
-    const rawAIResponse = output.result;
-    const chatParts = rawAIResponse.split("|").map(p => p.trim()).filter(Boolean);
+    let rawAIResponse = output.result;
+    let cleanAIResponse = rawAIResponse.trim();
+
+    // 3. Kirim Pesan Pertama
+    // Cek apakah ada pesan kedua (dipisah oleh '|')
+    const chatParts = cleanAIResponse.split("|").map(p => p.trim()).filter(Boolean);
     const firstMessage = chatParts[0];
 
-    // Kirim Balasan Pertama ke User
     const sendResult = await sendMessage(chatId, firstMessage);
     if (!sendResult || !sendResult.ok) {
       await sendMessage(chatId, firstMessage, { parse_mode: null });
     }
 
-    // Persiapkan Background Tasks (Tahap 3 & 4 masuk ke sini)
+    // 4. Proactive "Multi-Burst" (Nyerocos Otomatis)
+    if (chatParts.length > 1) {
+      try {
+        // Mulai dari elemen kedua (index 1) sampai habis
+        for (let i = 1; i < chatParts.length; i++) {
+          const extraMessage = chatParts[i];
+          
+          // Simulasikan Nafeesa sedang mengetik
+          await sendChatAction(chatId, "typing");
+          // Jeda makin lama sedikit agar terasa natural
+          await new Promise(resolve => setTimeout(resolve, 1000 + (i * 200))); 
+          
+          // Kirim pesan tambahan
+          await sendMessage(chatId, extraMessage);
+          
+          // Simpan ke histori
+          await saveChatMessage(chatId, "assistant", extraMessage);
+        }
+      } catch (err) {
+        console.error("[Multi-Burst Error]", err.message);
+      }
+    }
+
+    // 5. Background tasks (Simpan semua di sini)
     const backgroundTasks = [
       saveChatMessage(chatId, "user", text || "[Mengirim Foto]"),
       saveChatMessage(chatId, "assistant", cleanAIResponse),
