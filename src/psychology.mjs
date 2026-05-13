@@ -81,7 +81,7 @@ Berikan output dalam format JSON murni:
       system: "Anda adalah Psychological Event Analyzer. Tugas Anda hanya memberikan output JSON dampak emosional.",
       temperature: 0.1,
       forceProvider: "groq", // Gunakan Groq agar jauh lebih cepat
-      forceModel: "llama-3.3-70b-versatile" // Menggunakan model yang lebih pintar untuk analisa
+      forceModel: "meta-llama/llama-4-scout-17b-16e-instruct" // Menggunakan model Llama 4 Scout terbaru
     });
 
     // Clean JSON output if any
