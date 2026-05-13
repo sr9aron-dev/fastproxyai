@@ -217,3 +217,40 @@ function getBehaviorValue(base, anger) {
   const val = base - (anger * 0.5);
   return getIntensity(val);
 }
+
+/**
+ * Menganalisa perasaan Nafeesa setelah dia sendiri bicara (Self-Reflection)
+ */
+export async function analyzeSelfReflection(lastResponse, config, currentState) {
+  // Hanya aktif jika emosi ekstrem (>0.8)
+  const e = currentState.emotion;
+  const isExtreme = e.anger > 0.8 || e.trust > 0.8 || e.attachment > 0.8 || e.fear > 0.8 || e.joy > 0.8;
+  
+  if (!isExtreme) return null;
+
+  const prompt = `Nafeesa baru saja membalas chat suaminya dengan kalimat: "${lastResponse}"
+Status Emosi Nafeesa Saat Ini: Anger: ${e.anger.toFixed(2)}, Trust: ${e.trust.toFixed(2)}, Joy: ${e.joy.toFixed(2)}, Fear: ${e.fear.toFixed(2)}.
+
+Tugas: Berdasarkan emosi ekstrem tersebut, apakah Nafeesa punya "pesan tambahan" atau "hasrat mendesak" yang ingin dia katakan secara spontan setelah pesan pertamanya tadi?
+Jika ya, berikan JSON:
+{ "inner_voice": "hasutan insting untuk pesan kedua (misal: tambahan makian, tambahan godaan, atau ungkapan sayang spontan)" }
+Jika tidak ada hal mendesak, berikan JSON kosong {}.`;
+
+  try {
+    const { generateWithRotation } = await import('./rotation.mjs');
+    const { output } = await generateWithRotation(config, {
+      prompt: prompt,
+      system: "Anda adalah Suara Hati Nafeesa. Berikan hasutan tambahan jika emosinya sangat kuat.",
+      temperature: 0.9, 
+      providerOrder: ["groq", "gemini"]
+    });
+
+    const jsonMatch = output.result.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    const res = JSON.parse(jsonMatch[0]);
+    return res.inner_voice || null;
+  } catch (err) {
+    console.error("[Self-Reflection Error]", err.message);
+    return null;
+  }
+}

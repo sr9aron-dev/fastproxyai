@@ -15,7 +15,8 @@ import {
   analyzeEmotionalImpact, 
   updatePsychology, 
   generatePsychologicalSummary,
-  getInitialPsychology
+  getInitialPsychology,
+  analyzeSelfReflection
 } from "../src/psychology.mjs";
 import { buildRoleplayPrompt } from "../src/prompt.mjs";
 
@@ -129,15 +130,45 @@ async function handleAIMessage(chatId, text, photo) {
     if (typingInterval) clearInterval(typingInterval);
 
     // 3. Prioritize Telegram Response
-    const sendResult = await sendMessage(chatId, output.result);
+    const aiResponse = output.result;
+    const sendResult = await sendMessage(chatId, aiResponse);
     if (!sendResult || !sendResult.ok) {
-      await sendMessage(chatId, output.result, { parse_mode: null });
+      await sendMessage(chatId, aiResponse, { parse_mode: null });
     }
 
-    // 4. Background tasks (Don't await these to finish the request faster)
+    // 4. Proactive "Double Strike" (Refleksi Diri)
+    // Hanya jika mode Istri dan ada data psikologi
+    if (mode === "istri" && userConfig.psychology) {
+      const secondInnerVoice = await analyzeSelfReflection(aiResponse, config, userConfig.psychology);
+      
+      if (secondInnerVoice) {
+        // Simpan suara hati kedua ke state (sementara)
+        const tempState = { ...userConfig.psychology, inner_voice: secondInnerVoice };
+        const secondSummary = generatePsychologicalSummary(tempState);
+        
+        // Simulasikan Nafeesa sedang mengetik pesan kedua
+        await sendChatAction(chatId, "typing");
+        
+        // Generate pesan kedua
+        const { output: secondOutput } = await generateWithRotation(config, {
+          prompt: "Lanjutkan chatmu tadi dengan hasutan insting barumu ini. Jangan mengulang pesan sebelumnya.",
+          system: ROLEPLAY_TEMPLATES.istri(timeStr, dateStr, secondSummary),
+          temperature: 0.9,
+          history: [...finalHistory, { role: "assistant", text: aiResponse }]
+        });
+        
+        // Kirim pesan kedua
+        await sendMessage(chatId, secondOutput.result);
+        
+        // Simpan pesan kedua ke histori
+        await saveChatMessage(chatId, "assistant", secondOutput.result);
+      }
+    }
+
+    // 5. Background tasks
     Promise.all([
       saveChatMessage(chatId, "user", text || "[Mengirim Foto]"),
-      saveChatMessage(chatId, "assistant", output.result),
+      saveChatMessage(chatId, "assistant", aiResponse),
       trackUsage(output.provider, output.model, "success")
     ]).catch(err => console.error("[Background Task Error]", err.message));
 
