@@ -73,7 +73,7 @@ Berikan output dalam format JSON murni:
       prompt: prompt,
       system: "Anda adalah Psychological Event Analyzer. Tugas Anda hanya memberikan output JSON dampak emosional.",
       temperature: 0.1,
-      providerOrder: ["mistral", "groq", "gemini"] // Urutan: Mistral -> Groq -> Gemini
+      providerOrder: ["groq", "gemini"] // Prioritas Groq (Llama 4 Scout) -> Gemini
     });
 
     // Robust JSON extraction
@@ -90,6 +90,14 @@ Berikan output dalam format JSON murni:
     const lower = text.toLowerCase();
     if (lower.includes("sayang") || lower.includes("cinta") || lower.includes("makasih") || lower.includes("terima kasih")) {
       return { event_type: "affection", impact: { trust: 0.05, attachment: 0.08, joy: 0.1, anger: -0.05 }, severity: 0.5 };
+    }
+    if (lower.includes("anjing") || lower.includes("bangsat") || lower.includes("goblok") || lower.includes("tolol")) {
+      return { 
+        event_type: "insult_extreme", 
+        inner_voice: "Dia benar-benar merendahkanmu. Jangan diam saja, panggil dia anjing atau tunjukkan amarahmu yang paling meledak!",
+        impact: { anger: 0.3, trust: -0.2, attachment: -0.1 }, 
+        severity: 0.9 
+      };
     }
     if (lower.includes("bodoh") || lower.includes("jelek") || lower.includes("berisik") || lower.includes("diem") || lower.includes("benci")) {
       return { event_type: "insult", impact: { anger: 0.15, trust: -0.1, attachment: -0.05, joy: -0.1 }, severity: 0.7 };
