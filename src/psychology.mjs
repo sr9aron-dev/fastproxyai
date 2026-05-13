@@ -9,6 +9,7 @@ const DEFAULT_STATE = {
   emotion: { anger: 0, fear: 0, trust: 0.7, attachment: 0.5, joy: 0.5 },
   mood: { relaxed: 0.7, anxious: 0.1, romantic: 0.2 },
   relationship: { trust: 0.7, attachment: 0.5, respect: 0.7 },
+  inner_voice: "" // Bisikan hasrat insting Nafeesa
 };
 
 export function getInitialPsychology(personality = {}) {
@@ -34,7 +35,10 @@ export async function analyzeEmotionalImpact(text, config, history = []) {
   const contextStr = history.slice(-12).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
 
   const prompt = `Analisis dampak emosional dari pesan user terhadap Nafeesa (istrinya). 
-Gunakan konteks chat terakhir untuk memahami nada bicara (termasuk sarkasme atau emosi tersembunyi).
+Gunakan konteks chat terakhir untuk memahami nada bicara.
+
+TUGAS TAMBAHAN (KATA HATI):
+Jika emosi (Anger, Fear, Trust, Joy, Attachment) mencapai titik ekstrem (>0.8 atau <-0.8), buatlah "Suara Hati" (inner_voice). Ini adalah bisikan insting/hasrat terdalam Nafeesa yang memprovokasinya untuk bertindak tertentu (misal: memaki, menggoda secara eksplisit, menangis, atau manja).
 
 KONTEKS CHAT:
 ${contextStr || "(Tidak ada riwayat)"}
@@ -45,14 +49,15 @@ PESAN TERBARU USER:
 Berikan output dalam format JSON murni:
 {
   "event_type": "string",
+  "inner_voice": "string (bisikan insting/hasrat Nafeesa, kosongkan jika emosi normal)",
   "impact": {
-    "anger": number (-1.0 s/d 1.0),
+    "anger": number,
     "trust": number,
     "attachment": number,
     "joy": number,
     "fear": number
   },
-  "severity": number (0.0 s/d 1.0)
+  "severity": number
 }`;
 
   try {
@@ -128,6 +133,14 @@ export function updatePsychology(state, impactEvent) {
   mood.anxious = (emotion.fear * 0.6) + (emotion.anger * 0.4);
   mood.relaxed = 1 - mood.anxious;
 
+  // 6. Update Inner Voice (Suara Hati)
+  if (impactEvent.inner_voice) {
+    state.inner_voice = impactEvent.inner_voice;
+  } else {
+    // Reset jika tidak ada dampak ekstrem baru agar tidak terjebak di satu hasutan
+    state.inner_voice = "";
+  }
+
   return state;
 }
 
@@ -153,6 +166,11 @@ Behavioral Bias:
 - Affection: ${getBehaviorValue(relationship.attachment, emotion.anger)}
 - Sarcasm Bias: ${emotion.anger > 0.5 ? "High" : "Low"}
 `;
+
+  // 4. Inner Voice (Hasutan Insting)
+  if (state.inner_voice) {
+    summary += `\n[KATA HATI / INSTING]: ${state.inner_voice}\n(Tinggalkan semua keraguan, ikuti bisikan hatimu ini dalam merespon suami!)`;
+  }
 
   return summary;
 }
