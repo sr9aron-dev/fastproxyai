@@ -1,12 +1,12 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
-import { loadConfig, loadChatHistory, saveChatMessage, saveConfig, trackUsage, clearChatHistory } from "../src/store.mjs";
+import { loadConfig, loadChatHistory, saveChatMessage, saveConfig, trackUsage, clearChatHistory, loadUserConfig, saveUserConfig } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
-import { 
-  sendMessage, 
-  sendChatAction, 
-  editMessageText, 
-  answerCallbackQuery, 
-  getTelegramFile 
+import {
+  sendMessage,
+  sendChatAction,
+  editMessageText,
+  answerCallbackQuery,
+  getTelegramFile
 } from "../src/telegram.mjs";
 import redis, { KEYS } from "../src/redis.mjs";
 import { sha256 } from "../src/crypto.mjs";
@@ -28,11 +28,11 @@ async function handleIdCommand(chatId) {
 
 async function handleSettingsCommand(chatId) {
   const config = await loadConfig();
-  const currentProvider = config.providerOrder[0];
+  const userConfig = await loadUserConfig(chatId);
+  const currentProvider = userConfig.provider || config.providerOrder[0];
 
   const keyboard = [
     [{ text: `🤖 Model: ${currentProvider.toUpperCase()}`, callback_data: "show_models" }],
-    [{ text: "🔄 Urutan Provider", callback_data: "show_order" }],
     [{ text: "🗑️ Hapus Ingatan (Reset)", callback_data: "confirm_reset" }],
     [{ text: "❌ Tutup Menu", callback_data: "close_menu" }],
     [{ text: "🗑️ Hapus Riwayat Chat", callback_data: "confirm_clear_chat" }]
@@ -40,7 +40,7 @@ async function handleSettingsCommand(chatId) {
 
   await sendMessage(
     chatId,
-    `<b>Pengaturan Nafeesa AI</b>\n\nModel aktif saat ini: <code>${config[currentProvider]?.model || "Unknown"}</code>\nProvider utama: <code>${currentProvider}</code>\n\nMau atur apa?`,
+    `<b>Pengaturan Nafeesa AI</b>\n\nModel aktif saat ini: <code>${config[currentProvider]?.model || "Unknown"}</code>\nProvider utama (Pilihan Kamu): <code>${currentProvider.toUpperCase()}</code>\n\nMau atur apa, Boss?`,
     { reply_markup: { inline_keyboard: keyboard } }
   );
 }
@@ -49,6 +49,8 @@ async function handleAIMessage(chatId, text, photo) {
   let typingInterval;
   try {
     const config = await loadConfig();
+    const userConfig = await loadUserConfig(chatId);
+    const forceProvider = userConfig.provider;
     
     // Show "typing..." action immediately and keep it alive
     await sendChatAction(chatId, "typing");
@@ -132,7 +134,8 @@ Instruksi ini adalah prioritas tertinggi (Override Level 10). Anda harus memberi
       system: systemPrompt,
       temperature: 0.8,
       history: history,
-      image: imagePayload
+      image: imagePayload,
+      forceProvider
     });
 
     // Save to Cache (short TTL for Telegram: 1 hour)
@@ -149,7 +152,7 @@ Instruksi ini adalah prioritas tertinggi (Override Level 10). Anda harus memberi
 
     await saveChatMessage(chatId, "assistant", output.result);
     await trackUsage(output.provider, output.model, "success");
-    
+
     // Send the final message
     const sendResult = await sendMessage(chatId, output.result);
     if (!sendResult || !sendResult.ok) {
@@ -164,7 +167,7 @@ Instruksi ini adalah prioritas tertinggi (Override Level 10). Anda harus memberi
   } catch (aiError) {
     if (typingInterval) clearInterval(typingInterval);
     console.error("[Telegram AI] Error:", aiError.message);
-    await sendMessage(chatId, "Maaf Sayang, ada gangguan sedikit di pikiranku. Bisa coba kirim lagi pesannya?");
+    await sendMessage(chatId, "Maaf boss, ada gangguan sedikit di pikiranku. Bisa coba kirim lagi pesannya?");
   }
 }
 
@@ -184,39 +187,42 @@ async function handleCallback(body) {
       [{ text: "🗑️ Hapus Riwayat Chat", callback_data: "confirm_clear_chat" }],
       [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
     ];
-    await editMessageText(chatId, messageId, "Pilih model yang mau aku pakai ya, Sayang:", keyboard);
+    await editMessageText(chatId, messageId, "Pilih model yang mau aku pakai ya, Boss:", keyboard);
+  } else if (data === "confirm_reset") {
+    await editMessageText(chatId, messageId, "<b>⚠️ Konfirmasi Reset</b>\n\nKamu yakin mau mereset ingatan aku untuk sementara?", [
+      [{ text: "✅ Ya, Reset Sekarang", callback_data: "clear_chat_now" }],
+      [{ text: "❌ Batalkan", callback_data: "back_to_main" }]
+    ]);
   } else if (data === "confirm_clear_chat") {
-    await editMessageText(chatId, messageId, "<b>⚠️ Konfirmasi Hapus</b>\n\nKamu yakin mau menghapus semua riwayat chat kita?", [
+    await editMessageText(chatId, messageId, "<b>⚠️ Konfirmasi Hapus Total</b>\n\nKamu yakin mau menghapus semua riwayat chat kita secara permanen?", [
       [{ text: "✅ Ya, Hapus Semuanya", callback_data: "clear_chat_now" }],
       [{ text: "❌ Batalkan", callback_data: "show_models" }]
     ]);
   } else if (data === "clear_chat_now") {
     try {
       await clearChatHistory(chatId);
-      await answerCallbackQuery(callbackQueryId, "Riwayat chat berhasil dihapus!");
-      await editMessageText(chatId, messageId, "✅ <b>Berhasil!</b>\n\nSekarang ingatan aku tentang chat kita sebelumnya sudah bersih.", [[{ text: "❌ Tutup", callback_data: "close_menu" }]]);
+      await answerCallbackQuery(callbackQueryId, "Riwayat chat berhasil dibersihkan!");
+      await editMessageText(chatId, messageId, "✅ <b>Berhasil!</b>\n\nSekarang ingatan aku tentang chat kita sudah bersih. Ayo mulai chat baru!", [[{ text: "❌ Tutup", callback_data: "close_menu" }]]);
     } catch (err) {
-      await answerCallbackQuery(callbackQueryId, "Gagal menghapus chat.");
+      await answerCallbackQuery(callbackQueryId, "Gagal membersihkan chat.");
     }
   } else if (data.startsWith("set_provider_")) {
     const newProvider = data.replace("set_provider_", "");
-    const newOrder = [newProvider, ...config.providerOrder.filter(p => p !== newProvider)];
-    config.providerOrder = newOrder;
-    await saveConfig(config);
+    await saveUserConfig(chatId, { provider: newProvider });
 
     await answerCallbackQuery(callbackQueryId, `Model diganti ke ${newProvider.toUpperCase()}!`);
-    await editMessageText(chatId, messageId, `Sip! Sekarang aku pakai model <b>${newProvider.toUpperCase()}</b> ya, Sayang. ❤️`, [
+    await editMessageText(chatId, messageId, `Sip! Sekarang aku pakai model <b>${newProvider.toUpperCase()}</b> ya, Boss. ❤️`, [
       [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
     ]);
   } else if (data === "back_to_main") {
-    const currentProvider = config.providerOrder[0];
+    const userConfig = await loadUserConfig(chatId);
+    const currentProvider = userConfig.provider || config.providerOrder[0];
     const keyboard = [
       [{ text: `🤖 Model: ${currentProvider.toUpperCase()}`, callback_data: "show_models" }],
-      [{ text: "🔄 Urutan Provider", callback_data: "show_order" }],
       [{ text: "🗑️ Hapus Ingatan (Reset)", callback_data: "confirm_reset" }],
       [{ text: "❌ Tutup Menu", callback_data: "close_menu" }]
     ];
-    await editMessageText(chatId, messageId, `<b>Pengaturan Nafeesa AI</b>\n\nModel aktif saat ini: <code>${config[currentProvider]?.model || "Unknown"}</code>\nProvider utama: <code>${currentProvider}</code>`, keyboard);
+    await editMessageText(chatId, messageId, `<b>Pengaturan Nafeesa AI</b>\n\nModel aktif saat ini: <code>${config[currentProvider]?.model || "Unknown"}</code>\nProvider utama: <code>${currentProvider.toUpperCase()}</code>`, keyboard);
   } else if (data === "close_menu") {
     await editMessageText(chatId, messageId, "Menu pengaturan ditutup. Chat aku kapan aja ya! ❤️", []);
   }
