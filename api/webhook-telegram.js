@@ -23,13 +23,16 @@ import { buildRoleplayPrompt } from "../src/prompt.mjs";
  * Telegram Webhook Endpoint
  */
 
-async function handleKondisiCommand(chatId) {
-  const miniAppUrl = `${process.env.BASE_URL || 'https://mega-vercel-ai-proxy.vercel.app'}/miniapp.html`;
+async function handleKondisiCommand(chatId, event) {
+  const host = event?.headers?.host || process.env.BASE_URL?.replace('https://', '') || 'mega-vercel-ai-proxy.vercel.app';
+  const miniAppUrl = `https://${host}/miniapp.html`;
   
   await sendMessage(chatId, `📊 *Monitor Kondisi Nafeesa*\n\nAnda bisa memantau emosi, mood, dan sifat internal saya secara real-time melalui Dashboard.`, {
-    inline_keyboard: [
-      [{ text: "📊 Buka Dashboard Emosi", web_app: { url: miniAppUrl } }]
-    ]
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "📊 Buka Dashboard Emosi", web_app: { url: miniAppUrl } }]
+      ]
+    }
   });
 }
 
@@ -44,8 +47,9 @@ async function handleIdCommand(chatId) {
   await sendMessage(chatId, `Chat ID kita adalah: *${chatId}*`);
 }
 
-async function handleSettingsCommand(chatId) {
-  const miniAppUrl = `${process.env.BASE_URL || 'https://mega-vercel-ai-proxy.vercel.app'}/miniapp.html`;
+async function handleSettingsCommand(chatId, event) {
+  const host = event?.headers?.host || process.env.BASE_URL?.replace('https://', '') || 'mega-vercel-ai-proxy.vercel.app';
+  const miniAppUrl = `https://${host}/miniapp.html`;
   
   await sendMessage(chatId, `✨ *Panel Kontrol Nafeesa* ✨\n\nSemua pengaturan mode, provider AI, dan workshop kepribadian sekarang sudah disatukan dalam satu aplikasi agar lebih mudah digunakan.`, {
     reply_markup: {
@@ -264,9 +268,9 @@ async function handler(event) {
 
       if (text === "/start") return handleStartCommand(chatId).then(() => json(200, { ok: true }));
       if (text === "/id") return handleIdCommand(chatId).then(() => json(200, { ok: true }));
-      if (text === "/settings" || text === "/s") return handleSettingsCommand(chatId).then(() => json(200, { ok: true }));
-      if (text === "/kondisi" || text === "/k") return handleKondisiCommand(chatId).then(() => json(200, { ok: true }));
-      if (text === "/personality" || text === "/sifat") return handlePersonalityCommand(chatId).then(() => json(200, { ok: true }));
+      if (text === "/settings" || text === "/s") return handleSettingsCommand(chatId, event).then(() => json(200, { ok: true }));
+      if (text === "/kondisi" || text === "/k") return handleKondisiCommand(chatId, event).then(() => json(200, { ok: true }));
+      if (text === "/personality" || text === "/sifat") return handleSettingsCommand(chatId, event).then(() => json(200, { ok: true }));
 
       if (text || photo) {
         await handleAIMessage(chatId, text, photo);
