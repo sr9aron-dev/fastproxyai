@@ -307,6 +307,33 @@
         }
 
         function renderUI() {
+            // Update Mood Text
+            const emo = config.psychology.emotion;
+            const moodEl = document.getElementById('current-mood');
+            
+            let moodText = "Relaxed & Happy";
+            let moodColor = "var(--accent)";
+
+            if (emo.anger > 0.7) {
+                moodText = "Sangat Marah & Kecewa 💢";
+                moodColor = "#ff4757";
+            } else if (emo.fear > 0.7) {
+                moodText = "Sangat Takut & Cemas 😰";
+                moodColor = "#747d8c";
+            } else if (emo.anger > 0.3) {
+                moodText = "Sedikit Kesal 😒";
+                moodColor = "#ffa502";
+            } else if (emo.joy > 0.8) {
+                moodText = "Sangat Bahagia & Ceria ✨";
+                moodColor = "#2ed573";
+            } else if (emo.trust < 0.3) {
+                moodText = "Curiga & Tidak Percaya 🤨";
+                moodColor = "#eccc68";
+            }
+
+            moodEl.innerText = moodText;
+            moodEl.style.color = moodColor;
+
             // Render Emotions
             const emoList = document.getElementById('emotion-list');
             emoList.innerHTML = '';
