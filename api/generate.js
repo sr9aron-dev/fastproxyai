@@ -53,26 +53,6 @@ async function handler(event) {
     
     validateRequest({ ...body, prompt });
 
-    // 1. Check Cache (Include image in hash if present)
-    const promptHash = sha256(JSON.stringify({ 
-      prompt, 
-      settings: body.settings,
-      imageHash: body.image ? sha256(JSON.stringify(body.image)) : null 
-    }));
-    const cacheKey = KEYS.cache(promptHash);
-    
-    if (redis) {
-      const cached = await redis.get(cacheKey);
-      if (cached) {
-        console.log("[Proxy] Cache hit for prompt hash:", promptHash.slice(0, 8));
-        return json(200, {
-          ok: true,
-          cached: true,
-          ...cached
-        });
-      }
-    }
-
     const { output } = await generateWithRotation(config, { ...body, prompt });
 
     // Normalize AI output to structured metadata
@@ -82,16 +62,6 @@ async function handler(event) {
     } catch (err) {
        console.error("[Proxy] Normalization failed:", err.message);
        throw new Error(`AI returned invalid format: ${err.message}`);
-    }
-
-    // 2. Save to Cache
-    if (redis && finalResult) {
-      await redis.set(cacheKey, {
-        provider: output.provider,
-        model: output.model,
-        ...finalResult,
-        usage: output.usage
-      }, { ex: 86400 }); // Cache for 24 hours
     }
 
     // Update lastUsedAt for the specific extension key used
