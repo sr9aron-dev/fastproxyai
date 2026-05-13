@@ -72,7 +72,7 @@ async function handleAIMessage(chatId, text, photo) {
     const [config, userConfig, history] = await Promise.all([
       loadConfig(),
       loadUserConfig(chatId),
-      loadChatHistory(chatId, 12) // Reduced history for speed
+      loadChatHistory(chatId, 20) // Increased history to 20
     ]);
 
     const forceProvider = userConfig.provider;

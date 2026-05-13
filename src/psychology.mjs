@@ -31,7 +31,7 @@ export function getInitialPsychology(personality = {}) {
 export async function analyzeEmotionalImpact(text, config, history = []) {
   if (!text) return null;
 
-  const contextStr = history.slice(-6).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
+  const contextStr = history.slice(-12).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
 
   const prompt = `Analisis dampak emosional dari pesan user terhadap Nafeesa (istrinya). 
 Gunakan konteks chat terakhir untuk memahami nada bicara (termasuk sarkasme atau emosi tersembunyi).
