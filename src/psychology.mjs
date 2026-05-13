@@ -28,11 +28,19 @@ export function getInitialPsychology(personality = {}) {
 /**
  * Menganalisis pesan user untuk mendapatkan dampak emosional
  */
-export async function analyzeEmotionalImpact(text, config) {
+export async function analyzeEmotionalImpact(text, config, history = []) {
   if (!text) return null;
 
-  const prompt = `Analisis dampak emosional dari pesan user berikut terhadap istri virtualnya.
-Pesan User: "${text}"
+  const contextStr = history.slice(-6).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
+
+  const prompt = `Analisis dampak emosional dari pesan user terhadap Nafeesa (istrinya). 
+Gunakan konteks chat terakhir untuk memahami nada bicara (termasuk sarkasme atau emosi tersembunyi).
+
+KONTEKS CHAT:
+${contextStr || "(Tidak ada riwayat)"}
+
+PESAN TERBARU USER: 
+"${text}"
 
 Berikan output dalam format JSON murni:
 {
@@ -42,8 +50,7 @@ Berikan output dalam format JSON murni:
     "trust": number,
     "attachment": number,
     "joy": number,
-    "fear": number,
-    "curiosity": number
+    "fear": number
   },
   "severity": number (0.0 s/d 1.0)
 }`;
