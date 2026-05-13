@@ -150,7 +150,7 @@ async function handleAIMessage(chatId, text, photo) {
   }
 }
 
-async function handleCallback(body) {
+async function handleCallback(body, event) {
   const callbackQueryId = body.callback_query.id;
   const chatId = body.callback_query.message.chat.id;
   const messageId = body.callback_query.message.message_id;
@@ -160,6 +160,9 @@ async function handleCallback(body) {
     loadConfig(),
     loadUserConfig(chatId)
   ]);
+
+  const host = event?.headers?.host || process.env.BASE_URL?.replace('https://', '') || 'mega-vercel-ai-proxy.vercel.app';
+  const miniAppUrl = `https://${host}/miniapp.html`;
 
   if (data === "show_models") {
     const keyboard = [
@@ -205,19 +208,15 @@ async function handleCallback(body) {
       [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
     ];
     await editMessageText(chatId, messageId, `Sip! Sekarang aku jadi *${newMode === "istri" ? "Istri ❤️" : "Asisten 💼"}* kamu ya, Boss.`, keyboard);
-  } else if (data === "back_to_main") {
-    const userConfig = await loadUserConfig(chatId);
-    const currentProvider = userConfig.provider || config.providerOrder[0];
-    const currentMode = userConfig.mode || "istri";
-    const keyboard = [
-      [{ text: `🤖 Model: ${currentProvider.toUpperCase()}`, callback_data: "show_models" }],
-      [{ text: `🎭 Mode: ${currentMode === "istri" ? "Istri ❤️" : "Asisten 💼"}`, callback_data: "toggle_mode" }],
-      [{ text: "📊 Cek Kondisi Saya", callback_data: "check_state" }],
-      [{ text: "🧠 Atur Sifat (Big Five)", callback_data: "show_personality" }],
-      [{ text: "🗑️ Hapus Ingatan (Reset)", callback_data: "confirm_reset" }],
+  } else if (data === "back_to_main" || data === "check_state") {
+    const text = data === "check_state" ? "📊 *Monitor Kondisi Nafeesa*" : "✨ *Panel Kontrol Nafeesa* ✨";
+    const subText = data === "check_state" ? "Pantau emosi, mood, dan sifat internal saya secara real-time." : "Atur mode, model AI, dan kepribadian saya di sini.";
+    
+    await editMessageText(chatId, messageId, `${text}\n\n${subText}`, [
+      [{ text: "🚀 Buka Panel Nafeesa", web_app: { url: miniAppUrl } }],
+      [{ text: "🗑️ Hapus Riwayat Chat", callback_data: "confirm_clear_chat" }],
       [{ text: "❌ Tutup Menu", callback_data: "close_menu" }]
-    ];
-    await editMessageText(chatId, messageId, `*Pengaturan Nafeesa AI*\n\nModel aktif: *${config[currentProvider]?.model || "Unknown"}*\nMode: *${currentMode.toUpperCase()}*`, keyboard);
+    ]);
   } else if (data === "close_menu") {
     await editMessageText(chatId, messageId, "Menu pengaturan ditutup. Chat aku kapan aja ya! ❤️", []);
   } else if (data.startsWith("trait_")) {
@@ -265,23 +264,27 @@ async function handler(event) {
     const body = readJson(event);
 
     if (body.message) {
-      const chatId = body.message.chat.id;
-      const text = body.message.text || body.message.caption || "";
-      const photo = body.message.photo;
+      const { message } = body;
+      const chatId = message.chat.id;
+      const text = message.text || message.caption;
+      const photo = message.photo;
 
+      // 1. Process Commands First
       if (text === "/start") return handleStartCommand(chatId).then(() => json(200, { ok: true }));
       if (text === "/id") return handleIdCommand(chatId).then(() => json(200, { ok: true }));
-      if (text === "/settings" || text === "/s") return handleSettingsCommand(chatId, event).then(() => json(200, { ok: true }));
+      if (text === "/settings" || text === "/menu" || text === "/s") return handleSettingsCommand(chatId, event).then(() => json(200, { ok: true }));
       if (text === "/kondisi" || text === "/k") return handleKondisiCommand(chatId, event).then(() => json(200, { ok: true }));
       if (text === "/personality" || text === "/sifat") return handleSettingsCommand(chatId, event).then(() => json(200, { ok: true }));
 
+      // 2. Process AI Chat if not a command
       if (text || photo) {
         await handleAIMessage(chatId, text, photo);
+        return json(200, { ok: true });
       }
     }
 
     if (body.callback_query) {
-      await handleCallback(body);
+      return handleCallback(body, event).then(() => json(200, { ok: true }));
     }
 
     return json(200, { ok: true });
