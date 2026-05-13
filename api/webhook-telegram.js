@@ -234,7 +234,7 @@ async function handleCallback(body) {
   if (data === "show_models") {
     const keyboard = [
       [{ text: "Gemini 2.0 (Google)", callback_data: "set_provider_gemini" }],
-      [{ text: "Llama 3.3 (Groq)", callback_data: "set_provider_groq" }],
+      [{ text: "Llama 4 Scout (Groq)", callback_data: "set_provider_groq" }],
       [{ text: "Mistral Tiny", callback_data: "set_provider_mistral" }],
       [{ text: "🗑️ Hapus Riwayat Chat", callback_data: "confirm_clear_chat" }],
       [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
