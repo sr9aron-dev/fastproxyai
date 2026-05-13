@@ -152,22 +152,26 @@ async function handleAIMessage(chatId, text, photo) {
       await sendMessage(chatId, firstMessage, { parse_mode: null });
     }
 
-    // 4. Proactive "Double Strike" (Sangat Cepat - Tanpa AI Lagi)
+    // 4. Proactive "Multi-Burst" (Nyerocos Otomatis)
     if (chatParts.length > 1) {
       try {
-        const secondMessage = chatParts[1];
-        
-        // Simulasikan Nafeesa sedang mengetik pesan kedua
-        await sendChatAction(chatId, "typing");
-        await new Promise(resolve => setTimeout(resolve, 1500)); 
-        
-        // Kirim pesan kedua
-        await sendMessage(chatId, secondMessage);
-        
-        // Simpan pesan kedua ke histori
-        await saveChatMessage(chatId, "assistant", secondMessage);
+        // Mulai dari elemen kedua (index 1) sampai habis
+        for (let i = 1; i < chatParts.length; i++) {
+          const extraMessage = chatParts[i];
+          
+          // Simulasikan Nafeesa sedang mengetik
+          await sendChatAction(chatId, "typing");
+          // Jeda makin lama sedikit agar terasa natural
+          await new Promise(resolve => setTimeout(resolve, 1000 + (i * 200))); 
+          
+          // Kirim pesan tambahan
+          await sendMessage(chatId, extraMessage);
+          
+          // Simpan ke histori
+          await saveChatMessage(chatId, "assistant", extraMessage);
+        }
       } catch (err) {
-        console.error("[Double-Strike Error]", err.message);
+        console.error("[Multi-Burst Error]", err.message);
       }
     }
 
