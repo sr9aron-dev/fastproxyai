@@ -41,6 +41,24 @@
             text-align: center;
             margin-bottom: 30px;
             padding-top: 10px;
+            position: relative;
+        }
+
+        .refresh-btn {
+            position: absolute;
+            right: 0;
+            top: 10px;
+            background: var(--card);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .refresh-btn:active {
+            transform: rotate(180deg);
         }
 
         .header h1 {
@@ -234,6 +252,7 @@
         <div class="header">
             <h1>Nafeesa AI</h1>
             <p id="user-name">Virtual Companion Panel</p>
+            <button class="refresh-btn" onclick="refreshData()" title="Refresh Data">🔄</button>
         </div>
 
         <div class="tabs">
@@ -302,8 +321,17 @@
                 renderUI();
                 document.getElementById('loading').style.display = 'none';
             } catch (err) {
-                tg.showAlert('Gagal memuat data: ' + err.message);
+                console.error(err);
+                document.getElementById('loading').style.display = 'none';
             }
+        }
+
+        async function refreshData() {
+            const refreshBtn = document.querySelector('.refresh-btn');
+            refreshBtn.innerText = '⌛';
+            await loadData();
+            refreshBtn.innerText = '🔄';
+            tg.HapticFeedback.impactOccurred('light');
         }
 
         function renderUI() {
