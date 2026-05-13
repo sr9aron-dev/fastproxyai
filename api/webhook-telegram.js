@@ -5,6 +5,8 @@ import { generateWithRotation } from "../src/rotation.mjs";
 import {
   sendMessage,
   sendChatAction,
+  sendSticker,
+  sendPhoto,
   editMessageText,
   answerCallbackQuery,
   getTelegramFile
@@ -186,6 +188,11 @@ async function handleAIMessage(chatId, text, photo) {
       } catch (err) {
         console.error("[Multi-Burst Error]", err.message);
       }
+    }
+
+    // 4b. Eksekusi Aksi Fisik (Jika ada dari AI)
+    if (extractedImpact?.action) {
+      backgroundTasks.push(executeAIAction(chatId, extractedImpact.action));
     }
 
     // 5. Background tasks (Simpan semua di sini)
@@ -395,6 +402,31 @@ async function handler(event) {
   } catch (error) {
     console.error("[Telegram Webhook] error:", error);
     return json(200, { ok: false, error: error.message });
+  }
+}
+
+/**
+ * Eksekutor Aksi Fisik AI
+ */
+async function executeAIAction(chatId, actionStr) {
+  try {
+    const [type, data] = actionStr.split(":");
+    if (!type || !data) return;
+
+    console.log(`[AI Action] Executing ${type} for ${chatId}...`);
+
+    switch (type.trim().toLowerCase()) {
+      case "send_sticker":
+        await sendSticker(chatId, data.trim());
+        break;
+      case "send_photo":
+        await sendPhoto(chatId, data.trim(), "Ini buat kamu, Boss... ❤️");
+        break;
+      default:
+        console.warn("[AI Action] Unknown action type:", type);
+    }
+  } catch (err) {
+    console.error("[AI Action Error]", err.message);
   }
 }
 

@@ -93,3 +93,36 @@ export async function getTelegramFile(fileId) {
     return null;
   }
 }
+
+export async function sendSticker(chatId, stickerId) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendSticker`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, sticker: stickerId })
+    });
+    return await res.json();
+  } catch (error) {
+    console.error("[Telegram Bot] Failed to send sticker:", error);
+  }
+}
+
+export async function sendPhoto(chatId, photoUrlOrId, caption = "") {
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        chat_id: chatId, 
+        photo: photoUrlOrId, 
+        caption: caption,
+        parse_mode: "Markdown"
+      })
+    });
+    return await res.json();
+  } catch (error) {
+    console.error("[Telegram Bot] Failed to send photo:", error);
+  }
+}
