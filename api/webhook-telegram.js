@@ -1,3 +1,4 @@
+// Trigger redeploy for Mini App configuration
 import { json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
 import { loadConfig, loadChatHistory, saveChatMessage, saveConfig, trackUsage, clearChatHistory, loadUserConfig, saveUserConfig } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
