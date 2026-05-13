@@ -147,6 +147,14 @@
             color: rgba(255,255,255,0.7);
         }
 
+        .trait-desc {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            margin-top: -15px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
         .stat-bar-bg {
             height: 8px;
             background: rgba(255,255,255,0.1);
@@ -387,12 +395,20 @@
                 agreeableness: "🤝 Keramahan",
                 neuroticism: "🧠 Sensitivitas"
             };
+            const descs = {
+                openness: "Cerdas, kreatif, & terbuka pada hal baru.",
+                conscientiousness: "Disiplin, teratur, & fokus membantu.",
+                extraversion: "Ceria, semangat, & suka ngobrol.",
+                agreeableness: "Ramah, peduli, & tidak mudah marah.",
+                neuroticism: "Sensitif, mudah cemas/ngambek."
+            };
             Object.keys(traits).forEach(key => {
                 traitsList.innerHTML += `
                     <div class="slider-container">
                         <div class="stat-label"><span>${labels[key]}</span><span id="val-${key}">${traits[key].toFixed(2)}</span></div>
                         <input type="range" min="0" max="1" step="0.05" value="${traits[key]}" 
                             oninput="updateTrait('${key}', this.value)">
+                        <span class="trait-desc">${descs[key]}</span>
                     </div>
                 `;
             });
