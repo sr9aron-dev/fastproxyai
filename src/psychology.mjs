@@ -232,11 +232,10 @@ Behavioral Bias:
 }
 
 function getIntensity(val) {
-  if (val > 0.8) return "Very High";
-  if (val > 0.6) return "High";
-  if (val > 0.4) return "Moderate";
-  if (val > 0.2) return "Low";
-  return "Very Low";
+  if (val >= 0.8) return "Ekstrem";
+  if (val >= 0.6) return "Sedang";
+  if (val >= 0.3) return "Normal";
+  return "Hening";
 }
 
 function getMoodDescription(tag) {
@@ -287,9 +286,3 @@ export function getPreferredAddress(state, husbandProfile = {}) {
   return chosen;
 }
 
-export function getIntensity(val) {
-  if (val >= 0.8) return "Ekstrem";
-  if (val >= 0.6) return "Sedang";
-  if (val >= 0.3) return "Normal";
-  return "Hening";
-}
