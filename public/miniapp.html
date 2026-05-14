@@ -613,6 +613,21 @@
             }
         });
 
+        // Auto-refresh saat kembali ke layar (Visibility Change)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                console.log("[MiniApp] Screen active, refreshing data...");
+                refreshData();
+            }
+        });
+
+        // Polling setiap 30 detik agar data tetap segar
+        setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                refreshData();
+            }
+        }, 30000);
+
         loadData();
     </script>
 </body>
