@@ -3,7 +3,6 @@ import { sha256 } from "../src/crypto.mjs";
 import { validateExtensionToken } from "../src/auth.mjs";
 import { loadConfig, updateKeyLastUsed, trackUsage } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
-import { buildMetadataPrompt } from "../src/prompt.mjs";
 import { normalizeMetadata } from "../src/normalize.mjs";
 import redis, { KEYS } from "../src/redis.mjs";
 
@@ -45,10 +44,10 @@ async function handler(event) {
     const config = await loadConfig();
     const body = readJson(event);
     
-    // Auto-build prompt if not provided as string
-    let prompt = body.prompt;
+    // Require prompt from client
+    const prompt = body.prompt;
     if (!prompt || typeof prompt !== "string") {
-      prompt = buildMetadataPrompt(body.settings, body.context);
+      return json(400, { ok: false, error: { code: "INVALID_REQUEST", message: "Prompt is required as a string" } });
     }
     
     validateRequest({ ...body, prompt });

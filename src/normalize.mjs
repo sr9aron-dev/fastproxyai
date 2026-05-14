@@ -78,8 +78,25 @@ export function normalizeMetadata(providerText, settings = {}) {
   try {
     data = typeof providerText === "string" ? extractJson(providerText) : providerText;
   } catch (e) {
-    // Fallback for plain text responses (e.g. from older extension versions or specific prompts)
+    // Fallback for plain text responses (detect labeled format)
     const text = String(providerText || "").trim();
+    const titleMatch = text.match(/TITLE:\s*(.+)/i);
+    const kwMatch = text.match(/KEYWORDS:\s*(.+)/i);
+    const catMatch = text.match(/CATEGORY:\s*(.+)/i);
+    const ftMatch = text.match(/FILE_TYPE:\s*(.+)/i);
+
+    if (titleMatch || kwMatch) {
+      return {
+        result: text,
+        title: titleMatch ? titleMatch[1].trim() : text.slice(0, 200),
+        keywords: kwMatch ? kwMatch[1].split(",").map(k => k.trim()).filter(Boolean) : [],
+        category: catMatch ? catMatch[1].toLowerCase().trim() : "business",
+        peopleOrProperty: false,
+        fileTypeFlag: ftMatch ? ftMatch[1].toLowerCase().includes("illustration") : false,
+        legacyResult: text
+      };
+    }
+
     return {
       result: text,
       title: text.slice(0, 200),
