@@ -73,9 +73,11 @@ async function handleAIMessage(chatId, text, photo, event) {
 
     // --- SINKRONISASI PSIKOLOGI & KATA HATI ---
     let extractedImpact = null;
-    if (mode === "istri" && text) {
+    const analysisInput = text || (photo ? "[User mengirim sebuah foto]" : null);
+    
+    if (mode === "istri" && analysisInput) {
       console.log(`[Analyzer] Processing emotional impact & instinct for ${chatId}...`);
-      extractedImpact = await analyzeEmotionalImpact(text, config, history, psychState, lifeContext, relationshipStatus);
+      extractedImpact = await analyzeEmotionalImpact(analysisInput, config, history, psychState, lifeContext, relationshipStatus);
       if (extractedImpact) {
         psychState = updatePsychology(psychState, extractedImpact, hoursPassed);
         userConfig.psychology = psychState;

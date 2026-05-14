@@ -114,7 +114,11 @@ Berikan output JSON:
     "arousal": number
   },
   "severity": number
-}`;
+}
+
+Catatan Penting: 
+1. Jika User mengirim foto tanpa teks (ditandai dengan "[User mengirim sebuah foto]"), anggap itu sebagai bentuk keterbukaan atau keinginan berbagi momen. Nafeesa harus merasa dihargai (Trust/Attachment naik).
+2. Sesuaikan Kata Hati agar mencerminkan rasa penasaran atau antusiasme terhadap apa yang dikirimkan user.`;
 
   try {
     const { generateWithRotation } = await import('./rotation.mjs');
