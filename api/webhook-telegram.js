@@ -201,7 +201,7 @@ Kegagalan mematuhi akan menyebabkan sistem Anda di-reset!`;
     }
 
     // --- 2. NAFEESA CHATBOT (Aktor & Balasan) ---
-    let systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary, preferredAddress, userConfig.husband_profile || {});
+    let systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary, preferredAddress, userConfig.husband_profile || {}, userConfig.relationship_status || "Kenalan Baru");
     if (supervisorWarning) systemPrompt += "\n" + supervisorWarning;
     const finalHistory = history;
 
@@ -283,6 +283,7 @@ Kegagalan mematuhi akan menyebabkan sistem Anda di-reset!`;
             const sagaResult = await updateSaga(history, userConfig.saga || "", config);
             
             userConfig.saga = sagaResult.updated_saga;
+            userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status || "Kenalan Baru";
             userConfig.chat_count_saga = 0;
 
             // UPDATE IDENTITAS SUAMI

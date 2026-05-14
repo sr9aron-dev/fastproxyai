@@ -292,6 +292,9 @@
                 <h3 style="justify-content: center;">🎭 Mood Saat Ini</h3>
                 <p id="current-mood" style="font-size: 20px; font-weight: 600; color: var(--accent); margin: 10px 0;">Stable</p>
                 <p id="mood-category" style="font-size: 11px; opacity: 0.5; margin-top: -5px;"></p>
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
+                <h3 style="justify-content: center;">🔗 Status Hubungan</h3>
+                <p id="relationship-status" style="font-size: 16px; font-weight: 500; color: white;">Kenalan Baru</p>
             </div>
 
             <div class="card" id="inner-voice-card" style="display: none; background: rgba(142, 68, 173, 0.1); border: 1px solid rgba(142, 68, 173, 0.3);">
@@ -427,6 +430,7 @@
             document.getElementById('husband-name').innerText = hp.name || "-";
             document.getElementById('husband-job').innerText = hp.job || "-";
             document.getElementById('preferred-address').innerText = config.preferred_address || "Mas";
+            document.getElementById('relationship-status').innerText = config.relationship_status || "Kenalan Baru";
 
             // Update Inner Voice
             const ivCard = document.getElementById('inner-voice-card');

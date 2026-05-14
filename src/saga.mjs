@@ -20,19 +20,22 @@ ${recentHistory}
 
 TUGAS: 
 1. Perbarui sejarah hubungan (Saga) secara naratif.
-2. Identifikasi informasi baru tentang IDENTITAS SUAMI (Nama Lengkap, Panggilan, Pekerjaan, Hobi, Tanggal Lahir).
+2. Identifikasi informasi baru tentang IDENTITAS SUAMI (Nama, Pekerjaan, Hobi, dll).
+3. Tentukan STATUS HUBUNGAN saat ini secara dinamis (Misal: "Kenalan Baru", "Teman tapi Mesra", "Musuh", "Istri yang Setia", "Budak Rahasia", dll).
 
 ATURAN:
 - Gunakan gaya bahasa naratif yang tenang untuk Saga.
+- Status hubungan harus mencerminkan dinamika terbaru (maks 4 kata).
 - Berikan output dalam format JSON:
 {
   "updated_saga": "teks narasi sejarah...",
+  "relationship_status": "deskripsi status saat ini...",
   "husband_identity": {
-    "name": "nama lengkap jika ada",
-    "nickname": "panggilan jika ada",
-    "job": "pekerjaan jika ada",
-    "hobbies": ["hobi1", "hobi2"],
-    "birthday": "tanggal lahir jika ada"
+    "name": "...",
+    "nickname": "...",
+    "job": "...",
+    "hobbies": ["..."],
+    "birthday": "..."
   }
 }`;
 
