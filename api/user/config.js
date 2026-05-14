@@ -48,6 +48,9 @@ async function handler(event) {
           ...currentConfig,
           saga: "",
           chat_count_saga: 0,
+          relationship_status: "Kenalan Baru",
+          husband_profile: {},
+          life_context: "",
           psychology: getInitialPsychology(currentConfig.personality_traits || {}),
           updatedAt: new Date().toISOString()
         };
