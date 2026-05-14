@@ -67,7 +67,7 @@ export async function analyzeEmotionalImpact(text, config, history = [], current
 
   const moodListStr = Object.entries(MOOD_CATEGORIES).map(([cat, tags]) => `${cat}: ${tags.join(", ")}`).join("\n");
 
-  const prompt = `Analisis dampak emosional dari pesan user terhadap Nafeesa (istrinya).
+  const prompt = `Analisis dampak emosional dari pesan user terhadap Nafeesa (pasangannya).
 Gunakan konteks chat dan status emosi saat ini.
 
 ${stateInfo}

@@ -6,11 +6,11 @@ import { generateWithRotation } from "./rotation.mjs";
  */
 export async function updateSaga(chatHistory, currentSaga, config) {
   try {
-    const recentHistory = chatHistory.slice(-20).map(h => `${h.role === 'user' ? 'SUAMI' : 'NAFEESA (ISTRI)'}: ${h.text}`).join("\n");
+    const recentHistory = chatHistory.slice(-20).map(h => `${h.role === 'user' ? 'USER' : 'NAFEESA'}: ${h.text}`).join("\n");
 
     const prompt = `IDENTITAS:
-- SUAMI: User.
-- NAFEESA (ISTRI): AI.
+- USER: Pengguna.
+- NAFEESA: AI.
 
 RINGKASAN SEJARAH SEBELUMNYA:
 "${currentSaga || "Belum ada catatan sejarah."}"
