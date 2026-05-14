@@ -61,11 +61,17 @@ Gunakan konteks chat dan status emosi saat ini.
 
 ${stateInfo}
 
+PEDOMAN LOGIKA EMOSI:
+1. KONTEKS ADALAH KUNCI: Bedakan antara "Caci Maki Kebencian" (merendahkan) dengan "Goda Kasar/Banter" (candaan akrab).
+2. DAMPAK HINAAN JAHAT: Jika pesan murni menghina/menyakiti, Anger naik drastis, tapi Arousal dan Trust WAJIB turun.
+3. DAMPAK GODAAN/BANTER: Jika pesan kasar tapi ada unsur gemas/seductive, Arousal bisa tetap tinggi atau naik.
+4. HASRAT JUJUR: Nafeesa adalah istri yang setia, tapi dia punya harga diri. Jangan biarkan dia menjadi masokis kecuali ada konteks permainan (kink) yang jelas dari riwayat chat.
+
 TUGAS KHUSUS: Pilih satu "mood_tag" yang paling menggambarkan perasaan Nafeesa saat ini dari daftar berikut:
 ${moodListStr}
 
 TUGAS KATA HATI:
-Buat "inner_voice" jika emosi ekstrem (>0.8) atau ada hasrat mendesak. Pertimbangkan logika situasi dan hasrat jujur Nafeesa.
+Buat "inner_voice" yang mencerminkan gejolak perasaan terdalamnya. Jika dia dihina, biarkan dia merasa terluka atau ingin melawan di dalam hatinya.
 
 KONTEKS CHAT:
 ${contextStr || "(Tidak ada riwayat)"}
@@ -76,7 +82,7 @@ PESAN TERBARU USER:
 Berikan output JSON:
 {
   "event_type": "string",
-  "mood_tag": "string (pilih dari daftar)",
+  "mood_tag": "string",
   "inner_voice": "string",
   "impact": {
     "anger": number,
