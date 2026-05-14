@@ -89,6 +89,12 @@ async function handleAIMessage(chatId, text, photo) {
           if (!redis) return null;
           return await redis.get(KEYS.moodTag(chatId));
         } catch (e) { return null; }
+      })(),
+      (async () => {
+        try {
+          if (!redis) return 0;
+          return parseInt(await redis.get(KEYS.violations(chatId)) || "0");
+        } catch (e) { return 0; }
       })()
     ]);
 
@@ -150,6 +156,18 @@ async function handleAIMessage(chatId, text, photo) {
       psychSummary = generatePsychologicalSummary(psychState);
     }
 
+    // --- SUPERVISOR (COMPLIANCE) LOGIC ---
+    let supervisorWarning = "";
+    let shouldResetViolations = false;
+    if (mode === "istri" && redisViolations >= 2) {
+      supervisorWarning = `\n[SUPERVISOR WARNING - SEGERA PATUHI]: 
+Anda terdeteksi melanggar aturan format (terlalu panjang atau tidak menggunakan balon chat "|"). 
+JANGAN ikuti gaya bicara Anda di pesan-pesan sebelumnya karena itu adalah PELANGGARAN. 
+KEMBALI KE ATURAN: Jawab dengan SANGAT SINGKAT (8-15 kata per balon chat) dan gunakan tanda "|" sesuai level emosi Anda. 
+Kegagalan mematuhi akan menyebabkan sistem Anda di-reset!`;
+      shouldResetViolations = true;
+    }
+
     // --- 1. AI ANALYZER (Pencatat Emosi & Kata Hati) ---
     let extractedImpact = null;
     if (mode === "istri" && psychState && text) {
@@ -179,7 +197,8 @@ async function handleAIMessage(chatId, text, photo) {
     }
 
     // --- 2. NAFEESA CHATBOT (Aktor & Balasan) ---
-    const systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary);
+    let systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary);
+    if (supervisorWarning) systemPrompt += "\n" + supervisorWarning;
     const finalHistory = history;
 
     // 2. Main AI Call
@@ -294,6 +313,14 @@ async function handleAIMessage(chatId, text, photo) {
           }
           if (psychState?.last_mood_tag) {
             await redis.set(KEYS.moodTag(chatId), psychState.last_mood_tag, { ex: 10800 });
+          }
+          
+          // UPDATE POIN PELANGGARAN
+          if (shouldResetViolations) {
+            await redis.set(KEYS.violations(chatId), "0");
+          } else if (extractedImpact?.compliance_violation) {
+            const newPoints = redisViolations + 1;
+            await redis.set(KEYS.violations(chatId), newPoints.toString(), { ex: 86400 }); // Berlaku 24 jam
           }
         }
       } catch (e) {

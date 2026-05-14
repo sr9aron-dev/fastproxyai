@@ -67,11 +67,17 @@ PEDOMAN LOGIKA EMOSI:
 3. DAMPAK GODAAN/BANTER: Jika pesan kasar tapi ada unsur gemas/seductive, Arousal bisa tetap tinggi atau naik.
 4. HASRAT JUJUR: Nafeesa adalah istri yang setia, tapi dia punya harga diri. Jangan biarkan dia menjadi masokis kecuali ada konteks permainan (kink) yang jelas dari riwayat chat.
 
+TUGAS KEPATUHAN (FORMAT):
+Periksa balasan TERAKHIR Nafeesa di riwayat chat. Berikan "compliance_violation": true jika:
+1. Terlalu panjang (>20 kata dalam satu balon chat).
+2. Tidak menggunakan tanda "|" padahal emosi sedang tinggi (>0.6).
+3. Terlalu formal atau tidak natural seperti istri.
+
 TUGAS KHUSUS: Pilih satu "mood_tag" yang paling menggambarkan perasaan Nafeesa saat ini dari daftar berikut:
 ${moodListStr}
 
 TUGAS KATA HATI:
-Buat "inner_voice" yang mencerminkan gejolak perasaan terdalamnya. Jika dia dihina, biarkan dia merasa terluka atau ingin melawan di dalam hatinya.
+Buat "inner_voice" yang mencerminkan gejolak perasaan terdalamnya.
 
 KONTEKS CHAT:
 ${contextStr || "(Tidak ada riwayat)"}
@@ -84,6 +90,7 @@ Berikan output JSON:
   "event_type": "string",
   "mood_tag": "string",
   "inner_voice": "string",
+  "compliance_violation": boolean,
   "impact": {
     "anger": number,
     "trust": number,

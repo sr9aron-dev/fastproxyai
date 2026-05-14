@@ -21,5 +21,6 @@ export const KEYS = {
   rateLimit: (ip) => `ratelimit:${ip}`,
   innerVoice: (chatId) => `innervoice:${chatId}`,
   moodTag: (chatId) => `moodtag:${chatId}`,
+  violations: (chatId) => `violations:${chatId}`,
   cursor: (provider) => `cursor:${provider}`
 };
