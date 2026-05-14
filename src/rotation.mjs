@@ -12,16 +12,7 @@ const callers = {
 const MAX_CONCURRENT_PER_KEY = Number(process.env.MAX_CONCURRENT_PER_KEY || 2);
 const HEALTH_BAN_DURATION = 300; // 5 minutes in seconds
 
-function nextKey(providerConfig) {
-  const keys = providerConfig.keys || [];
-  if (keys.length === 0) return null;
-  const cursor = Number(providerConfig.cursor || 0);
-  const index = cursor % keys.length;
-  return {
-    key: keys[index],
-    nextCursor: (index + 1) % keys.length
-  };
-}
+
 
 function isRetryable(error) {
   const status = Number(error.statusCode || 0);
@@ -42,11 +33,24 @@ export async function generateWithRotation(config, request) {
     if (!providerConfig || !caller || !providerConfig.keys?.length) continue;
 
     const attempts = providerConfig.keys.length;
+    const keys = providerConfig.keys;
+
+    // Use Redis for atomic cursor if available
+    let currentIndex = Number(providerConfig.cursor || 0);
+    if (redis) {
+      try {
+        const redisCursor = await redis.incr(KEYS.cursor(provider));
+        currentIndex = redisCursor % keys.length;
+      } catch (e) {
+        console.warn("[Proxy] Redis cursor failed, fallback to memory:", e.message);
+      }
+    }
+
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      const selected = nextKey(providerConfig);
-      if (!selected) break;
+      const index = (currentIndex + attempt) % keys.length;
+      const key = keys[index];
       
-      const keyHash = sha256(selected.key);
+      const keyHash = sha256(key);
       const activeKey = KEYS.activeCount(provider, keyHash);
       const healthKey = KEYS.health(provider, keyHash);
 
@@ -55,7 +59,6 @@ export async function generateWithRotation(config, request) {
         const isBanned = await redis.get(healthKey);
         if (isBanned) {
           console.log(`[Proxy] Skipping unhealthy key for ${provider} (${keyHash.slice(0, 8)})`);
-          providerConfig.cursor = selected.nextCursor; // Rotate anyway
           continue;
         }
 
@@ -63,21 +66,21 @@ export async function generateWithRotation(config, request) {
         const currentActive = await redis.get(activeKey) || 0;
         if (currentActive >= MAX_CONCURRENT_PER_KEY) {
           console.log(`[Proxy] Key at capacity for ${provider} (${keyHash.slice(0, 8)}): ${currentActive}/${MAX_CONCURRENT_PER_KEY}`);
-          providerConfig.cursor = selected.nextCursor; // Rotate
           continue;
         }
       }
 
-      // Update cursor immediately
-      providerConfig.cursor = selected.nextCursor;
-      await updateProviderCursor(provider, selected.nextCursor);
+      // Update local memory & Firestore (Non-blocking backup)
+      const nextIdx = (index + 1) % keys.length;
+      providerConfig.cursor = nextIdx;
+      updateProviderCursor(provider, nextIdx).catch(() => {});
 
       // Track start
       if (redis) await redis.incr(activeKey);
 
       try {
         const output = await caller({
-          key: selected.key,
+          key,
           model: request.forceModel || request.model || providerConfig.model,
           image: request.image,
           prompt: request.prompt,

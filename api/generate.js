@@ -67,10 +67,9 @@ async function handler(event) {
     await updateKeyLastUsed(sha256(token) || token);
 
     // Track Success
-    await trackUsage(output.provider, output.model, "success");
-
-    // Record Detailed Log
-    await recordLog({
+    // Track Usage & Record Log (Non-blocking)
+    trackUsage(output.provider, output.model, "success").catch(() => {});
+    recordLog({
       method: event.httpMethod,
       path: "/api/generate",
       status: 200,
@@ -78,7 +77,7 @@ async function handler(event) {
       provider: output.provider,
       model: output.model,
       message: `Generated metadata for image`
-    });
+    }).catch(() => {});
 
     return json(200, {
       ok: true,
@@ -93,19 +92,17 @@ async function handler(event) {
     let lastProvider = "none";
     let lastModel = "none";
 
-    // Track Error
+    // Track & Record Error (Non-blocking)
     if (error.details && error.details.length > 0) {
-      // Track the last provider that failed
       const last = error.details[error.details.length - 1];
       lastProvider = last.provider;
       lastModel = last.model;
-      await trackUsage(lastProvider, lastModel, "error");
+      trackUsage(lastProvider, lastModel, "error").catch(() => {});
     }
 
     const statusCode = error.statusCode || 500;
 
-    // Record Detailed Error Log
-    await recordLog({
+    recordLog({
       method: event.httpMethod,
       path: "/api/generate",
       status: statusCode,
@@ -114,7 +111,7 @@ async function handler(event) {
       model: lastModel,
       message: error.message,
       error: true
-    });
+    }).catch(() => {});
 
     return json(statusCode, {
       ok: false,

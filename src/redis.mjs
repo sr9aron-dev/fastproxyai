@@ -19,5 +19,6 @@ export const KEYS = {
   health: (provider, keyHash) => `health:${provider}:${keyHash}`,
   cache: (promptHash) => `cache:${promptHash}`,
   rateLimit: (ip) => `ratelimit:${ip}`,
-  innerVoice: (chatId) => `innervoice:${chatId}`
+  innerVoice: (chatId) => `innervoice:${chatId}`,
+  cursor: (provider) => `cursor:${provider}`
 };
