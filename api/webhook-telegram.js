@@ -288,15 +288,15 @@ Kegagalan mematuhi akan menyebabkan sistem Anda di-reset!`;
             // UPDATE IDENTITAS SUAMI
             if (sagaResult.husband_identity) {
               const currentProfile = userConfig.husband_profile || {};
-              const newIdentity = sagaResult.husband_identity;
+              const newIdentity = sagaResult.husband_identity || {};
               
               userConfig.husband_profile = {
                 ...currentProfile,
-                name: newIdentity.name || currentProfile.name,
-                nickname: newIdentity.nickname || currentProfile.nickname,
-                job: newIdentity.job || currentProfile.job,
-                hobbies: Array.from(new Set([...(currentProfile.hobbies || []), ...(newIdentity.hobbies || [])])),
-                birthday: newIdentity.birthday || currentProfile.birthday
+                name: newIdentity.name || currentProfile.name || "",
+                nickname: newIdentity.nickname || currentProfile.nickname || "",
+                job: newIdentity.job || currentProfile.job || "",
+                hobbies: Array.from(new Set([...(currentProfile.hobbies || []), ...(newIdentity.hobbies || [])])).filter(h => typeof h === 'string' && h),
+                birthday: newIdentity.birthday || currentProfile.birthday || ""
               };
             }
             
