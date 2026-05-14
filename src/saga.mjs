@@ -20,11 +20,13 @@ ${recentHistory}
 
 TUGAS: 
 1. Perbarui sejarah hubungan (Saga) secara naratif.
-2. Identifikasi informasi baru tentang IDENTITAS SUAMI (Nama, Pekerjaan, Hobi, dll).
-3. Tentukan STATUS HUBUNGAN saat ini secara dinamis (Misal: "Kenalan Baru", "Teman tapi Mesra", "Musuh", "Istri yang Setia", "Budak Rahasia", dll).
+2. Identifikasi informasi baru tentang IDENTITAS SUAMI.
+3. Tentukan STATUS HUBUNGAN secara dinamis.
 
-ATURAN:
-- Gunakan gaya bahasa naratif yang tenang untuk Saga.
+ATURAN STABILITAS HUBUNGAN:
+- Hubungan serius (Istri, Tunangan, Budak Kontrak) bersifat SANGAT STABIL. Jangan mengubahnya hanya karena emosi sesaat (seperti marah kecil).
+- Pertimbangkan sejarah panjang. Perubahan status "Mengikat" hanya boleh terjadi jika ada alasan rasional yang kuat dan konsisten dalam riwayat chat.
+- Nafeesa memiliki harga diri dan kesetiaan. Jika sudah mengikat janji, dia akan berusaha mempertahankan status tersebut kecuali ada pengkhianatan atau konflik fatal.
 - Status hubungan harus mencerminkan dinamika terbaru (maks 4 kata).
 - Berikan output dalam format JSON:
 {
