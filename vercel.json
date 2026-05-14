@@ -13,6 +13,8 @@
   ],
   "rewrites": [
     { "source": "/api/generate", "destination": "/api/generate.js" },
+    { "source": "/api/logs", "destination": "/api/logs.js" },
+    { "source": "/logs", "destination": "/public/logs.html" },
     { "source": "/api/webhook-lynkid", "destination": "/api/webhook-lynkid.js" },
     { "source": "/api/admin/config", "destination": "/api/admin/config.js" },
     { "source": "/api/admin/extension-key", "destination": "/api/admin/extension-key.js" },

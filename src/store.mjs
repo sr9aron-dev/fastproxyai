@@ -225,6 +225,24 @@ export async function trackUsage(provider, model, status = "success") {
   }
 }
 
+export async function recordLog(details) {
+  if (shouldUseLocalStore()) return;
+
+  try {
+    const logRef = db.collection("logs").doc();
+    await logRef.set({
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      time: new Date().toISOString(),
+      ...details
+    });
+
+    // Keep logs lean - maybe delete old logs? 
+    // For now, just save.
+  } catch (err) {
+    console.error("Error recording log:", err.message);
+  }
+}
+
 export async function loadChatHistory(chatId, limit = 10) {
   if (shouldUseLocalStore()) return [];
 

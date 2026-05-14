@@ -1,7 +1,7 @@
 import { bearerToken, json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
 import { sha256 } from "../src/crypto.mjs";
 import { validateExtensionToken } from "../src/auth.mjs";
-import { loadConfig, updateKeyLastUsed, trackUsage } from "../src/store.mjs";
+import { loadConfig, updateKeyLastUsed, trackUsage, recordLog } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
 import { normalizeMetadata } from "../src/normalize.mjs";
 import redis, { KEYS } from "../src/redis.mjs";
@@ -69,6 +69,17 @@ async function handler(event) {
     // Track Success
     await trackUsage(output.provider, output.model, "success");
 
+    // Record Detailed Log
+    await recordLog({
+      method: event.httpMethod,
+      path: "/api/generate",
+      status: 200,
+      host: event.headers?.host || "unknown",
+      provider: output.provider,
+      model: output.model,
+      message: `Generated metadata for image`
+    });
+
     return json(200, {
       ok: true,
       provider: output.provider,
@@ -78,17 +89,37 @@ async function handler(event) {
     });
   } catch (error) {
     console.error("[Proxy] Generate Error:", error);
+    
+    let lastProvider = "none";
+    let lastModel = "none";
+
     // Track Error
     if (error.details && error.details.length > 0) {
       // Track the last provider that failed
       const last = error.details[error.details.length - 1];
-      await trackUsage(last.provider, last.model, "error");
+      lastProvider = last.provider;
+      lastModel = last.model;
+      await trackUsage(lastProvider, lastModel, "error");
     }
 
-    return json(error.statusCode || 500, {
+    const statusCode = error.statusCode || 500;
+
+    // Record Detailed Error Log
+    await recordLog({
+      method: event.httpMethod,
+      path: "/api/generate",
+      status: statusCode,
+      host: event.headers?.host || "unknown",
+      provider: lastProvider,
+      model: lastModel,
+      message: error.message,
+      error: true
+    });
+
+    return json(statusCode, {
       ok: false,
       error: {
-        code: error.statusCode === 502 ? "NO_PROVIDER_AVAILABLE" : "GENERATE_ERROR",
+        code: statusCode === 502 ? "NO_PROVIDER_AVAILABLE" : "GENERATE_ERROR",
         message: error.message,
         details: error.details || undefined
       }
