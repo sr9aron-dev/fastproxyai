@@ -46,10 +46,3 @@ export function buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary = "", s
   const template = ROLEPLAY_TEMPLATES[mode] || ROLEPLAY_TEMPLATES.istri;
   return template(timeStr, dateStr, psychSummary, sagaSummary);
 }
-
-export const adobeCategories = [
-  "animals", "buildings and architecture", "business", "drinks", "the environment", 
-  "states of mind", "food", "graphic resources", "hobbies and leisure", "industry", 
-  "landscape", "lifestyle", "people", "plants and flowers", "culture and religion", 
-  "science", "social issues", "sports", "technology", "transport", "travel"
-];

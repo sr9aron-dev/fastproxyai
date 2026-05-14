@@ -1,4 +1,9 @@
-import { adobeCategories } from "./prompt.mjs";
+const adobeCategories = [
+  "animals", "buildings and architecture", "business", "drinks", "the environment", 
+  "states of mind", "food", "graphic resources", "hobbies and leisure", "industry", 
+  "landscape", "lifestyle", "people", "plants and flowers", "culture and religion", 
+  "science", "social issues", "sports", "technology", "transport", "travel"
+];
 
 function stripCodeFence(text) {
   return String(text || "")
