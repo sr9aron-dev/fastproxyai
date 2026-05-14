@@ -1,60 +1,28 @@
-// Trigger redeploy for Mini App configuration
 import { json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
-import { loadConfig, loadChatHistory, saveChatMessage, saveConfig, trackUsage, clearChatHistory, loadUserConfig, saveUserConfig, recordLog } from "../src/store.mjs";
+import { loadChatHistory, saveChatMessage, saveConfig, trackUsage, clearChatHistory, loadUserConfig, saveUserConfig, recordLog, loadConfig } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
-import {
-  sendMessage,
-  sendChatAction,
-  editMessageText,
-  answerCallbackQuery,
-  getTelegramFile
-} from "../src/telegram.mjs";
+import { sendMessage, sendChatAction, editMessageText, answerCallbackQuery, getTelegramFile } from "../src/telegram.mjs";
 import redis, { KEYS } from "../src/redis.mjs";
-import { sha256 } from "../src/crypto.mjs";
-import { 
-  analyzeEmotionalImpact, 
-  updatePsychology, 
-  generatePsychologicalSummary,
-  getInitialPsychology,
-  analyzeSelfReflection,
-  getPreferredAddress
-} from "../src/psychology.mjs";
-import { buildRoleplayPrompt, ROLEPLAY_TEMPLATES } from "../src/prompt.mjs";
+import { analyzeEmotionalImpact, updatePsychology, generatePsychologicalSummary, getInitialPsychology, getPreferredAddress } from "../src/psychology.mjs";
+import { buildRoleplayPrompt } from "../src/prompt.mjs";
 import { updateSaga } from "../src/saga.mjs";
-
-/**
- * Telegram Webhook Endpoint
- */
 
 async function handleKondisiCommand(chatId, event) {
   const host = event?.headers?.host || process.env.BASE_URL?.replace('https://', '') || 'mega-vercel-ai-proxy.vercel.app';
   const miniAppUrl = `https://${host}/miniapp.html`;
-  
-  await sendMessage(chatId, `📊 *Monitor Kondisi Nafeesa*\n\nAnda bisa memantau emosi, mood, dan sifat internal saya secara real-time melalui Dashboard.`, {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "📊 Buka Dashboard Emosi", web_app: { url: miniAppUrl } }]
-      ]
-    }
+  await sendMessage(chatId, `📊 *Monitor Kondisi Nafeesa*\n\nPantau emosi, mood, dan sifat internal saya secara real-time melalui Dashboard.`, {
+    reply_markup: { inline_keyboard: [[{ text: "📊 Buka Dashboard Emosi", web_app: { url: miniAppUrl } }]] }
   });
 }
 
 async function handleStartCommand(chatId) {
-  await sendMessage(
-    chatId,
-    `Halo... 👋\n\nAku Nafeesa, Aku siap nemenin kamu setiap saat. Kamu bisa kirim chat atau foto apa aja ke aku... ❤️`
-  );
-}
-
-async function handleIdCommand(chatId) {
-  await sendMessage(chatId, `Chat ID kita adalah: *${chatId}*`);
+  await sendMessage(chatId, `Halo... 👋\n\nAku Nafeesa, Aku siap nemenin kamu setiap saat. Kamu bisa kirim chat atau foto apa aja ke aku... ❤️`);
 }
 
 async function handleSettingsCommand(chatId, event) {
   const host = event?.headers?.host || process.env.BASE_URL?.replace('https://', '') || 'mega-vercel-ai-proxy.vercel.app';
   const miniAppUrl = `https://${host}/miniapp.html`;
-  
-  await sendMessage(chatId, `✨ *Panel Kontrol Nafeesa* ✨\n\nSemua pengaturan mode, provider AI, dan workshop kepribadian sekarang sudah disatukan dalam satu aplikasi agar lebih mudah digunakan.`, {
+  await sendMessage(chatId, `✨ *Panel Kontrol Nafeesa* ✨\n\nAtur mode, model AI, dan kepribadian saya melalui aplikasi dashboard.`, {
     reply_markup: {
       inline_keyboard: [
         [{ text: "🚀 Buka Panel Nafeesa", web_app: { url: miniAppUrl } }],
@@ -64,73 +32,33 @@ async function handleSettingsCommand(chatId, event) {
   });
 }
 
-async function handlePersonalityCommand(chatId) {
-  await handleSettingsCommand(chatId);
-}
-
-async function handleAIMessage(chatId, text, photo) {
+async function handleAIMessage(chatId, text, photo, event) {
   let typingInterval;
+  const backgroundTasks = [];
   try {
-    // 1. Load everything in parallel
-    const [config, userConfig, rawHistory, redisInnerVoice, redisMoodTag, redisViolations] = await Promise.all([
+    // 1. Load Data
+    const [config, userConfig, rawHistory, redisInnerVoice, redisMoodTag] = await Promise.all([
       loadConfig(),
       loadUserConfig(chatId),
       loadChatHistory(chatId, 15),
-      (async () => {
-        try {
-          if (!redis) return null;
-          return await redis.get(KEYS.innerVoice(chatId));
-        } catch (e) {
-          console.warn("[Redis Error] Gagal ambil kata hati:", e.message);
-          return null;
-        }
-      })(),
-      (async () => {
-        try {
-          if (!redis) return null;
-          return await redis.get(KEYS.moodTag(chatId));
-        } catch (e) { return null; }
-      })(),
-      (async () => {
-        try {
-          if (!redis) return 0;
-          return parseInt(await redis.get(KEYS.violations(chatId)) || "0");
-        } catch (e) { return 0; }
-      })()
+      redis ? redis.get(KEYS.innerVoice(chatId)) : null,
+      redis ? redis.get(KEYS.moodTag(chatId)) : null
     ]);
 
-    // --- LOGIKA JEDA WAKTU (TIME GAP) ---
     let history = rawHistory;
     let hoursPassed = 0;
     if (history.length > 0) {
       const lastMsg = history[history.length - 1];
       const lastTime = lastMsg.timestamp?.toDate ? lastMsg.timestamp.toDate() : new Date(lastMsg.timestamp);
       hoursPassed = (new Date() - lastTime) / (1000 * 60 * 60);
-
-      // Jika jeda > 3 jam, lupakan adegan sebelumnya (Scene Reset)
       if (hoursPassed > 3) {
-        console.log(`[Time Gap] Terdeteksi jeda ${hoursPassed.toFixed(1)} jam. Mengosongkan riwayat adegan.`);
         history = []; 
-        
-        // HAPUS DATA TEMPORER DI REDIS
-        try {
-          if (redis) {
-            await Promise.all([
-              redis.del(KEYS.innerVoice(chatId)),
-              redis.del(KEYS.moodTag(chatId))
-            ]);
-          }
-        } catch (e) { }
+        if (redis) await Promise.all([redis.del(KEYS.innerVoice(chatId)), redis.del(KEYS.moodTag(chatId))]);
       }
     }
 
-    const forceProvider = userConfig.provider;
-
-    // Show "typing..."
     await sendChatAction(chatId, "typing");
-    typingInterval = setInterval(() => {
-      sendChatAction(chatId, "typing").catch(() => { });
-    }, 4000);
+    typingInterval = setInterval(() => sendChatAction(chatId, "typing").catch(() => {}), 4000);
 
     let imagePayload = null;
     if (photo && photo.length > 0) {
@@ -138,392 +66,130 @@ async function handleAIMessage(chatId, text, photo) {
       imagePayload = await getTelegramFile(fileId);
     }
 
+    const mode = userConfig.mode || "istri";
+    const lifeContext = userConfig.life_context || "";
+    const relationshipStatus = userConfig.relationship_status || "Kenalan Baru";
+    let psychState = userConfig.psychology || getInitialPsychology(userConfig.personality_traits || {});
+
+    // --- SINKRONISASI PSIKOLOGI & KATA HATI ---
+    let extractedImpact = null;
+    if (mode === "istri" && text) {
+      console.log(`[Analyzer] Processing emotional impact & instinct for ${chatId}...`);
+      extractedImpact = await analyzeEmotionalImpact(text, config, history, psychState, lifeContext, relationshipStatus);
+      if (extractedImpact) {
+        psychState = updatePsychology(psychState, extractedImpact, hoursPassed);
+        userConfig.psychology = psychState;
+        // Simpan Kata Hati & Mood Tag ke Redis agar persisten
+        if (redis) {
+          if (extractedImpact.inner_voice) await redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 });
+          if (extractedImpact.mood_tag) await redis.set(KEYS.moodTag(chatId), extractedImpact.mood_tag, { ex: 10800 });
+        }
+      }
+    }
+
+    const psychSummary = generatePsychologicalSummary(psychState);
+    const preferredAddress = (mode === "istri") ? getPreferredAddress(psychState, userConfig.husband_profile || {}) : "Boss";
     const now = new Date();
     const timeStr = now.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" });
     const dateStr = now.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    const mode = userConfig.mode || "istri";
-    const sagaSummary = userConfig.saga || "";
+    // 2. Build Prompt & Generate Response
+    let systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, userConfig.saga || "", preferredAddress, userConfig.husband_profile || {}, relationshipStatus, lifeContext, psychState.personality || {});
     
-    // 1. Persiapkan Psikologi (Hanya ambil state lama)
-    let psychSummary = "";
-    let psychState = null;
-    if (mode === "istri") {
-      psychState = userConfig.psychology || getInitialPsychology(userConfig.personality_traits || {});
-      // Pakai Kata Hati & Mood Tag dari Redis jika ada
-      if (redisInnerVoice) psychState.inner_voice = redisInnerVoice;
-      if (redisMoodTag) psychState.last_mood_tag = redisMoodTag;
-      
-      psychSummary = generatePsychologicalSummary(psychState);
-    }
-
-    // --- PANGGILAN DINAMIS (HONORIFICS) ---
-    const preferredAddress = (mode === "istri") ? getPreferredAddress(psychState, userConfig.husband_profile || {}) : "Boss";
-
-    // --- SUPERVISOR (COMPLIANCE) LOGIC ---
-    let supervisorWarning = "";
-    let shouldResetViolations = false;
-    if (mode === "istri" && redisViolations >= 2) {
-      supervisorWarning = `\n[SUPERVISOR WARNING - SEGERA PATUHI]: 
-Anda terdeteksi melanggar aturan format (terlalu panjang atau tidak menggunakan balon chat "|"). 
-JANGAN ikuti gaya bicara Anda di pesan-pesan sebelumnya karena itu adalah PELANGGARAN. 
-KEMBALI KE ATURAN: Jawab dengan SANGAT SINGKAT (8-15 kata per balon chat) dan gunakan tanda "|" sesuai level emosi Anda. 
-Kegagalan mematuhi akan menyebabkan sistem Anda di-reset!`;
-      shouldResetViolations = true;
-    }
-
-    // --- 1. AI ANALYZER (Pencatat Emosi & Kata Hati) ---
-    let extractedImpact = null;
-    if (mode === "istri" && psychState && text) {
-      console.log(`[Analyzer] Analyzing emotional impact for ${chatId}...`);
-      // Paksa pakai Groq agar analisa kilat (<1.5s)
-      extractedImpact = await analyzeEmotionalImpact(text, config, history, psychState);
-      
-      if (extractedImpact || hoursPassed > 0) {
-        // Update Psikologi secara instan di memori (Suntikkan hoursPassed untuk decay)
-        psychState = updatePsychology(psychState, extractedImpact, hoursPassed);
-        userConfig.psychology = psychState; // Siapkan untuk disimpan nanti
-        
-        // Update Summary untuk disuntikkan ke Nafeesa sekarang juga
-        psychSummary = generatePsychologicalSummary(psychState);
-        
-        // Simpan Kata Hati terbaru ke Redis agar persisten
-        if (extractedImpact.inner_voice) {
-          try {
-            if (redis) {
-              await redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 });
-            }
-          } catch (e) {
-            console.warn("[Redis Error] Gagal simpan kata hati:", e.message);
-          }
-        }
-      }
-    }
-
-    // --- 2. NAFEESA CHATBOT (Aktor & Balasan) ---
-    let systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary, preferredAddress, userConfig.husband_profile || {}, userConfig.relationship_status || "Kenalan Baru", userConfig.life_context || "");
-    if (supervisorWarning) systemPrompt += "\n" + supervisorWarning;
-    const finalHistory = history;
-
-    // 2. Main AI Call
     const { output } = await generateWithRotation(config, {
-      prompt: text || "Lihat foto yang aku kirim ini",
+      prompt: text || "Lihat foto ini",
       system: systemPrompt,
       temperature: 0.8,
-      history: finalHistory,
+      history: history,
       image: imagePayload,
-      forceProvider
+      forceProvider: userConfig.provider
     });
 
     if (typingInterval) clearInterval(typingInterval);
+    const cleanAIResponse = output.result.trim();
 
-    let rawAIResponse = output.result;
-    let cleanAIResponse = rawAIResponse.trim();
-
-    // 3. Kirim Pesan Pertama
-    // Cek apakah ada pesan kedua (dipisah oleh '|')
+    // 3. Send Messages (Handle Multi-Burst)
     const chatParts = cleanAIResponse.split("|").map(p => p.trim()).filter(Boolean);
-    const firstMessage = chatParts[0];
-
-    const sendResult = await sendMessage(chatId, firstMessage);
-    if (!sendResult || !sendResult.ok) {
-      await sendMessage(chatId, firstMessage, { parse_mode: null });
-    }
-
-    // 4. Proactive "Multi-Burst" (Nyerocos Otomatis)
-    if (chatParts.length > 1) {
-      try {
-        // Mulai dari elemen kedua (index 1) sampai habis
-        for (let i = 1; i < chatParts.length; i++) {
-          const extraMessage = chatParts[i];
-          
-          // Simulasikan Nafeesa sedang mengetik
-          await sendChatAction(chatId, "typing");
-          // Jeda makin lama sedikit agar terasa natural
-          await new Promise(resolve => setTimeout(resolve, 1000 + (i * 200))); 
-          
-          // Kirim pesan tambahan
-          await sendMessage(chatId, extraMessage);
-          
-          // Simpan ke histori
-          await saveChatMessage(chatId, "assistant", extraMessage);
-        }
-      } catch (err) {
-        console.error("[Multi-Burst Error]", err.message);
+    for (let i = 0; i < chatParts.length; i++) {
+      if (i > 0) {
+        await sendChatAction(chatId, "typing");
+        await new Promise(r => setTimeout(r, 1000 + (i * 200)));
       }
+      await sendMessage(chatId, chatParts[i]);
+      backgroundTasks.push(saveChatMessage(chatId, "assistant", chatParts[i]));
     }
 
-    // 5. Background tasks (Simpan semua di sini)
-    const backgroundTasks = [
-      saveChatMessage(chatId, "user", text || "[Mengirim Foto]"),
-      saveChatMessage(chatId, "assistant", cleanAIResponse),
-      trackUsage(output.provider, output.model, "success"),
-      recordLog({
-        method: "CHAT",
-        path: "/api/webhook-telegram",
-        status: 200,
-        host: "Nafeesa Bot",
-        provider: output.provider,
-        model: output.model,
-        message: `Chat from ${chatId}: ${text?.slice(0, 50) || "[Photo]"}`
-      })
-    ];
-
-    // Logika Pembaruan Saga (Background)
+    // 4. Background Updates
+    backgroundTasks.push(saveChatMessage(chatId, "user", text || "[Photo]"));
+    backgroundTasks.push(trackUsage(output.provider, output.model, "success"));
+    
+    // Saga Update Logic
     if (mode === "istri" && text) {
-      // Tambah hitungan chat saga
       userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
-      
-      const shouldUpdateSaga = userConfig.chat_count_saga >= 10 || text === "/story" || !userConfig.saga;
-
-      if (shouldUpdateSaga) {
-        backgroundTasks.push((async () => {
-          try {
-            console.log(`[Saga Engine] Updating story & identity for ${chatId}...`);
-            const sagaResult = await updateSaga(history, userConfig.saga || "", config);
-            
-            userConfig.saga = sagaResult.updated_saga;
-            userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status || "Kenalan Baru";
-            userConfig.chat_count_saga = 0;
-
-            // UPDATE IDENTITAS SUAMI
-            if (sagaResult.husband_identity) {
-              const currentProfile = userConfig.husband_profile || {};
-              const newIdentity = sagaResult.husband_identity || {};
-              
-              userConfig.husband_profile = {
-                ...currentProfile,
-                name: newIdentity.name || currentProfile.name || "",
-                nickname: newIdentity.nickname || currentProfile.nickname || "",
-                job: newIdentity.job || currentProfile.job || "",
-                hobbies: Array.from(new Set([...(currentProfile.hobbies || []), ...(newIdentity.hobbies || [])])).filter(h => typeof h === 'string' && h),
-                birthday: newIdentity.birthday || currentProfile.birthday || ""
-              };
-            }
-            
-            await saveUserConfig(chatId, userConfig);
-            if (text === "/story") {
-              await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${userConfig.saga}`);
-            }
-          } catch (e) {
-            console.error("[Saga Error]", e.message);
-          }
-        })());
-      } else {
-        backgroundTasks.push(saveUserConfig(chatId, userConfig));
-      }
-    }
-
-    // WAJIB AWAIT: Agar Vercel tidak mematikan fungsi sebelum simpan data selesai
-    await Promise.all(backgroundTasks).catch(err => console.error("[Background Task Error]", err.message));
-
-    // Simpan Kata Hati & Mood Tag ke Redis (Hanya bertahan 3 jam)
-    if (mode === "istri") {
-      try {
-        if (redis) {
-          if (extractedImpact?.inner_voice) {
-            await redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 });
-          }
-          if (psychState?.last_mood_tag) {
-            await redis.set(KEYS.moodTag(chatId), psychState.last_mood_tag, { ex: 10800 });
-          }
-          
-          // UPDATE POIN PELANGGARAN
-          if (shouldResetViolations) {
-            await redis.set(KEYS.violations(chatId), "0");
-          } else if (extractedImpact?.compliance_violation) {
-            const newPoints = redisViolations + 1;
-            await redis.set(KEYS.violations(chatId), newPoints.toString(), { ex: 86400 }); // Berlaku 24 jam
-          }
+      if (userConfig.chat_count_saga >= 10 || text === "/story" || !userConfig.saga) {
+        const sagaResult = await updateSaga(history, userConfig.saga || "", config);
+        userConfig.saga = sagaResult.updated_saga;
+        userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status;
+        userConfig.chat_count_saga = 0;
+        if (sagaResult.husband_identity) {
+          userConfig.husband_profile = { ...userConfig.husband_profile, ...sagaResult.husband_identity };
         }
-      } catch (e) {
-        console.warn("[Redis Error] Gagal simpan data temporer:", e.message);
+        if (text === "/story") await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${userConfig.saga}`);
       }
+      backgroundTasks.push(saveUserConfig(chatId, userConfig));
     }
 
-    imagePayload = null;
+    await Promise.all(backgroundTasks).catch(e => console.error("[BG Error]", e.message));
 
-  } catch (aiError) {
+  } catch (err) {
     if (typingInterval) clearInterval(typingInterval);
-    console.error("[Telegram AI] Error:", aiError.message);
-    await sendMessage(chatId, "Maaf boss, ada gangguan sedikit di pikiranku. Bisa coba kirim lagi pesannya?");
-    await recordLog({
-      method: "CHAT",
-      path: "/api/webhook-telegram",
-      status: 500,
-      host: "Nafeesa Bot",
-      message: `Error from ${chatId}: ${aiError.message}`,
-      error: true
-    });
+    console.error("[Chat Error]", err.message);
+    await sendMessage(chatId, "Maaf, ada gangguan sedikit di pikiranku. Bisa coba lagi?");
   }
 }
 
 async function handleCallback(body, event) {
-  const callbackQueryId = body.callback_query.id;
   const chatId = body.callback_query.message.chat.id;
   const messageId = body.callback_query.message.message_id;
   const data = body.callback_query.data;
+  const userConfig = await loadUserConfig(chatId);
 
-  const [config, userConfig] = await Promise.all([
-    loadConfig(),
-    loadUserConfig(chatId)
-  ]);
-
-  const host = event?.headers?.host || process.env.BASE_URL?.replace('https://', '') || 'mega-vercel-ai-proxy.vercel.app';
-  const miniAppUrl = `https://${host}/miniapp.html`;
-
-  if (data === "show_models") {
-    const keyboard = [
-      [{ text: "Gemini 2.0 (Google)", callback_data: "set_provider_gemini" }],
-      [{ text: "Llama 4 Scout (Groq)", callback_data: "set_provider_groq" }],
-      [{ text: "Mistral Tiny", callback_data: "set_provider_mistral" }],
-      [{ text: "🗑️ Hapus Riwayat Chat", callback_data: "confirm_clear_chat" }],
-      [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
-    ];
-    await editMessageText(chatId, messageId, "Pilih model yang mau aku pakai ya, Boss:", keyboard);
-  } else if (data === "confirm_reset") {
-    await editMessageText(chatId, messageId, "<b>⚠️ Konfirmasi Reset</b>\n\nKamu yakin mau mereset ingatan aku untuk sementara?", [
-      [{ text: "✅ Ya, Reset Sekarang", callback_data: "clear_chat_now" }],
-      [{ text: "❌ Batalkan", callback_data: "back_to_main" }]
-    ]);
-  } else if (data === "confirm_clear_chat") {
-    await editMessageText(chatId, messageId, "<b>⚠️ Konfirmasi Hapus Total</b>\n\nKamu yakin mau menghapus semua riwayat chat kita secara permanen?", [
-      [{ text: "✅ Ya, Hapus Semuanya", callback_data: "clear_chat_now" }],
-      [{ text: "❌ Batalkan", callback_data: "show_models" }]
+  if (data === "confirm_clear_chat") {
+    await editMessageText(chatId, messageId, "<b>⚠️ Hapus Total?</b>\n\nSemua riwayat dan ingatan akan hilang permanen.", [
+      [{ text: "✅ Ya, Hapus", callback_data: "clear_chat_now" }],
+      [{ text: "❌ Batal", callback_data: "close_menu" }]
     ]);
   } else if (data === "clear_chat_now") {
-    try {
-      // 1. Hapus riwayat pesan mentah
-      await clearChatHistory(chatId);
-      
-      // 2. Reset Ingatan Jangka Panjang & Psikologi
-      userConfig.saga = "";
-      userConfig.chat_count_saga = 0;
-      userConfig.psychology = getInitialPsychology(userConfig.personality_traits || {});
-      await saveUserConfig(chatId, userConfig);
-      
-      // 3. Hapus Kata Hati di Redis
-      try {
-        if (redis) await redis.del(KEYS.innerVoice(chatId));
-      } catch (re) {
-        console.warn("[Redis Error] Gagal hapus kata hati saat reset:", re.message);
-      }
-
-      await answerCallbackQuery(callbackQueryId, "Amnesia Total Berhasil!");
-      await editMessageText(chatId, messageId, "✅ <b>Buka Lembaran Baru!</b>\n\nSeluruh riwayat chat dan ingatanku tentang kita sudah aku hapus bersih. Aku merasa seperti baru pertama kali mengenalmu lagi... ❤️", [[{ text: "❌ Tutup", callback_data: "close_menu" }]]);
-    } catch (err) {
-      console.error("[Reset Error]", err.message);
-      await answerCallbackQuery(callbackQueryId, "Gagal mereset ingatan.");
-    }
-  } else if (data.startsWith("set_provider_")) {
-    const newProvider = data.replace("set_provider_", "");
-    await saveUserConfig(chatId, { provider: newProvider });
-
-    await answerCallbackQuery(callbackQueryId, `Model diganti ke ${newProvider.toUpperCase()}!`);
-    await editMessageText(chatId, messageId, `Sip! Sekarang aku pakai model <b>${newProvider.toUpperCase()}</b> ya, Boss. ❤️`, [
-      [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
-    ]);
-  } else if (data === "toggle_mode") {
-    const newMode = (userConfig.mode || "istri") === "istri" ? "asisten" : "istri";
-    await saveUserConfig(chatId, { mode: newMode });
-    await answerCallbackQuery(callbackQueryId, `Mode diganti ke ${newMode.toUpperCase()}!`);
-
-    const keyboard = [
-      [{ text: "⬅️ Kembali", callback_data: "back_to_main" }]
-    ];
-    await editMessageText(chatId, messageId, `Sip! Sekarang aku jadi *${newMode === "istri" ? "Istri ❤️" : "Asisten 💼"}* kamu ya, Boss.`, keyboard);
-  } else if (data === "back_to_main" || data === "check_state") {
-    const text = data === "check_state" ? "📊 *Monitor Kondisi Nafeesa*" : "✨ *Panel Kontrol Nafeesa* ✨";
-    const subText = data === "check_state" ? "Pantau emosi, mood, dan sifat internal saya secara real-time." : "Atur mode, model AI, dan kepribadian saya di sini.";
-    
-    await editMessageText(chatId, messageId, `${text}\n\n${subText}`, [
-      [{ text: "🚀 Buka Panel Nafeesa", web_app: { url: miniAppUrl } }],
-      [{ text: "🗑️ Hapus Riwayat Chat", callback_data: "confirm_clear_chat" }],
-      [{ text: "❌ Tutup Menu", callback_data: "close_menu" }]
-    ]);
+    await clearChatHistory(chatId);
+    const initialPsych = getInitialPsychology(userConfig.personality_traits || {});
+    await saveUserConfig(chatId, { 
+      ...userConfig, saga: "", chat_count_saga: 0, relationship_status: "Kenalan Baru", 
+      husband_profile: {}, life_context: "", psychology: initialPsych 
+    });
+    if (redis) await redis.del(KEYS.innerVoice(chatId));
+    await editMessageText(chatId, messageId, "✅ Amnesia Total Berhasil! Mari mulai dari awal lagi... ❤️", []);
   } else if (data === "close_menu") {
-    await editMessageText(chatId, messageId, "Menu pengaturan ditutup. Chat aku kapan aja ya! ❤️", []);
-  } else if (data.startsWith("trait_")) {
-    const [_, trait, action] = data.split("_");
-    const traitMap = {
-      ope: "openness",
-      con: "conscientiousness",
-      ext: "extraversion",
-      agr: "agreeableness",
-      neu: "neuroticism"
-    };
-    
-    const fullTraitName = traitMap[trait];
-    
-    // Pastikan objek psikologi dan personality ada (PENTING untuk data lama)
-    if (!userConfig.psychology) {
-      userConfig.psychology = getInitialPsychology(userConfig.personality_traits || {});
-    }
-    if (!userConfig.psychology.personality) {
-      const initial = getInitialPsychology(userConfig.personality_traits || {});
-      userConfig.psychology.personality = initial.personality;
-    }
-    
-    if (action === "plus") {
-      userConfig.psychology.personality[fullTraitName] = Math.min(1.0, userConfig.psychology.personality[fullTraitName] + 0.05);
-    } else if (action === "minus") {
-      userConfig.psychology.personality[fullTraitName] = Math.max(0.0, userConfig.psychology.personality[fullTraitName] - 0.05);
-    }
-    
-    await saveUserConfig(chatId, userConfig);
-    
-    const p = userConfig.psychology.personality;
-    const keyboard = [
-      [{ text: "📖 Keterbukaan", callback_data: "none" }, { text: "➖", callback_data: "trait_ope_minus" }, { text: p.openness.toFixed(2), callback_data: "none" }, { text: "➕", callback_data: "trait_ope_plus" }],
-      [{ text: "💼 Kedisiplinan", callback_data: "none" }, { text: "➖", callback_data: "trait_con_minus" }, { text: p.conscientiousness.toFixed(2), callback_data: "none" }, { text: "➕", callback_data: "trait_con_plus" }],
-      [{ text: "🎉 Energi Sosial", callback_data: "none" }, { text: "➖", callback_data: "trait_ext_minus" }, { text: p.extraversion.toFixed(2), callback_data: "none" }, { text: "➕", callback_data: "trait_ext_plus" }],
-      [{ text: "🤝 Keramahan", callback_data: "none" }, { text: "➖", callback_data: "trait_agr_minus" }, { text: p.agreeableness.toFixed(2), callback_data: "none" }, { text: "➕", callback_data: "trait_agr_plus" }],
-      [{ text: "🧠 Sensitivitas", callback_data: "none" }, { text: "➖", callback_data: "trait_neu_minus" }, { text: p.neuroticism.toFixed(2), callback_data: "none" }, { text: "➕", callback_data: "trait_neu_plus" }],
-      [{ text: "✅ Selesai", callback_data: "close_menu" }]
-    ];
-    
-    await editMessageText(chatId, messageId, `*Workshop Kepribadian Nafeesa* 🛠️\n\nAtur sifat dasar istri virtualmu di sini. Nilai berkisar antara 0.0 (rendah) sampai 1.0 (tinggi).`, keyboard);
+    await editMessageText(chatId, messageId, "Menu ditutup. Chat aku kapan saja! ❤️", []);
   }
-
-  await answerCallbackQuery(callbackQueryId);
 }
 
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
-  if (event.httpMethod !== "POST") return json(405, { ok: false, error: "Use POST" });
-
-  try {
-    const body = readJson(event);
-
-    if (body.message) {
-      const { message } = body;
-      const chatId = message.chat.id;
-      const text = message.text || message.caption;
-      const photo = message.photo;
-
-      // 1. Process Commands First
-      if (text === "/start") return handleStartCommand(chatId).then(() => json(200, { ok: true }));
-      if (text === "/id") return handleIdCommand(chatId).then(() => json(200, { ok: true }));
-      if (text === "/settings" || text === "/menu" || text === "/s") return handleSettingsCommand(chatId, event).then(() => json(200, { ok: true }));
-      if (text === "/kondisi" || text === "/k") return handleKondisiCommand(chatId, event).then(() => json(200, { ok: true }));
-      if (text === "/personality" || text === "/sifat") return handleSettingsCommand(chatId, event).then(() => json(200, { ok: true }));
-
-      // 2. Process AI Chat if not a command
-      if (text || photo) {
-        await handleAIMessage(chatId, text, photo);
-        return json(200, { ok: true });
-      }
+  const body = readJson(event);
+  if (body.message) {
+    const { message } = body;
+    const chatId = message.chat.id;
+    const text = message.text || message.caption;
+    if (text === "/start") return handleStartCommand(chatId).then(() => json(200, { ok: true }));
+    if (text === "/settings" || text === "/menu") return handleSettingsCommand(chatId, event).then(() => json(200, { ok: true }));
+    if (text === "/kondisi") return handleKondisiCommand(chatId, event).then(() => json(200, { ok: true }));
+    if (text || message.photo) {
+      await handleAIMessage(chatId, text, message.photo, event);
+      return json(200, { ok: true });
     }
-
-    if (body.callback_query) {
-      return handleCallback(body, event).then(() => json(200, { ok: true }));
-    }
-
-    return json(200, { ok: true });
-  } catch (error) {
-    console.error("[Telegram Webhook] error:", error);
-    return json(200, { ok: false, error: error.message });
   }
+  if (body.callback_query) return handleCallback(body, event).then(() => json(200, { ok: true }));
+  return json(200, { ok: true });
 }
 
 export default vercelHandler(handler);

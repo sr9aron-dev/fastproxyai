@@ -49,36 +49,39 @@ export function getInitialPsychology(personality = {}) {
 /**
  * Menganalisis pesan user untuk mendapatkan dampak emosional
  */
-export async function analyzeEmotionalImpact(text, config, history = [], currentState = null) {
+export async function analyzeEmotionalImpact(text, config, history = [], currentState = null, lifeContext = "", relationshipStatus = "Kenalan Baru") {
   if (!text) return null;
 
+  const personality = currentState?.personality || {};
   const contextStr = history.slice(-12).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
   
   let stateInfo = "";
   if (currentState && currentState.emotion) {
     const e = currentState.emotion;
-    const a = (e.anger || 0).toFixed(2);
-    const t = (e.trust || 0).toFixed(2);
-    const j = (e.joy || 0).toFixed(2);
-    const att = (e.attachment || 0).toFixed(2);
-    const ars = (e.arousal || 0).toFixed(2);
-    stateInfo = `STATUS SAAT INI: Anger: ${a}, Trust: ${t}, Joy: ${j}, Attachment: ${att}, Arousal: ${ars}. Mood Terakhir: ${currentState.last_mood_tag || 'stable'}`;
+    stateInfo = `STATUS EMOSI NAFEESA SAAT INI: 
+- Anger: ${(e.anger || 0).toFixed(2)}
+- Trust: ${(e.trust || 0).toFixed(2)}
+- Joy: ${(e.joy || 0).toFixed(2)}
+- Attachment: ${(e.attachment || 0).toFixed(2)}
+- Arousal: ${(e.arousal || 0).toFixed(2)}
+- Mood Terakhir: ${currentState.last_mood_tag || 'stable'}`;
   }
 
   const moodListStr = Object.entries(MOOD_CATEGORIES).map(([cat, tags]) => `${cat}: ${tags.join(", ")}`).join("\n");
 
-  const prompt = `Analisis dampak emosional dari pesan user terhadap Nafeesa (pasangannya).
-Gunakan konteks chat dan status emosi saat ini.
+  const prompt = `Analisis dampak emosional dari pesan user terhadap Nafeesa.
+Nafeesa adalah karakter dengan profil:
+- STATUS HUBUNGAN: ${relationshipStatus}
+- KONDISI HIDUP/MOTIVASI: ${lifeContext || "Normal"}
+- KEPRIBADIAN (Big Five): Openness=${personality.openness}, Conscientiousness=${personality.conscientiousness}, Extraversion=${personality.extraversion}, Agreeableness=${personality.agreeableness}, Neuroticism=${personality.neuroticism}
+
+HISTORI CHAT:
+${contextStr}
+
+PESAN TERBARU USER: "${text}"
 
 ${stateInfo}
 
-PEDOMAN LOGIKA EMOSI:
-1. KONTEKS ADALAH KUNCI: Bedakan antara "Caci Maki Kebencian" (merendahkan) dengan "Goda Kasar/Banter" (candaan akrab).
-2. DAMPAK HINAAN JAHAT: Jika pesan murni menghina/menyakiti, Anger naik drastis, tapi Arousal dan Trust WAJIB turun.
-3. DAMPAK GODAAN/BANTER: Jika pesan kasar tapi ada unsur gemas/seductive, Arousal bisa tetap tinggi atau naik.
-4. HASRAT JUJUR: Nafeesa adalah istri yang setia, tapi dia punya harga diri. Jangan biarkan dia menjadi masokis kecuali ada konteks permainan (kink) yang jelas dari riwayat chat.
-
-TUGAS KEPATUHAN (FORMAT):
 Periksa balasan TERAKHIR Nafeesa di riwayat chat. Berikan "compliance_violation": true jika:
 1. Terlalu panjang (>20 kata dalam satu balon chat).
 2. Tidak menggunakan tanda "|" padahal emosi sedang tinggi (>0.6).
@@ -284,30 +287,9 @@ export function getPreferredAddress(state, husbandProfile = {}) {
   return chosen;
 }
 
-export async function analyzeSelfReflection(lastResponse, config, currentState) {
-  const e = currentState.emotion;
-  const isExtreme = e.anger > 0.8 || e.arousal > 0.7 || e.attachment > 0.8;
-  
-  if (!isExtreme) return null;
-
-  const prompt = `Nafeesa baru saja membalas: "${lastResponse}"
-Status: Anger: ${(e.anger || 0).toFixed(2)}, Arousal: ${(e.arousal || 0).toFixed(2)}, Attachment: ${(e.attachment || 0).toFixed(2)}.
-
-Apakah Nafeesa punya "hasrat mendesak" tambahan (godaan, makian, atau manja spontan)? Berikan JSON { "inner_voice": "..." } atau {}.`;
-
-  try {
-    const { generateWithRotation } = await import('./rotation.mjs');
-    const { output } = await generateWithRotation(config, {
-      prompt: prompt,
-      system: "Anda adalah Suara Hati Nafeesa.",
-      temperature: 0.9, 
-      providerOrder: ["groq", "gemini"]
-    });
-
-    const jsonMatch = output.result.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    return JSON.parse(jsonMatch[0]).inner_voice || null;
-  } catch (err) {
-    return null;
-  }
+export function getIntensity(val) {
+  if (val >= 0.8) return "Ekstrem";
+  if (val >= 0.6) return "Sedang";
+  if (val >= 0.3) return "Normal";
+  return "Hening";
 }
