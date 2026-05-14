@@ -13,6 +13,19 @@ async function handler(event) {
     if (event.httpMethod === "GET") {
       const config = await loadUserConfig(chatId);
       if (!config.psychology) config.psychology = getInitialPsychology(config.personality_traits);
+      
+      // SINKRONISASI DATA TEMPORER DARI REDIS
+      try {
+        if (redis) {
+          const [innerVoice, moodTag] = await Promise.all([
+            redis.get(KEYS.innerVoice(chatId)),
+            redis.get(KEYS.moodTag(chatId))
+          ]);
+          if (innerVoice) config.psychology.inner_voice = innerVoice;
+          if (moodTag) config.psychology.last_mood_tag = moodTag;
+        }
+      } catch (e) { }
+
       return json(200, { ok: true, config });
     }
 

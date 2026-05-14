@@ -71,7 +71,7 @@ async function handleAIMessage(chatId, text, photo) {
   let typingInterval;
   try {
     // 1. Load everything in parallel
-    const [config, userConfig, history, redisInnerVoice] = await Promise.all([
+    const [config, userConfig, rawHistory, redisInnerVoice, redisMoodTag] = await Promise.all([
       loadConfig(),
       loadUserConfig(chatId),
       loadChatHistory(chatId, 15),
@@ -83,8 +83,39 @@ async function handleAIMessage(chatId, text, photo) {
           console.warn("[Redis Error] Gagal ambil kata hati:", e.message);
           return null;
         }
+      })(),
+      (async () => {
+        try {
+          if (!redis) return null;
+          return await redis.get(KEYS.moodTag(chatId));
+        } catch (e) { return null; }
       })()
     ]);
+
+    // --- LOGIKA JEDA WAKTU (TIME GAP) ---
+    let history = rawHistory;
+    let hoursPassed = 0;
+    if (history.length > 0) {
+      const lastMsg = history[history.length - 1];
+      const lastTime = lastMsg.timestamp?.toDate ? lastMsg.timestamp.toDate() : new Date(lastMsg.timestamp);
+      hoursPassed = (new Date() - lastTime) / (1000 * 60 * 60);
+
+      // Jika jeda > 3 jam, lupakan adegan sebelumnya (Scene Reset)
+      if (hoursPassed > 3) {
+        console.log(`[Time Gap] Terdeteksi jeda ${hoursPassed.toFixed(1)} jam. Mengosongkan riwayat adegan.`);
+        history = []; 
+        
+        // HAPUS DATA TEMPORER DI REDIS
+        try {
+          if (redis) {
+            await Promise.all([
+              redis.del(KEYS.innerVoice(chatId)),
+              redis.del(KEYS.moodTag(chatId))
+            ]);
+          }
+        } catch (e) { }
+      }
+    }
 
     const forceProvider = userConfig.provider;
 
@@ -112,8 +143,10 @@ async function handleAIMessage(chatId, text, photo) {
     let psychState = null;
     if (mode === "istri") {
       psychState = userConfig.psychology || getInitialPsychology(userConfig.personality_traits || {});
-      // Pakai Kata Hati dari Redis jika ada
+      // Pakai Kata Hati & Mood Tag dari Redis jika ada
       if (redisInnerVoice) psychState.inner_voice = redisInnerVoice;
+      if (redisMoodTag) psychState.last_mood_tag = redisMoodTag;
+      
       psychSummary = generatePsychologicalSummary(psychState);
     }
 
@@ -124,9 +157,9 @@ async function handleAIMessage(chatId, text, photo) {
       // Paksa pakai Groq agar analisa kilat (<1.5s)
       extractedImpact = await analyzeEmotionalImpact(text, config, history, psychState);
       
-      if (extractedImpact) {
-        // Update Psikologi secara instan di memori
-        psychState = updatePsychology(psychState, extractedImpact);
+      if (extractedImpact || hoursPassed > 0) {
+        // Update Psikologi secara instan di memori (Suntikkan hoursPassed untuk decay)
+        psychState = updatePsychology(psychState, extractedImpact, hoursPassed);
         userConfig.psychology = psychState; // Siapkan untuk disimpan nanti
         
         // Update Summary untuk disuntikkan ke Nafeesa sekarang juga
@@ -252,14 +285,19 @@ async function handleAIMessage(chatId, text, photo) {
     // WAJIB AWAIT: Agar Vercel tidak mematikan fungsi sebelum simpan data selesai
     await Promise.all(backgroundTasks).catch(err => console.error("[Background Task Error]", err.message));
 
-    // Simpan Kata Hati ke Redis (Hanya bertahan 1 jam)
-    if (mode === "istri" && extractedImpact?.inner_voice) {
+    // Simpan Kata Hati & Mood Tag ke Redis (Hanya bertahan 3 jam)
+    if (mode === "istri") {
       try {
         if (redis) {
-          await redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 });
+          if (extractedImpact?.inner_voice) {
+            await redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 });
+          }
+          if (psychState?.last_mood_tag) {
+            await redis.set(KEYS.moodTag(chatId), psychState.last_mood_tag, { ex: 10800 });
+          }
         }
       } catch (e) {
-        console.warn("[Redis Error] Gagal simpan kata hati:", e.message);
+        console.warn("[Redis Error] Gagal simpan data temporer:", e.message);
       }
     }
 

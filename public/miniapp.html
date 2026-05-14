@@ -281,7 +281,13 @@
             </div>
             <div class="card" style="text-align: center;">
                 <h3 style="justify-content: center;">🎭 Mood Saat Ini</h3>
-                <p id="current-mood" style="font-size: 20px; font-weight: 600; color: var(--accent); margin: 10px 0;">Relaxed & Happy</p>
+                <p id="current-mood" style="font-size: 20px; font-weight: 600; color: var(--accent); margin: 10px 0;">Stable</p>
+                <p id="mood-category" style="font-size: 11px; opacity: 0.5; margin-top: -5px;"></p>
+            </div>
+
+            <div class="card" id="inner-voice-card" style="display: none; background: rgba(142, 68, 173, 0.1); border: 1px solid rgba(142, 68, 173, 0.3);">
+                <h3 style="color: #9b59b6;">🔮 Kata Hati (Bisikan Insting)</h3>
+                <p id="inner-voice-text" style="font-style: italic; font-size: 14px; line-height: 1.5; color: #dcdde1;"></p>
             </div>
         </div>
 
@@ -352,42 +358,93 @@
         }
 
         function renderUI() {
-            // Update Mood Text
-            const emo = config.psychology.emotion;
+            // Update Mood Text & Color
+            const psych = config.psychology;
+            const emo = psych.emotion;
             const moodEl = document.getElementById('current-mood');
+            const catEl = document.getElementById('mood-category');
             
-            let moodText = "Relaxed & Happy";
+            let moodText = "Stable";
             let moodColor = "var(--accent)";
+            let moodCat = "";
 
-            if (emo.anger > 0.7) {
-                moodText = "Sangat Marah & Kecewa 💢";
-                moodColor = "#ff4757";
-            } else if (emo.fear > 0.7) {
-                moodText = "Sangat Takut & Cemas 😰";
-                moodColor = "#747d8c";
-            } else if (emo.anger > 0.3) {
-                moodText = "Sedikit Kesal 😒";
-                moodColor = "#ffa502";
-            } else if (emo.joy > 0.8) {
-                moodText = "Sangat Bahagia & Ceria ✨";
-                moodColor = "#2ed573";
-            } else if (emo.trust < 0.3) {
-                moodText = "Curiga & Tidak Percaya 🤨";
-                moodColor = "#eccc68";
+            // PRIORITAS 1: Mood Tag Spesifik (dari AI Analyzer)
+            if (psych.last_mood_tag && psych.last_mood_tag !== 'stable') {
+                moodText = psych.last_mood_tag.charAt(0).toUpperCase() + psych.last_mood_tag.slice(1);
+                
+                // Cari kategori untuk warna
+                const categories = {
+                    POSITIVE: ["happy", "cheerful", "excited", "playful", "confident", "flirty", "affectionate", "caring", "grateful", "hopeful", "energetic", "proud", "inspired", "dreamy", "peaceful"],
+                    RELAXED: ["calm", "cozy", "sleepy", "lazy", "chill", "shy", "thoughtful", "nostalgic", "mellow", "soft"],
+                    SAD: ["sad", "lonely", "heartbroken", "disappointed", "insecure", "vulnerable", "depressed", "emotional", "sensitive"],
+                    ANGRY: ["angry", "irritated", "jealous", "frustrated", "annoyed", "aggressive", "defensive", "cold", "possessive", "bitter"],
+                    ROMANTIC: ["loving", "clingy", "seductive", "intimate", "passionate", "obsessed", "attached", "needy", "teasing"],
+                    SOCIAL: ["talkative", "curious", "friendly", "sarcastic", "humorous", "awkward", "chaotic"],
+                    DOMINANT: ["dominant", "independent", "ambitious", "serious", "mysterious", "elegant", "classy", "mature", "bossy", "fearless"],
+                    SEXUAL: ["horny", "aroused", "lustful"]
+                };
+
+                for(const [cat, tags] of Object.entries(categories)) {
+                    if(tags.includes(psych.last_mood_tag.toLowerCase())) {
+                        moodCat = cat;
+                        if(cat === 'ANGRY') moodColor = "#ff4757";
+                        else if(cat === 'POSITIVE') moodColor = "#2ed573";
+                        else if(cat === 'ROMANTIC' || cat === 'SEXUAL') moodColor = "#ff6b81";
+                        else if(cat === 'RELAXED') moodColor = "#1e90ff";
+                        else if(cat === 'SAD') moodColor = "#747d8c";
+                        break;
+                    }
+                }
+            } else {
+                // PRIORITAS 2: Kalkulasi Manual (Fallback)
+                if (emo.anger > 0.7) {
+                    moodText = "Sangat Marah & Kecewa 💢";
+                    moodColor = "#ff4757";
+                } else if (emo.fear > 0.7) {
+                    moodText = "Sangat Takut & Cemas 😰";
+                    moodColor = "#747d8c";
+                } else if (emo.joy > 0.8) {
+                    moodText = "Sangat Bahagia & Ceria ✨";
+                    moodColor = "#2ed573";
+                }
             }
 
             moodEl.innerText = moodText;
             moodEl.style.color = moodColor;
+            catEl.innerText = moodCat ? `(${moodCat})` : "";
+
+            // Update Inner Voice
+            const ivCard = document.getElementById('inner-voice-card');
+            if (psych.inner_voice) {
+                ivCard.style.display = 'block';
+                document.getElementById('inner-voice-text').innerText = `"${psych.inner_voice}"`;
+            } else {
+                ivCard.style.display = 'none';
+            }
 
             // Render Emotions
             const emoList = document.getElementById('emotion-list');
             emoList.innerHTML = '';
+            
             const emos = config.psychology.emotion;
+            const emoLabels = {
+                anger: { label: 'Kemarahan', icon: '💢' },
+                trust: { label: 'Kepercayaan', icon: '🤝' },
+                attachment: { label: 'Kemanjaan', icon: '🫂' },
+                joy: { label: 'Kebahagiaan', icon: '✨' },
+                arousal: { label: 'Gairah', icon: '🔥' },
+                fear: { label: 'Ketakutan', icon: '😰' }
+            };
+
             Object.keys(emos).forEach(key => {
                 const val = emos[key] * 100;
+                const labelInfo = emoLabels[key] || { label: key.toUpperCase(), icon: '📊' };
                 emoList.innerHTML += `
                     <div class="stat-row">
-                        <div class="stat-label"><span>${key.toUpperCase()}</span><span>${val.toFixed(0)}%</span></div>
+                        <div class="stat-label">
+                            <span>${labelInfo.icon} ${labelInfo.label}</span>
+                            <span>${val.toFixed(0)}%</span>
+                        </div>
                         <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${val}%"></div></div>
                     </div>
                 `;

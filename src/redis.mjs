@@ -20,5 +20,6 @@ export const KEYS = {
   cache: (promptHash) => `cache:${promptHash}`,
   rateLimit: (ip) => `ratelimit:${ip}`,
   innerVoice: (chatId) => `innervoice:${chatId}`,
+  moodTag: (chatId) => `moodtag:${chatId}`,
   cursor: (provider) => `cursor:${provider}`
 };

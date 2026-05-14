@@ -21,7 +21,7 @@ ${recentHistory}
 
 TUGAS: Perbarui sejarah hubungan mereka berdasarkan fakta percakapan terbaru.
 ATURAN NETRALITAS:
-1. Jadilah saksi yang jujur. Catat perkembangan hubungan (konflik, kemesraan, atau perubahan dinamika) secara APA ADANYA.
+1. Jadilah saksi yang jujur. Catat perkembangan hubungan (konflik, kemesraan, kejadian/moment penting,atau perubahan dinamika) secara APA ADANYA.
 2. JANGAN MENGHASUT atau memihak salah satu pihak. 
 3. Perbaiki jika ada kesalahan peran di catatan sebelumnya.
 4. Gunakan gaya bahasa naratif yang tenang dan deskriptif.
