@@ -101,6 +101,7 @@ async function handleAIMessage(chatId, text, photo, event) {
         
         psychState.inner_voice = innerVoice;
         psychState.last_mood_tag = extractedImpact.mood_tag;
+        psychState.cognitive_ratio = ratio; // SIMPAN RASIO KE STATE
         userConfig.psychology = psychState;
 
         // Simpan ke Redis agar persisten

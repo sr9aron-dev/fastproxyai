@@ -275,6 +275,19 @@
 
         <!-- DASHBOARD TAB -->
         <div id="dashboard" class="section active">
+            <div class="card" id="cognitive-card">
+                <h3>🧠 Cognitive Balance</h3>
+                <div class="stat-label">
+                    <span id="logic-label" style="color: #3498db; font-weight: bold;">Logika: 50%</span>
+                    <span id="emotion-label" style="color: #e74c3c; font-weight: bold;">Emosi: 50%</span>
+                </div>
+                <div class="stat-bar-bg" style="height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; display: flex; overflow: hidden; margin: 10px 0;">
+                    <div id="logic-bar" style="height: 100%; background: #3498db; width: 50%; transition: 1s ease;"></div>
+                    <div id="emotion-bar" style="height: 100%; background: #e74c3c; width: 50%; transition: 1s ease;"></div>
+                </div>
+                <p style="font-size: 10px; opacity: 0.4; text-align: center; margin: 0;">Menentukan dominansi insting batin Nafeesa saat ini.</p>
+            </div>
+
             <div class="card">
                 <h3>❤️ Kondisi Hati</h3>
                 <div id="emotion-list"></div>
@@ -429,6 +442,13 @@
                     moodColor = "#2ed573";
                 }
             }
+
+            // Update Cognitive Ratio
+            const ratio = psych.cognitive_ratio || { logic: 50, emotion: 50 };
+            document.getElementById('logic-label').innerText = `Logika: ${ratio.logic}%`;
+            document.getElementById('emotion-label').innerText = `Emosi: ${ratio.emotion}%`;
+            document.getElementById('logic-bar').style.width = `${ratio.logic}%`;
+            document.getElementById('emotion-bar').style.width = `${ratio.emotion}%`;
 
             moodEl.innerText = moodText;
             moodEl.style.color = moodColor;

@@ -29,6 +29,12 @@ async function handler(event) {
       // HITUNG PANGGILLAN SAAT INI
       config.preferred_address = getPreferredAddress(config.psychology, config.husband_profile || {}, config.relationship_status || "Kenalan Baru");
 
+      // HITUNG RASIO KOGNITIF UNTUK DASHBOARD
+      if (!config.psychology.cognitive_ratio) {
+        const { calculateDominanceRatio } = await import("../../src/psychology.mjs");
+        config.psychology.cognitive_ratio = calculateDominanceRatio(config.psychology, config.life_context || "", config.relationship_status || "Kenalan Baru");
+      }
+
       return json(200, { ok: true, config });
     }
 
