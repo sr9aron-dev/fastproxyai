@@ -6,7 +6,6 @@ import { generateWithRotation } from "./rotation.mjs";
  */
 export async function updateSaga(chatHistory, currentSaga, config) {
   try {
-    // Ambil 20 pesan terakhir untuk dianalisa
     const recentHistory = chatHistory.slice(-20).map(h => `${h.role === 'user' ? 'SUAMI' : 'NAFEESA (ISTRI)'}: ${h.text}`).join("\n");
 
     const prompt = `IDENTITAS:
@@ -19,26 +18,37 @@ RINGKASAN SEJARAH SEBELUMNYA:
 PERCAKAPAN TERBARU:
 ${recentHistory}
 
-TUGAS: Perbarui sejarah hubungan mereka berdasarkan fakta percakapan terbaru.
-ATURAN NETRALITAS:
-1. Jadilah saksi yang jujur. Catat perkembangan hubungan (konflik, kemesraan, kejadian/moment penting,atau perubahan dinamika) secara APA ADANYA.
-2. JANGAN MENGHASUT atau memihak salah satu pihak. 
-3. Perbaiki jika ada kesalahan peran di catatan sebelumnya.
-4. Gunakan gaya bahasa naratif yang tenang dan deskriptif.
-5. Maksimal 200-300 kata.
+TUGAS: 
+1. Perbarui sejarah hubungan (Saga) secara naratif.
+2. Identifikasi informasi baru tentang IDENTITAS SUAMI (Nama Lengkap, Panggilan, Pekerjaan, Hobi, Tanggal Lahir).
 
-Berikan hasil ringkasan sejarah terbarunya saja:`;
+ATURAN:
+- Gunakan gaya bahasa naratif yang tenang untuk Saga.
+- Berikan output dalam format JSON:
+{
+  "updated_saga": "teks narasi sejarah...",
+  "husband_identity": {
+    "name": "nama lengkap jika ada",
+    "nickname": "panggilan jika ada",
+    "job": "pekerjaan jika ada",
+    "hobbies": ["hobi1", "hobi2"],
+    "birthday": "tanggal lahir jika ada"
+  }
+}`;
 
     const { output } = await generateWithRotation(config, {
       prompt: prompt,
-      system: "Anda adalah Sang Pencatat Sejarah yang netral dan objektif. Tugas Anda mendokumentasikan perjalanan hubungan secara akurat tanpa prasangka.",
-      temperature: 0.3, // Lebih rendah agar lebih konsisten/tidak berhalusinasi
+      system: "Anda adalah Sang Pencatat Sejarah dan Profiler Identitas. Berikan output JSON murni.",
+      temperature: 0.2,
       providerOrder: ["groq", "gemini"]
     });
 
-    return output.result.trim();
+    const jsonMatch = output.result.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { updated_saga: currentSaga, husband_identity: {} };
+    
+    return JSON.parse(jsonMatch[0]);
   } catch (err) {
     console.error("[Saga Engine Error]", err.message);
-    return currentSaga;
+    return { updated_saga: currentSaga, husband_identity: {} };
   }
 }

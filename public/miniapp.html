@@ -279,6 +279,15 @@
                 <h3>❤️ Kondisi Hati</h3>
                 <div id="emotion-list"></div>
             </div>
+            
+            <div class="card">
+                <h3>👤 Profil Suami (Ingatan)</h3>
+                <div id="husband-profile-list" style="font-size: 14px;">
+                    <p style="margin: 5px 0; color: rgba(255,255,255,0.6);">Nama: <span id="husband-name" style="color: white;">-</span></p>
+                    <p style="margin: 5px 0; color: rgba(255,255,255,0.6);">Pekerjaan: <span id="husband-job" style="color: white;">-</span></p>
+                    <p style="margin: 5px 0; color: rgba(255,255,255,0.6);">Panggilan Nafeesa: <span id="preferred-address" style="color: var(--primary); font-weight: bold;">Mas</span></p>
+                </div>
+            </div>
             <div class="card" style="text-align: center;">
                 <h3 style="justify-content: center;">🎭 Mood Saat Ini</h3>
                 <p id="current-mood" style="font-size: 20px; font-weight: 600; color: var(--accent); margin: 10px 0;">Stable</p>
@@ -412,6 +421,12 @@
             moodEl.innerText = moodText;
             moodEl.style.color = moodColor;
             catEl.innerText = moodCat ? `(${moodCat})` : "";
+
+            // Update Husband Profile
+            const hp = config.husband_profile || {};
+            document.getElementById('husband-name').innerText = hp.name || "-";
+            document.getElementById('husband-job').innerText = hp.job || "-";
+            document.getElementById('preferred-address').innerText = config.preferred_address || "Mas";
 
             // Update Inner Voice
             const ivCard = document.getElementById('inner-voice-card');

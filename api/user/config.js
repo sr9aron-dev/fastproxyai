@@ -1,6 +1,6 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../../src/http.mjs";
 import { loadUserConfig, saveUserConfig, clearChatHistory } from "../../src/store.mjs";
-import { getInitialPsychology } from "../../src/psychology.mjs";
+import { getInitialPsychology, getPreferredAddress } from "../../src/psychology.mjs";
 import redis, { KEYS } from "../../src/redis.mjs";
 
 async function handler(event) {
@@ -25,6 +25,9 @@ async function handler(event) {
           if (moodTag) config.psychology.last_mood_tag = moodTag;
         }
       } catch (e) { }
+
+      // HITUNG PANGGILLAN SAAT INI
+      config.preferred_address = getPreferredAddress(config.psychology, config.husband_profile || {});
 
       return json(200, { ok: true, config });
     }

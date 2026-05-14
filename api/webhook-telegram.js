@@ -16,7 +16,8 @@ import {
   updatePsychology, 
   generatePsychologicalSummary,
   getInitialPsychology,
-  analyzeSelfReflection
+  analyzeSelfReflection,
+  getPreferredAddress
 } from "../src/psychology.mjs";
 import { buildRoleplayPrompt, ROLEPLAY_TEMPLATES } from "../src/prompt.mjs";
 import { updateSaga } from "../src/saga.mjs";
@@ -156,6 +157,9 @@ async function handleAIMessage(chatId, text, photo) {
       psychSummary = generatePsychologicalSummary(psychState);
     }
 
+    // --- PANGGILAN DINAMIS (HONORIFICS) ---
+    const preferredAddress = (mode === "istri") ? getPreferredAddress(psychState, userConfig.husband_profile || {}) : "Boss";
+
     // --- SUPERVISOR (COMPLIANCE) LOGIC ---
     let supervisorWarning = "";
     let shouldResetViolations = false;
@@ -197,7 +201,7 @@ Kegagalan mematuhi akan menyebabkan sistem Anda di-reset!`;
     }
 
     // --- 2. NAFEESA CHATBOT (Aktor & Balasan) ---
-    let systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary);
+    let systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary, preferredAddress, userConfig.husband_profile || {});
     if (supervisorWarning) systemPrompt += "\n" + supervisorWarning;
     const finalHistory = history;
 
@@ -275,28 +279,37 @@ Kegagalan mematuhi akan menyebabkan sistem Anda di-reset!`;
                                (userConfig.chat_count_saga >= 10);
 
       if (shouldUpdateSaga) {
-        console.log(`[Saga Engine] Triggering story update for ${chatId}...`);
-        
-        // Buat histori lengkap (Histori lama + Pesan baru ini)
-        const updatedHistoryForSaga = [
-          ...history,
-          { role: "user", text: text || "[Foto]" },
-          { role: "assistant", text: cleanAIResponse }
-        ];
+      if (text && (userConfig.chat_count_saga || 0) >= 5) {
+        backgroundTasks.push((async () => {
+          try {
+            const sagaResult = await updateSaga(history, userConfig.saga || "", config);
+            userConfig.saga = sagaResult.updated_saga;
+            userConfig.chat_count_saga = 0;
 
-        backgroundTasks.push(
-          updateSaga(updatedHistoryForSaga, userConfig.saga, config).then(async (newSaga) => {
-            userConfig.saga = newSaga;
-            userConfig.chat_count_saga = 0; // Reset
-            
-            if (text === "/story") {
-              await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${newSaga}`);
+            // UPDATE IDENTITAS SUAMI (Sinkronisasi Bertahap)
+            if (sagaResult.husband_identity) {
+              const currentProfile = userConfig.husband_profile || {};
+              const newIdentity = sagaResult.husband_identity;
+              
+              // Merge hanya jika ada info baru
+              userConfig.husband_profile = {
+                ...currentProfile,
+                name: newIdentity.name || currentProfile.name,
+                nickname: newIdentity.nickname || currentProfile.nickname,
+                job: newIdentity.job || currentProfile.job,
+                hobbies: Array.from(new Set([...(currentProfile.hobbies || []), ...(newIdentity.hobbies || [])])),
+                birthday: newIdentity.birthday || currentProfile.birthday
+              };
             }
             
-            return saveUserConfig(chatId, userConfig);
-          })
-        );
-      } else {
+            await saveUserConfig(chatId, userConfig);
+            console.log(`[Saga Engine] Saga & Identity Updated for ${chatId}`);
+          } catch (e) {
+            console.error("[Saga Error]", e.message);
+          }
+        })());
+      } else if (mode === "istri") {
+        userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
         backgroundTasks.push(saveUserConfig(chatId, userConfig));
       }
     }

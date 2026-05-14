@@ -13,6 +13,17 @@ export const MOOD_CATEGORIES = {
   SEXUAL: ["horny", "aroused", "lustful"]
 };
 
+export const MOOD_HONORIFICS = {
+  ROMANTIC: ["Mas Sayang", "Sayangku", "Cintaku", "Ayang"],
+  SEXUAL: ["Mas Sayang", "Abang", "Daddy", "Papi"],
+  POSITIVE: ["Mas", "Sayang", "Mas [NAME]"],
+  RELAXED: ["Mas", "Sayang", "Mas [NAME]"],
+  SOCIAL: ["Mas", "Sayang", "Mas Ganteng"],
+  SAD: ["Mas", "Sayang", "Kamu"],
+  ANGRY: ["Kamu", "Mas", "[NAME]"],
+  DOMINANT: ["Mas Manis", "Sayang", "Budakku"]
+};
+
 const DEFAULT_STATE = {
   emotion: { anger: 0, fear: 0, trust: 0.7, attachment: 0.5, joy: 0.5, arousal: 0 },
   mood: { relaxed: 0.7, anxious: 0.1, romantic: 0.2 },
@@ -242,6 +253,35 @@ function getRelationshipText(rel) {
 function getBehaviorValue(base, anger) {
   const val = base - (anger * 0.5);
   return getIntensity(val);
+}
+
+/**
+ * Mendapatkan panggilan (honorific) yang paling cocok berdasarkan mood dan profil
+ */
+export function getPreferredAddress(state, husbandProfile = {}) {
+  const { last_mood_tag } = state;
+  const name = husbandProfile.nickname || husbandProfile.name || "";
+  
+  let category = "POSITIVE";
+  for (const [cat, tags] of Object.entries(MOOD_CATEGORIES)) {
+    if (tags.includes(last_mood_tag.toLowerCase())) {
+      category = cat;
+      break;
+    }
+  }
+
+  const options = MOOD_HONORIFICS[category] || MOOD_HONORIFICS.POSITIVE;
+  let chosen = options[Math.floor(Math.random() * options.length)];
+
+  // Ganti placeholder [NAME] jika ada
+  if (name) {
+    chosen = chosen.replace("[NAME]", name);
+  } else {
+    // Jika nama belum tahu, hindari pakai panggilan yang butuh nama
+    chosen = chosen.replace("Mas [NAME]", "Mas").replace("[NAME]", "Kamu");
+  }
+
+  return chosen;
 }
 
 export async function analyzeSelfReflection(lastResponse, config, currentState) {
