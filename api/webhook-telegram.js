@@ -71,7 +71,7 @@ async function handleAIMessage(chatId, text, photo) {
   let typingInterval;
   try {
     // 1. Load everything in parallel
-    const [config, userConfig, rawHistory, redisInnerVoice, redisMoodTag] = await Promise.all([
+    const [config, userConfig, rawHistory, redisInnerVoice, redisMoodTag, redisViolations] = await Promise.all([
       loadConfig(),
       loadUserConfig(chatId),
       loadChatHistory(chatId, 15),
