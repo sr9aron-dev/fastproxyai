@@ -49,9 +49,15 @@ async function handler(event) {
           updatedAt: new Date().toISOString()
         };
         
-        // 3. Hapus Redis
+        // 3. Hapus Redis (Data Temporer)
         try {
-          if (redis) await redis.del(KEYS.innerVoice(chatId));
+          if (redis) {
+            await Promise.all([
+              redis.del(KEYS.innerVoice(chatId)),
+              redis.del(KEYS.moodTag(chatId)),
+              redis.del(KEYS.violations(chatId))
+            ]);
+          }
         } catch (e) { }
 
         await saveUserConfig(chatId, resetConfig);
