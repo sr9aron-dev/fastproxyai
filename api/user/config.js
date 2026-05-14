@@ -1,17 +1,14 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../../src/http.mjs";
-import { loadUserConfig, saveUserConfig } from "../../src/store.mjs";
+import { loadUserConfig, saveUserConfig, clearChatHistory } from "../../src/store.mjs";
 import { getInitialPsychology } from "../../src/psychology.mjs";
+import redis, { KEYS } from "../../src/redis.mjs";
 
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
   
   try {
-    // In a real app, you should validate Telegram Init Data here.
-    // For now, we use a simple header for the chatId.
     const chatId = event.headers["x-telegram-chat-id"];
-    if (!chatId) {
-      return json(401, { ok: false, message: "Chat ID required" });
-    }
+    if (!chatId) return json(401, { ok: false, message: "Chat ID required" });
 
     if (event.httpMethod === "GET") {
       const config = await loadUserConfig(chatId);
@@ -20,12 +17,37 @@ async function handler(event) {
     }
 
     if (event.httpMethod === "POST") {
-      const updates = readJson(event);
+      const body = readJson(event);
       const currentConfig = await loadUserConfig(chatId);
       
+      // LOGIKA RESET TOTAL DARI UI
+      if (body.action === 'TOTAL_RESET') {
+        console.log(`[API] Triggering total reset for ${chatId} from UI...`);
+        
+        // 1. Hapus Chat
+        await clearChatHistory(chatId);
+        
+        // 2. Reset Config
+        const resetConfig = {
+          ...currentConfig,
+          saga: "",
+          chat_count_saga: 0,
+          psychology: getInitialPsychology(currentConfig.personality_traits || {}),
+          updatedAt: new Date().toISOString()
+        };
+        
+        // 3. Hapus Redis
+        try {
+          if (redis) await redis.del(KEYS.innerVoice(chatId));
+        } catch (e) { }
+
+        await saveUserConfig(chatId, resetConfig);
+        return json(200, { ok: true, config: resetConfig });
+      }
+
       const newConfig = {
         ...currentConfig,
-        ...updates,
+        ...body,
         updatedAt: new Date().toISOString()
       };
 

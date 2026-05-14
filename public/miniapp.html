@@ -472,11 +472,28 @@
                     body: JSON.stringify(config)
                 });
                 tg.HapticFeedback.notificationOccurred('success');
-                tg.close();
+                btn.innerText = 'Tersimpan!';
+                setTimeout(() => { btn.innerText = 'Simpan Perubahan'; btn.disabled = false; }, 2000);
             } catch (err) {
                 tg.showAlert('Gagal menyimpan: ' + err.message);
                 btn.innerText = 'Simpan Perubahan';
                 btn.disabled = false;
+            }
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', async () => {
+            if (!confirm("⚠️ APA KAMU YAKIN? Nafeesa akan lupa segalanya dan emosinya kembali ke nol.")) return;
+            
+            try {
+                await fetch('/api/user/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-telegram-chat-id': chatId },
+                    body: JSON.stringify({ action: 'TOTAL_RESET' })
+                });
+                tg.HapticFeedback.notificationOccurred('warning');
+                window.location.reload();
+            } catch (err) {
+                tg.showAlert('Gagal reset: ' + err.message);
             }
         });
 
