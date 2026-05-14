@@ -269,29 +269,27 @@ Kegagalan mematuhi akan menyebabkan sistem Anda di-reset!`;
       })
     ];
 
-    // Logika Pembaruan Saga (Background tapi WAJIB DITUNGGU agar tidak terbunuh Vercel)
-    if (mode === "istri") {
+    // Logika Pembaruan Saga (Background)
+    if (mode === "istri" && text) {
       // Tambah hitungan chat saga
       userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
       
-      const shouldUpdateSaga = text === "/story" || 
-                               (!userConfig.saga && userConfig.chat_count_saga >= 3) || 
-                               (userConfig.chat_count_saga >= 10);
+      const shouldUpdateSaga = userConfig.chat_count_saga >= 10 || text === "/story" || !userConfig.saga;
 
       if (shouldUpdateSaga) {
-      if (text && (userConfig.chat_count_saga || 0) >= 5) {
         backgroundTasks.push((async () => {
           try {
+            console.log(`[Saga Engine] Updating story & identity for ${chatId}...`);
             const sagaResult = await updateSaga(history, userConfig.saga || "", config);
+            
             userConfig.saga = sagaResult.updated_saga;
             userConfig.chat_count_saga = 0;
 
-            // UPDATE IDENTITAS SUAMI (Sinkronisasi Bertahap)
+            // UPDATE IDENTITAS SUAMI
             if (sagaResult.husband_identity) {
               const currentProfile = userConfig.husband_profile || {};
               const newIdentity = sagaResult.husband_identity;
               
-              // Merge hanya jika ada info baru
               userConfig.husband_profile = {
                 ...currentProfile,
                 name: newIdentity.name || currentProfile.name,
@@ -303,13 +301,14 @@ Kegagalan mematuhi akan menyebabkan sistem Anda di-reset!`;
             }
             
             await saveUserConfig(chatId, userConfig);
-            console.log(`[Saga Engine] Saga & Identity Updated for ${chatId}`);
+            if (text === "/story") {
+              await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${userConfig.saga}`);
+            }
           } catch (e) {
             console.error("[Saga Error]", e.message);
           }
         })());
-      } else if (mode === "istri") {
-        userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
+      } else {
         backgroundTasks.push(saveUserConfig(chatId, userConfig));
       }
     }
