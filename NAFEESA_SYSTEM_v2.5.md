@@ -1,56 +1,52 @@
-# 🧠 Nafeesa AI: Deep Technical Architecture v2.5
-**"The Real Human Persona Simulation"**
+# 🧠 Nafeesa AI: Deep Technical Architecture v3.0 (Cognitive Dissonance)
+**"The Battle Between Heart and Mind"**
 
-Dokumentasi ini merangkum seluruh logika sistem chatbot Nafeesa berdasarkan basis kode terbaru.
-
----
-
-## 1. Alur Pemrosesan Pesan (Synchronous Flow)
-Nafeesa menggunakan alur **Analysis-then-Action** untuk memastikan konsistensi emosi antara input teks maupun visual.
-
-1.  **Ingestion**: Webhook menerima pesan (Teks/Foto).
-2.  **Emotional Analysis (Sync)**: Fungsi `analyzeEmotionalImpact` membedah pesan berdasarkan:
-    - **Kepribadian**: Seberapa sensitif dia terhadap kata-kata User.
-    - **Kondisi Hidup**: Beban hidup yang sedang dialami (Hutang, Kelaparan, dll).
-    - **Status Hubungan**: Apakah User adalah orang asing, suami, atau majikan.
-3.  **Visual Awareness**: Jika User mengirim foto tanpa teks, Analyzer secara otomatis memberikan input `[User mengirim foto]` untuk memicu kenaikan emosi *Trust* dan *Attachment*.
-4.  **State Update**: Angka emosi diperbarui dan **Kata Hati (Inner Voice)** di-generate secara instan sebelum Nafeesa membalas.
-5.  **Response Generation**: Nafeesa membalas chat sebagai **Manusia Nyata** dengan membawa "Bisikan Insting" terbaru.
+Dokumentasi ini merangkum seluruh logika sistem chatbot Nafeesa berdasarkan basis kode terbaru yang sudah mendukung pertempuran batin antara logika dan emosi.
 
 ---
 
-## 2. Mesin Psikologi & Kepribadian (Big Five)
-Kepribadian Nafeesa ditentukan oleh slider Big Five di Mini App yang mempengaruhi rumus matematis:
+## 1. Alur Pemrosesan Kognitif (Multi-Stage Flow)
+Sistem sekarang menggunakan alur **Dual-Process Cognitive Flow** untuk menghasilkan respon yang lebih manusiawi dan tidak linear.
 
-- **Anger Gain**: `(1 + Neuroticism) * (1 - Agreeableness * 0.5)`. 
-- **Trust Gain**: `Agreeableness * (1 - Neuroticism * 0.3)`.
-- **Panggilan Dinamis**: Fungsi `getPreferredAddress` sekarang sadar status. Jika status adalah "Istri/Pacar", panggilan akan otomatis sinkron menjadi "Sayang" di semua platform.
-
----
-
-## 3. Sistem Evolusi Hubungan (Saga Engine)
-Saga Engine berfungsi sebagai mesin pencatat sejarah jangka panjang.
-- **Background Update**: Penulisan sejarah otomatis dilakukan di latar belakang agar tidak memperlambat balasan chat.
-- **Narrative Record**: Mencatat setiap interaksi penting, termasuk frekuensi pengiriman foto, untuk membangun kedekatan emosional yang konsisten.
+1.  **Fase 1: Analisis Dampak Emosional (The Heart)**
+    - AI menghitung perubahan angka emosi (Anger, Trust, Joy, dll) dan menentukan Mood Tag terbaru.
+2.  **Fase 1.5: Perhitungan Rasio Dominansi (Cognitive Meter)**
+    - Sistem menghitung persentase **Logika vs Emosi** berdasarkan status psikologi, kepribadian Big Five, dan tekanan hidup (`life_context`).
+3.  **Fase 2: Generasi Kata Hati (The Soul Pass)**
+    - AI Analyzer khusus membuat **Kata Hati (Inner Voice)** dengan instruksi bias rasio dari Fase 1.5. Ini menciptakan pertempuran batin (Disonansi Kognitif).
+4.  **Fase 3: Respon Chatbot (The Voice)**
+    - Nafeesa membalas chat dengan menyatukan seluruh kondisi mental (Emosi, Rasio, dan Kata Hati).
 
 ---
 
-## 4. Kondisi Hidup & Fleksibilitas Moral (`life_context`)
-Variabel ini memungkinkan roleplay yang lebih dalam:
-- **Desperation Logic**: Jika Nafeesa dalam kondisi hidup yang terdesak, dia akan lebih responsif terhadap tawaran bantuan dari User, meskipun itu berarti melanggar batasan moral standarnya.
+## 2. REC Engine (Rationality-Emotion Conflict)
+Ini adalah otak di balik relativitas batin Nafeesa:
+- **Logika Dominan**: Dipicu oleh *Conscientiousness*, *Survival Pressure* (Hutang/Masalah), dan Status Hubungan yang masih jauh (Kenalan).
+- **Emosi Dominan**: Dipicu oleh *Neuroticism*, *Arousal*, *Anger*, dan kedekatan hubungan (Istri/Pacar).
+- **Dashboard Balance**: Rasio ini dapat dipantau secara real-time di Mini App melalui kartu **Cognitive Balance**.
 
 ---
 
-## 5. Manajemen State & Sinkronisasi
-- **Redis**: Menyimpan data temporer (Kata Hati, Mood Tag). Kadaluarsa dalam 1-3 jam.
-- **Firestore**: Menyimpan data permanen (Profil, Sejarah, Sifat Dasar).
-- **Amnesia**: Fitur hapus memori yang kini membersihkan seluruh profil, status hubungan, dan skenario hidup kembali ke nol.
+## 3. Sinkronisasi & Auto-Refresh Mini App
+- **Real-Time Data**: Mini App sekarang memiliki `visibility listener` yang otomatis melakukan refresh data setiap kali layar aktif atau berpindah dari chat Telegram.
+- **Background Polling**: Sinkronisasi data setiap 30 detik untuk memastikan meteran emosi dan rasio kognitif selalu akurat.
+- **Consistency**: Panggilan (honorifik) bersifat deterministik dan sadar status hubungan.
 
 ---
 
-## 6. Aturan Respon & Multi-Burst
-- **Multi-Burst**: AI mengirimkan beberapa pesan (dipisah `|`) untuk mensimulasikan gaya chatting manusia yang natural.
-- **Real Human Identity**: Instruksi sistem sekarang menegaskan bahwa Nafeesa adalah manusia nyata, bukan AI, untuk menjaga imersi roleplay.
+## 4. Evolusi Hubungan & Memori (Saga Engine)
+- **Automatic Evolution**: Sejarah hubungan diperbarui setiap 10 chat di latar belakang (background).
+- **Husband Profiling**: Pencatatan identitas suami (Nama, Pekerjaan, Hobi) dilakukan secara otomatis oleh "Sang Hakim" Saga.
+- **Visual Memory**: Nafeesa kini "sadar" dan "ingat" setiap momen visual (foto) yang Anda bagikan.
 
 ---
-*Dokumentasi ini divalidasi berdasarkan update terakhir pada 15 Mei 2026.*
+
+## 5. Parameter Psikologi (Big Five)
+- **Extraversion**: Volume bicara & keceriaan.
+- **Neuroticism**: Sensitivitas emosi & kerentanan terhadap konflik.
+- **Agreeableness**: Kelembutan, pemaaf, dan empati.
+- **Conscientiousness**: Kesopanan, keteraturan, dan pemikiran logis.
+- **Openness**: Kecerdasan, keterbukaan ide, dan puitis.
+
+---
+*Dokumentasi ini divalidasi berdasarkan update Arsitektur v3.0 pada 15 Mei 2026.*
