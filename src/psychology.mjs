@@ -167,24 +167,6 @@ Gunakan JSON: { "inner_voice": "..." }`;
   } catch (e) { return ""; }
 }
 
-  try {
-    const { generateWithRotation } = await import('./rotation.mjs');
-    const { output } = await generateWithRotation(config, {
-      prompt: prompt,
-      system: "Anda adalah Psychological Event Analyzer. Tugas Anda hanya memberikan output JSON dampak emosional.",
-      temperature: 0.2,
-      providerOrder: ["groq", "gemini"]
-    });
-
-    const jsonMatch = output.result.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    return JSON.parse(jsonMatch[0]);
-  } catch (e) {
-    console.error("[Psychology] AI Analyzer Error", e.message);
-    return null;
-  }
-}
-
 /**
  * Mengupdate state berdasarkan impact dan personality modifier
  */
