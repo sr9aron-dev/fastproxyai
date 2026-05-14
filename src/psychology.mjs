@@ -176,9 +176,10 @@ export function updatePsychology(state, impactEvent, hoursPassed = 0) {
  */
 export function generatePsychologicalSummary(state) {
   const { emotion, relationship, mood, personality, last_mood_tag } = state;
+  const displayMood = last_mood_tag || "stable";
 
   let summary = `[INTERNAL_PSYCHOLOGY_STATE]
-Current Mood: ${last_mood_tag.toUpperCase()} (${getMoodDescription(last_mood_tag)})
+Current Mood: ${displayMood.toUpperCase()} (${getMoodDescription(displayMood)})
 Emotional Levels:
 - Anger: ${getIntensity(emotion.anger)}
 - Trust: ${getIntensity(emotion.trust)}
