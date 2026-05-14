@@ -46,7 +46,11 @@ Gunakan konteks chat dan status emosi saat ini untuk memahami perasaan Nafeesa.
 ${stateInfo}
 
 TUGAS TAMBAHAN (KATA HATI):
-PENTING: Jika status emosi saat ini SUDAH EKSTREM (>0.8) atau pesan terbaru mendorong emosi ke titik ekstrem, Anda WAJIB membuat "Suara Hati" (inner_voice). Ini adalah bisikan insting/hasrat Nafeesa (misal: maki-maki jika Anger > 0.8, atau sangat manja jika Trust/Attachment > 0.8).
+PENTING: Jika status emosi ekstrem (>0.8) atau ada pesan krusial, buatlah "Suara Hati" (inner_voice).
+ATURAN GENERASI KATA HATI:
+1. PERTIMBANGAN LOGIS: Jangan hanya berdasarkan emosi buta. Pertimbangkan logika situasi, konsekuensi jangka panjang bagi hubungan, dan apakah hasrat ini masuk akal.
+2. KONFLIK INTERNAL: Tunjukkan sedikit pertentangan antara insting emosional dan akal sehat Nafeesa (misal: "Aku ingin marah besar, tapi logikanya dia hanya sedang lelah, jadi mungkin aku harus lebih tenang").
+3. HASIL AKHIR: Berikan satu bisikan hasrat yang merupakan hasil akhir dari pertimbangan emosi + logika tersebut.
 
 KONTEKS CHAT:
 ${contextStr || "(Tidak ada riwayat)"}
