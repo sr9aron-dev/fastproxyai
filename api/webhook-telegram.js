@@ -201,7 +201,7 @@ Kegagalan mematuhi akan menyebabkan sistem Anda di-reset!`;
     }
 
     // --- 2. NAFEESA CHATBOT (Aktor & Balasan) ---
-    let systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary, preferredAddress, userConfig.husband_profile || {}, userConfig.relationship_status || "Kenalan Baru");
+    let systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, sagaSummary, preferredAddress, userConfig.husband_profile || {}, userConfig.relationship_status || "Kenalan Baru", userConfig.life_context || "");
     if (supervisorWarning) systemPrompt += "\n" + supervisorWarning;
     const finalHistory = history;
 

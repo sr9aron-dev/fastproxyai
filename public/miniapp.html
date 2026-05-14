@@ -306,6 +306,15 @@
         <!-- PERSONALITY TAB -->
         <div id="personality" class="section">
             <div class="card">
+                <h3>🎭 Latar Belakang & Motivasi</h3>
+                <p style="font-size: 11px; opacity: 0.6; margin-bottom: 10px;">
+                    Tentukan kondisi hidup Nafeesa (misal: "Sangat butuh uang", "Haus kekuasaan", dll). 
+                    Ini akan mempengaruhi seberapa fleksibel batasan moralnya.
+                </p>
+                <textarea id="life-context" placeholder="Contoh: Sedang terlilit hutang dan butuh perlindungan ekonomi..." style="width: 100%; height: 80px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 8px; font-size: 14px; outline: none;"></textarea>
+            </div>
+
+            <div class="card">
                 <h3>🧠 Workshop Kepribadian</h3>
                 <div id="traits-list"></div>
             </div>
@@ -498,6 +507,9 @@
                 `;
             });
 
+            // Update Life Context
+            document.getElementById('life-context').value = config.life_context || "";
+
             // Update Buttons
             document.querySelectorAll('.mode-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.mode === config.mode);
@@ -542,6 +554,9 @@
             const btn = document.getElementById('save-btn');
             btn.innerText = 'Menyimpan...';
             btn.disabled = true;
+
+            // Sync text fields
+            config.life_context = document.getElementById('life-context').value;
 
             try {
                 await fetch('/api/user/config', {
