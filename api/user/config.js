@@ -27,7 +27,7 @@ async function handler(event) {
       } catch (e) { }
 
       // HITUNG PANGGILLAN SAAT INI
-      config.preferred_address = getPreferredAddress(config.psychology, config.husband_profile || {});
+      config.preferred_address = getPreferredAddress(config.psychology, config.husband_profile || {}, config.relationship_status || "Kenalan Baru");
 
       return json(200, { ok: true, config });
     }

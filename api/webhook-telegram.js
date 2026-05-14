@@ -88,7 +88,7 @@ async function handleAIMessage(chatId, text, photo, event) {
     }
 
     const psychSummary = generatePsychologicalSummary(psychState);
-    const preferredAddress = (mode === "istri") ? getPreferredAddress(psychState, userConfig.husband_profile || {}) : "Boss";
+    const preferredAddress = (mode === "istri") ? getPreferredAddress(psychState, userConfig.husband_profile || {}, relationshipStatus) : "Boss";
     const now = new Date();
     const timeStr = now.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" });
     const dateStr = now.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -123,20 +123,33 @@ async function handleAIMessage(chatId, text, photo, event) {
     backgroundTasks.push(saveChatMessage(chatId, "user", text || "[Photo]"));
     backgroundTasks.push(trackUsage(output.provider, output.model, "success"));
     
-    // Saga Update Logic
+    // Saga Update Logic (Background for automatic, Sync for /story)
     if (mode === "istri" && text) {
       userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
-      if (userConfig.chat_count_saga >= 10 || text === "/story" || !userConfig.saga) {
-        const sagaResult = await updateSaga(history, userConfig.saga || "", config);
-        userConfig.saga = sagaResult.updated_saga;
-        userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status;
-        userConfig.chat_count_saga = 0;
-        if (sagaResult.husband_identity) {
-          userConfig.husband_profile = { ...userConfig.husband_profile, ...sagaResult.husband_identity };
-        }
-        if (text === "/story") await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${userConfig.saga}`);
+      const isManualStory = text === "/story";
+      const shouldUpdateSaga = userConfig.chat_count_saga >= 10 || isManualStory || !userConfig.saga;
+
+      if (shouldUpdateSaga) {
+        const updateTask = (async () => {
+          try {
+            console.log(`[Saga Engine] Updating story & identity for ${chatId}...`);
+            const sagaResult = await updateSaga(history, userConfig.saga || "", config);
+            userConfig.saga = sagaResult.updated_saga;
+            userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status;
+            userConfig.chat_count_saga = 0;
+            if (sagaResult.husband_identity) {
+              userConfig.husband_profile = { ...userConfig.husband_profile, ...sagaResult.husband_identity };
+            }
+            await saveUserConfig(chatId, userConfig);
+            if (isManualStory) await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${userConfig.saga}`);
+          } catch (e) { console.error("[Saga Error]", e.message); }
+        });
+
+        if (isManualStory) await updateTask(); // Tunggu jika diminta manual
+        else backgroundTasks.push(updateTask()); // Jalankan di background jika otomatis
+      } else {
+        backgroundTasks.push(saveUserConfig(chatId, userConfig));
       }
-      backgroundTasks.push(saveUserConfig(chatId, userConfig));
     }
 
     await Promise.all(backgroundTasks).catch(e => console.error("[BG Error]", e.message));

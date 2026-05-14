@@ -258,11 +258,12 @@ function getBehaviorValue(base, anger) {
 }
 
 /**
- * Mendapatkan panggilan (honorific) yang paling cocok berdasarkan mood dan profil
+ * Mendapatkan panggilan (honorific) yang paling cocok berdasarkan mood dan status hubungan
  */
-export function getPreferredAddress(state, husbandProfile = {}) {
+export function getPreferredAddress(state, husbandProfile = {}, relationshipStatus = "Kenalan Baru") {
   const { last_mood_tag } = state;
   const name = husbandProfile.nickname || husbandProfile.name || "";
+  const status = (relationshipStatus || "").toLowerCase();
   
   let category = "POSITIVE";
   for (const [cat, tags] of Object.entries(MOOD_CATEGORIES)) {
@@ -272,14 +273,26 @@ export function getPreferredAddress(state, husbandProfile = {}) {
     }
   }
 
-  const options = MOOD_HONORIFICS[category] || MOOD_HONORIFICS.POSITIVE;
-  let chosen = options[Math.floor(Math.random() * options.length)];
+  let options = [...(MOOD_HONORIFICS[category] || MOOD_HONORIFICS.POSITIVE)];
+  
+  // LOGIKA DINAMIS BERDASARKAN STATUS HUBUNGAN
+  if (status.includes("istri") || status.includes("pacar") || status.includes("tunangan")) {
+    // Jika sudah sangat dekat, "Sayang" menjadi pilihan utama di mood POSITIVE/RELAXED/SOCIAL
+    if (["POSITIVE", "RELAXED", "SOCIAL"].includes(category)) {
+      options = ["Sayang", "Mas Sayang", "Suamiku"];
+    }
+  } else if (status.includes("budak") || status.includes("slave")) {
+    if (category === "DOMINANT") options = ["Tuanku", "Master"];
+    else options = ["Tuan", "Mas Manis"];
+  }
+
+  // Gunakan pilihan pertama agar stabil
+  let chosen = options[0];
 
   // Ganti placeholder [NAME] jika ada
   if (name) {
     chosen = chosen.replace("[NAME]", name);
   } else {
-    // Jika nama belum tahu, hindari pakai panggilan yang butuh nama
     chosen = chosen.replace("Mas [NAME]", "Mas").replace("[NAME]", "Kamu");
   }
 
