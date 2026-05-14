@@ -298,11 +298,27 @@ async function handleCallback(body, event) {
     ]);
   } else if (data === "clear_chat_now") {
     try {
+      // 1. Hapus riwayat pesan mentah
       await clearChatHistory(chatId);
-      await answerCallbackQuery(callbackQueryId, "Riwayat chat berhasil dibersihkan!");
-      await editMessageText(chatId, messageId, "✅ <b>Berhasil!</b>\n\nSekarang ingatan aku tentang chat kita sudah bersih. Ayo mulai chat baru!", [[{ text: "❌ Tutup", callback_data: "close_menu" }]]);
+      
+      // 2. Reset Ingatan Jangka Panjang & Psikologi
+      userConfig.saga = "";
+      userConfig.chat_count_saga = 0;
+      userConfig.psychology = getInitialPsychology(userConfig.personality_traits || {});
+      await saveUserConfig(chatId, userConfig);
+      
+      // 3. Hapus Kata Hati di Redis
+      try {
+        if (redis) await redis.del(KEYS.innerVoice(chatId));
+      } catch (re) {
+        console.warn("[Redis Error] Gagal hapus kata hati saat reset:", re.message);
+      }
+
+      await answerCallbackQuery(callbackQueryId, "Amnesia Total Berhasil!");
+      await editMessageText(chatId, messageId, "✅ <b>Buka Lembaran Baru!</b>\n\nSeluruh riwayat chat dan ingatanku tentang kita sudah aku hapus bersih. Aku merasa seperti baru pertama kali mengenalmu lagi... ❤️", [[{ text: "❌ Tutup", callback_data: "close_menu" }]]);
     } catch (err) {
-      await answerCallbackQuery(callbackQueryId, "Gagal membersihkan chat.");
+      console.error("[Reset Error]", err.message);
+      await answerCallbackQuery(callbackQueryId, "Gagal mereset ingatan.");
     }
   } else if (data.startsWith("set_provider_")) {
     const newProvider = data.replace("set_provider_", "");
