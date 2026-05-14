@@ -3,7 +3,15 @@ import { loadChatHistory, saveChatMessage, saveConfig, trackUsage, clearChatHist
 import { generateWithRotation } from "../src/rotation.mjs";
 import { sendMessage, sendChatAction, editMessageText, answerCallbackQuery, getTelegramFile } from "../src/telegram.mjs";
 import redis, { KEYS } from "../src/redis.mjs";
-import { analyzeEmotionalImpact, updatePsychology, generatePsychologicalSummary, getInitialPsychology, getPreferredAddress } from "../src/psychology.mjs";
+import { 
+  getInitialPsychology, 
+  updatePsychology, 
+  analyzeEmotionalImpact, 
+  calculateDominanceRatio,
+  generateInstinct,
+  generatePsychologicalSummary, 
+  getPreferredAddress 
+} from "../src/psychology.mjs";
 import { buildRoleplayPrompt } from "../src/prompt.mjs";
 import { updateSaga } from "../src/saga.mjs";
 
@@ -76,14 +84,28 @@ async function handleAIMessage(chatId, text, photo, event) {
     const analysisInput = text || (photo ? "[User mengirim sebuah foto]" : null);
     
     if (mode === "istri" && analysisInput) {
-      console.log(`[Analyzer] Processing emotional impact & instinct for ${chatId}...`);
+      console.log(`[Analyzer] Phase 1: Emotional Impact for ${chatId}...`);
       extractedImpact = await analyzeEmotionalImpact(analysisInput, config, history, psychState, lifeContext, relationshipStatus);
+      
       if (extractedImpact) {
+        // Update angka emosi terlebih dahulu
         psychState = updatePsychology(psychState, extractedImpact, hoursPassed);
+        
+        // Fase 1.5: Hitung Rasio Dominansi Logika vs Emosi
+        const ratio = calculateDominanceRatio(psychState, lifeContext, relationshipStatus);
+        console.log(`[Analyzer] Phase 1.5: Dominance Ratio -> Logic: ${ratio.logic}%, Emotion: ${ratio.emotion}%`);
+        
+        // Fase 2: Generate Kata Hati (Insting) berdasarkan Rasio
+        console.log(`[Analyzer] Phase 2: Generating Instinct...`);
+        const innerVoice = await generateInstinct(analysisInput, config, history, psychState, lifeContext, relationshipStatus, ratio);
+        
+        psychState.inner_voice = innerVoice;
+        psychState.last_mood_tag = extractedImpact.mood_tag;
         userConfig.psychology = psychState;
-        // Simpan Kata Hati & Mood Tag ke Redis agar persisten
+
+        // Simpan ke Redis agar persisten
         if (redis) {
-          if (extractedImpact.inner_voice) await redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 });
+          if (innerVoice) await redis.set(KEYS.innerVoice(chatId), innerVoice, { ex: 3600 });
           if (extractedImpact.mood_tag) await redis.set(KEYS.moodTag(chatId), extractedImpact.mood_tag, { ex: 10800 });
         }
       }

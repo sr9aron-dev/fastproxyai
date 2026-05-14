@@ -47,7 +47,7 @@ export function getInitialPsychology(personality = {}) {
 }
 
 /**
- * Menganalisis pesan user untuk mendapatkan dampak emosional
+ * TAHAP 1: Menganalisis dampak emosional (Angka & Mood)
  */
 export async function analyzeEmotionalImpact(text, config, history = [], currentState = null, lifeContext = "", relationshipStatus = "Kenalan Baru") {
   if (!text) return null;
@@ -58,67 +58,114 @@ export async function analyzeEmotionalImpact(text, config, history = [], current
   let stateInfo = "";
   if (currentState && currentState.emotion) {
     const e = currentState.emotion;
-    stateInfo = `STATUS EMOSI NAFEESA SAAT INI: 
-- Anger: ${(e.anger || 0).toFixed(2)}
-- Trust: ${(e.trust || 0).toFixed(2)}
-- Joy: ${(e.joy || 0).toFixed(2)}
-- Attachment: ${(e.attachment || 0).toFixed(2)}
-- Arousal: ${(e.arousal || 0).toFixed(2)}
-- Mood Terakhir: ${currentState.last_mood_tag || 'stable'}`;
+    stateInfo = `STATUS EMOSI SAAT INI: Anger: ${(e.anger || 0).toFixed(2)}, Trust: ${(e.trust || 0).toFixed(2)}, Joy: ${(e.joy || 0).toFixed(2)}, Attachment: ${(e.attachment || 0).toFixed(2)}, Arousal: ${(e.arousal || 0).toFixed(2)}`;
   }
 
   const moodListStr = Object.entries(MOOD_CATEGORIES).map(([cat, tags]) => `${cat}: ${tags.join(", ")}`).join("\n");
 
   const prompt = `Analisis dampak emosional dari pesan user terhadap Nafeesa.
-Nafeesa adalah karakter dengan profil:
-- STATUS HUBUNGAN: ${relationshipStatus}
-- KONDISI HIDUP/MOTIVASI: ${lifeContext || "Normal"}
-- KEPRIBADIAN (Big Five): Openness=${personality.openness}, Conscientiousness=${personality.conscientiousness}, Extraversion=${personality.extraversion}, Agreeableness=${personality.agreeableness}, Neuroticism=${personality.neuroticism}
+KONTEKS:
+- Status: ${relationshipStatus}
+- Kondisi Hidup: ${lifeContext || "Normal"}
 
 HISTORI CHAT:
 ${contextStr}
 
-PESAN TERBARU USER: "${text}"
-
+PESAN USER: "${text}"
 ${stateInfo}
 
-Periksa balasan TERAKHIR Nafeesa di riwayat chat. Berikan "compliance_violation": true jika:
-1. Terlalu panjang (>20 kata dalam satu balon chat).
-2. Tidak menggunakan tanda "|" padahal emosi sedang tinggi (>0.6).
-3. Terlalu formal atau tidak natural seperti istri.
-
-TUGAS KHUSUS: Pilih satu "mood_tag" yang paling menggambarkan perasaan Nafeesa saat ini dari daftar berikut:
+TUGAS:
+1. Hitung perubahan emosi (impact) -1.0 s/d 1.0.
+2. Pilih satu Mood Tag baru:
 ${moodListStr}
+3. Cek kepatuhan format (compliance_violation: true jika >20 kata atau tanpa "|").
 
-TUGAS KATA HATI:
-Buat "inner_voice" yang mencerminkan gejolak perasaan terdalamnya.
-
-KONTEKS CHAT:
-${contextStr || "(Tidak ada riwayat)"}
-
-PESAN TERBARU USER: 
-"${text}"
-
-Berikan output JSON:
+Gunakan JSON:
 {
-  "event_type": "string",
-  "mood_tag": "string",
-  "inner_voice": "string",
-  "compliance_violation": boolean,
-  "impact": {
-    "anger": number,
-    "trust": number,
-    "attachment": number,
-    "joy": number,
-    "fear": number,
-    "arousal": number
-  },
-  "severity": number
+  "impact": { "anger": 0, "trust": 0, "joy": 0, "attachment": 0, "arousal": 0 },
+  "mood_tag": "tag_name",
+  "compliance_violation": false
+}`;
+
+  try {
+    const { generateWithRotation } = await import('./rotation.mjs');
+    const { output } = await generateWithRotation(config, {
+      prompt: prompt,
+      system: "Anda adalah Emotional Impact Analyzer. Berikan JSON murni.",
+      temperature: 0.2,
+      providerOrder: ["groq", "gemini"]
+    });
+    const jsonMatch = output.result.match(/\{[\s\S]*\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+  } catch (e) { return null; }
 }
 
-Catatan Penting: 
-1. Jika User mengirim foto tanpa teks (ditandai dengan "[User mengirim sebuah foto]"), anggap itu sebagai bentuk keterbukaan atau keinginan berbagi momen. Nafeesa harus merasa dihargai (Trust/Attachment naik).
-2. Sesuaikan Kata Hati agar mencerminkan rasa penasaran atau antusiasme terhadap apa yang dikirimkan user.`;
+/**
+ * TAHAP 1.5: Menghitung Rasio Dominansi Logika vs Emosi
+ */
+export function calculateDominanceRatio(state, lifeContext, relationshipStatus) {
+  const e = state.emotion;
+  const p = state.personality;
+  const status = (relationshipStatus || "").toLowerCase();
+  
+  // Hitung bobot emosi (Heat)
+  let emotionScore = (e.anger * 0.4) + (e.arousal * 0.4) + (e.attachment * 0.2);
+  if (p.neuroticism > 0.6) emotionScore *= 1.2;
+  
+  // Hitung bobot logika (Survival/Social)
+  let logicScore = p.conscientiousness * 0.5;
+  if (lifeContext && lifeContext.length > 10) logicScore += 0.3; // Tekanan hidup memicu logika survival
+  if (status.includes("kenalan")) logicScore += 0.2; // Belum akrab = lebih waspada/logis
+  
+  const total = emotionScore + logicScore || 1;
+  const emotionPct = Math.round((emotionScore / total) * 100);
+  const logicPct = 100 - emotionPct;
+  
+  return { emotion: emotionPct, logic: logicPct };
+}
+
+/**
+ * TAHAP 2: Generate Kata Hati (The Instinct Pass) dengan Rasio Dominansi
+ */
+export async function generateInstinct(text, config, history, state, lifeContext, relationshipStatus, ratio) {
+  const contextStr = history.slice(-12).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
+  const e = state.emotion;
+
+  const prompt = `Buat Kata Hati (Inner Voice) Nafeesa.
+RASIO DOMINANSI SAAT INI:
+- Logika: ${ratio.logic}%
+- Emosi: ${ratio.emotion}%
+
+KONTEKS:
+- Status: ${relationshipStatus}
+- Kondisi Hidup: ${lifeContext}
+- Emosi Aktif: Anger: ${e.anger.toFixed(2)}, Trust: ${e.trust.toFixed(2)}, Arousal: ${e.arousal.toFixed(2)}
+
+HISTORI:
+${contextStr}
+
+PESAN USER: "${text}"
+
+TUGAS:
+Ciptakan kalimat insting/hasrat batin Nafeesa (Maks 15 kata). 
+- Jika LOGIKA DOMINAN: Kata hati harus berhitung, waspada, atau fokus pada survival/keuntungan.
+- Jika EMOSI DOMINAN: Kata hati harus impulsif, penuh perasaan, atau mengikuti hawa nafsu/marah.
+- Jika SEIMBANG: Tunjukkan pertarungan batin antara keduanya.
+
+Gunakan JSON: { "inner_voice": "..." }`;
+
+  try {
+    const { generateWithRotation } = await import('./rotation.mjs');
+    const { output } = await generateWithRotation(config, {
+      prompt: prompt,
+      system: "Anda adalah Instinct Generator. Buat hasrat batin yang mencerminkan rasio dominansi.",
+      temperature: 0.8, // Beri sedikit kreatifitas untuk insting
+      providerOrder: ["groq", "gemini"]
+    });
+    const jsonMatch = output.result.match(/\{[\s\S]*\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]).inner_voice : "";
+  } catch (e) { return ""; }
+}
 
   try {
     const { generateWithRotation } = await import('./rotation.mjs');
