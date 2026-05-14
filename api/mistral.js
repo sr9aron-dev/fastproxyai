@@ -1,3 +1,5 @@
+import { recordLog } from "../src/store.mjs";
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -51,8 +53,25 @@ export default async function handler(req, res) {
     }
 
     res.status(200).json(data);
+    await recordLog({
+      method: "POST",
+      path: "/api/mistral",
+      status: 200,
+      host: req.headers.host || "unknown",
+      provider: "mistral",
+      model: model || "mistral-large-latest",
+      message: "Mistral generation success"
+    });
   } catch (error) {
     console.error('Mistral API Error:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    await recordLog({
+      method: "POST",
+      path: "/api/mistral",
+      status: 500,
+      host: req.headers?.host || "unknown",
+      message: error.message,
+      error: true
+    });
   }
 }

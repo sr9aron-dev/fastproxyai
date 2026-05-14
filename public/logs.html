@@ -325,10 +325,12 @@
 
 <header>
     <div class="logo-area">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-        </svg>
-        <div class="logo">fatsproxyai</div>
+        <a href="/" style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 12px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            <div class="logo">fatsproxyai</div>
+        </a>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 4px; opacity: 0.5;">
             <path d="M7 13l5 5 5-5M7 6l5 5 5-5"/>
         </svg>
@@ -407,15 +409,13 @@
 <script>
     let isLive = true;
     let autoRefreshTimer = null;
+    let allLogs = [];
 
     function formatTime(isoString) {
         if (!isoString) return "--";
         const date = new Date(isoString);
-        const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-        const day = date.getDate();
-        const month = months[date.getMonth()];
         const time = date.toTimeString().split(' ')[0] + '.' + String(date.getMilliseconds()).padStart(2, '0').slice(0, 2);
-        return `<span>${month} ${day}</span> ${time}`;
+        return `<span>${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span> ${time}`;
     }
 
     async function fetchLogs() {
@@ -423,7 +423,8 @@
             const res = await fetch('/api/logs?limit=50');
             const data = await res.json();
             if (data.ok) {
-                renderLogs(data.logs);
+                allLogs = data.logs;
+                renderLogs();
                 renderTimeline(data.logs);
             }
         } catch (err) {
@@ -431,14 +432,15 @@
         }
     }
 
-    function renderLogs(logs) {
+    function renderLogs() {
         const body = document.getElementById('logBody');
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
         
-        body.innerHTML = logs
+        body.innerHTML = allLogs
             .filter(log => {
                 if (!searchTerm) return true;
-                return JSON.stringify(log).toLowerCase().includes(searchTerm);
+                const searchContent = `${log.method} ${log.path} ${log.message} ${log.host} ${log.status}`.toLowerCase();
+                return searchContent.includes(searchTerm);
             })
             .map(log => `
                 <tr onclick='showDetails(${JSON.stringify(log)})' style="cursor: pointer;">
@@ -448,7 +450,7 @@
                             ${log.method || 'POST'} ${log.status}
                         </div>
                     </td>
-                    <td class="col-host">${log.host || 'fatsproxyai...'}</td>
+                    <td class="col-host">${log.host || 'unknown'}</td>
                     <td class="col-request">
                         <span class="req-icon">f</span>
                         ${log.path || '/api/generate'}
@@ -463,13 +465,15 @@
     function renderTimeline(logs) {
         const timeline = document.getElementById('timeline');
         timeline.innerHTML = '';
-        // Mock timeline based on log density
+        // Create 60 bars
         for (let i = 0; i < 60; i++) {
             const bar = document.createElement('div');
             bar.className = 'bar';
-            const h = Math.random() * 40;
-            bar.style.height = (h + 2) + 'px';
-            if (Math.random() > 0.9) bar.classList.add('active');
+            // Find logs in this bucket (simplification)
+            const hasActivity = i > 40 && i < 55; 
+            const h = hasActivity ? (Math.random() * 30 + 10) : (Math.random() * 10 + 2);
+            bar.style.height = h + 'px';
+            if (hasActivity && Math.random() > 0.8) bar.classList.add('active');
             timeline.appendChild(bar);
         }
     }
@@ -490,6 +494,7 @@
         if (isLive) {
             btn.classList.add('active');
             startAutoRefresh();
+            fetchLogs();
         } else {
             btn.classList.remove('active');
             stopAutoRefresh();
@@ -498,7 +503,7 @@
 
     function startAutoRefresh() {
         if (autoRefreshTimer) clearInterval(autoRefreshTimer);
-        autoRefreshTimer = setInterval(fetchLogs, 5000);
+        autoRefreshTimer = setInterval(fetchLogs, 3000); // Polling every 3 seconds
     }
 
     function stopAutoRefresh() {
@@ -507,14 +512,12 @@
 
     document.getElementById('liveBtn').addEventListener('click', toggleLive);
     document.getElementById('refreshBtn').addEventListener('click', fetchLogs);
-    document.getElementById('searchInput').addEventListener('input', () => {
-        // We'll just re-render current logs for search
-        fetchLogs(); 
-    });
+    document.getElementById('searchInput').addEventListener('input', renderLogs);
 
     // Initial load
     fetchLogs();
     startAutoRefresh();
+
 </script>
 
 </body>

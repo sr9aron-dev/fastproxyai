@@ -1,6 +1,6 @@
 // Trigger redeploy for Mini App configuration
 import { json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
-import { loadConfig, loadChatHistory, saveChatMessage, saveConfig, trackUsage, clearChatHistory, loadUserConfig, saveUserConfig } from "../src/store.mjs";
+import { loadConfig, loadChatHistory, saveChatMessage, saveConfig, trackUsage, clearChatHistory, loadUserConfig, saveUserConfig, recordLog } from "../src/store.mjs";
 import { generateWithRotation } from "../src/rotation.mjs";
 import {
   sendMessage,
@@ -201,7 +201,16 @@ async function handleAIMessage(chatId, text, photo) {
     const backgroundTasks = [
       saveChatMessage(chatId, "user", text || "[Mengirim Foto]"),
       saveChatMessage(chatId, "assistant", cleanAIResponse),
-      trackUsage(output.provider, output.model, "success")
+      trackUsage(output.provider, output.model, "success"),
+      recordLog({
+        method: "CHAT",
+        path: "/api/webhook-telegram",
+        status: 200,
+        host: "Nafeesa Bot",
+        provider: output.provider,
+        model: output.model,
+        message: `Chat from ${chatId}: ${text?.slice(0, 50) || "[Photo]"}`
+      })
     ];
 
     // Logika Pembaruan Saga (Background tapi WAJIB DITUNGGU agar tidak terbunuh Vercel)
@@ -260,6 +269,14 @@ async function handleAIMessage(chatId, text, photo) {
     if (typingInterval) clearInterval(typingInterval);
     console.error("[Telegram AI] Error:", aiError.message);
     await sendMessage(chatId, "Maaf boss, ada gangguan sedikit di pikiranku. Bisa coba kirim lagi pesannya?");
+    await recordLog({
+      method: "CHAT",
+      path: "/api/webhook-telegram",
+      status: 500,
+      host: "Nafeesa Bot",
+      message: `Error from ${chatId}: ${aiError.message}`,
+      error: true
+    });
   }
 }
 

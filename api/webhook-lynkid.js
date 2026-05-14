@@ -1,5 +1,6 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
 import { extendSubscription } from "../src/auth.mjs";
+import { recordLog } from "../src/store.mjs";
 
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
@@ -52,6 +53,14 @@ async function handler(event) {
     const result = await extendSubscription(email, 40);
 
     console.log(`[Webhook] Successfully extended subscription for ${email} until ${result.expiry}`);
+
+    await recordLog({
+      method: "WEBHOOK",
+      path: "/api/webhook-lynkid",
+      status: 200,
+      host: "Lynk.id",
+      message: `Subscription extended for ${email} (+40 days)`
+    });
 
     return json(200, { 
       ok: true, 
