@@ -527,8 +527,11 @@
                 `;
             });
 
-            // Update Life Context
-            document.getElementById('life-context').value = config.life_context || "";
+            // Update Life Context (Only if not focused)
+            const lifeContextInput = document.getElementById('life-context');
+            if (document.activeElement !== lifeContextInput) {
+                lifeContextInput.value = config.life_context || "";
+            }
 
             // Update Buttons
             document.querySelectorAll('.mode-btn').forEach(btn => {
