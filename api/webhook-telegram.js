@@ -141,7 +141,8 @@ async function handleAIMessage(chatId, text, photo, event) {
     let systemPrompt = buildRoleplayPrompt(
       mode, timeStr, dateStr, psychSummary, userConfig.saga || "", 
       preferredAddress, userConfig.husband_profile || {}, relationshipStatus, 
-      lifeContext, userConfig.personality_description || "", plotDirectives
+      lifeContext, userConfig.personality_description || "", plotDirectives,
+      userConfig.active_duties || []
     );
     
     let userPrompt = text || "Lihat foto ini";
@@ -233,7 +234,8 @@ async function handleAIMessage(chatId, text, photo, event) {
           let needsSave = true; // Always save at the end to persist counters
           if (shouldUpdateSaga) {
             console.log(`[Saga Engine] Updating story & identity for ${chatId}...`);
-            const sagaResult = await updateSaga(history, userConfig.saga || "", config);
+            const fullTime = `${dateStr}, ${timeStr}`;
+            const sagaResult = await updateSaga(history, userConfig.saga || "", config, userConfig.active_duties || [], fullTime);
             if (sagaResult && sagaResult.updated_saga) {
               userConfig.saga = sagaResult.updated_saga;
               userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status;
@@ -241,6 +243,7 @@ async function handleAIMessage(chatId, text, photo, event) {
               userConfig.narrative_directives = sagaResult.narrative_directives || "";
               userConfig.stagnation_level = sagaResult.stagnation_level || 0;
               userConfig.chat_count_directives = 0; // Reset counter for new directive
+              userConfig.active_duties = sagaResult.active_duties || userConfig.active_duties || [];
               if (sagaResult.husband_identity) {
                 userConfig.husband_profile = { ...userConfig.husband_profile, ...sagaResult.husband_identity };
               }

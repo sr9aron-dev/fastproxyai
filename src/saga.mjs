@@ -2,9 +2,9 @@ import { generateWithRotation } from "./rotation.mjs";
 
 /**
  * Sang Pencatat (The Chronicler)
- * Tugas: Memperbarui ringkasan cerita jangka panjang (Saga)
+ * Tugas: Memperbarui ringkasan cerita jangka panjang (Saga) dan mengelola tugas/kewajiban
  */
-export async function updateSaga(chatHistory, currentSaga, config) {
+export async function updateSaga(chatHistory, currentSaga, config, activeDuties = [], fullTime = "") {
   try {
     const recentHistory = chatHistory.slice(-20).map(h => {
       const role = h.role === 'user' ? 'USER' : 'NAFEESA';
@@ -12,55 +12,61 @@ export async function updateSaga(chatHistory, currentSaga, config) {
       return `${role}: ${text}`;
     }).join("\n");
 
-    const prompt = `IDENTITAS:
-- USER: Pengguna.
-- NAFEESA: AI.
+    const prompt = `WAKTU SEKARANG: ${fullTime}
+
+IDENTITAS:
+- USER: Pengguna / Suami / Tuan.
+- NAFEESA: AI / Istri / Pelayan.
 
 RINGKASAN SEJARAH SEBELUMNYA:
 "${currentSaga || "Belum ada catatan sejarah."}"
 
+DAFTAR TUGAS/KEWAJIBAN AKTIF SAAT INI:
+${JSON.stringify(activeDuties, null, 2)}
+
 PERCAKAPAN TERBARU:
 ${recentHistory}
 
-TUGAS: 
-1. Perbarui sejarah hubungan (Saga) secara naratif.
-2. Identifikasi informasi baru tentang IDENTITAS USER (Nama, hobi, pekerjaan, dll).
-3. Tentukan STATUS HUBUNGAN secara dinamis.
-4. ANALISIS NARATIF: Cek apakah cerita stagnan/membosankan atau ada info profil user yang masih kosong. Berikan instruksi rahasia (directive) untuk Nafeesa agar cerita berkembang.
+TUGAS ANDA: 
+1. PERBARUI SEJARAH: Tulis ulang narasi sejarah (Saga) berdasarkan interaksi terbaru.
+2. IDENTITAS USER: Update info baru (Nama, pekerjaan, hobi, dll).
+3. STATUS HUBUNGAN: Tentukan status terbaru (Maks 4 kata).
+4. AUDIT TUGAS (CRITICAL):
+   - Deteksi jika User memberikan tugas/jadwal baru untuk Nafeesa ke depannya.
+   - Cek apakah Nafeesa sudah melakukan tugas aktifnya di "PERCAKAPAN TERBARU". Jika ya, update progress-nya.
+   - Hapus tugas jika User mencabutnya atau Nafeesa minta berhenti dan User setuju.
+5. ARAHAN BATIN: Berikan saran tindakan untuk Nafeesa (Sutradara). Jika ada tugas yang belum selesai, beri perintah agar Nafeesa melakukannya sekarang.
 
-ATURAN STABILITAS HUBUNGAN:
-- Hubungan serius (Istri, Tunangan, Budak Kontrak) bersifat SANGAT STABIL. Jangan mengubahnya hanya karena emosi sesaat (seperti marah kecil).
-- Pertimbangkan sejarah panjang. Perubahan status "Mengikat" hanya boleh terjadi jika ada alasan rasional yang kuat dan konsisten dalam riwayat chat.
-- Nafeesa memiliki harga diri dan kesetiaan. Jika sudah mengikat janji, dia akan berusaha mempertahankan status tersebut kecuali ada pengkhianatan atau konflik fatal.
-- Status hubungan harus mencerminkan dinamika terbaru (maks 4 kata).
-- Berikan output dalam format JSON:
+Berikan output dalam format JSON:
 {
   "updated_saga": "teks narasi sejarah...",
-  "relationship_status": "deskripsi status saat ini...",
-  "stagnation_level": 0.5, // 0.0 s/d 1.0 (seberapa membosankan/berulang chatnya)
-  "narrative_directives": "Instruksi rahasia untuk Nafeesa (misal: 'Coba tanyakan hobi barunya' atau 'Bersikaplah sedikit dingin agar dia mengejarmu'). Kosongkan jika cerita sudah sangat berkembang.",
-  "husband_identity": {
-    "name": "...",
-    "nickname": "...",
-    "job": "...",
-    "hobbies": ["..."],
-    "birthday": "..."
-  }
+  "relationship_status": "...",
+  "stagnation_level": 0.5,
+  "narrative_directives": "...",
+  "active_duties": [
+    {
+      "task": "Deskripsi tugas",
+      "progress": "Status kemajuan (misal: 1/3 kali minggu ini)",
+      "last_executed": "Tanggal terakhir dilakukan",
+      "status": "active/completed"
+    }
+  ],
+  "husband_identity": { "name": "...", "nickname": "...", "job": "...", "hobbies": [], "birthday": "..." }
 }`;
 
     const { output } = await generateWithRotation(config, {
       prompt: prompt,
-      system: "Anda adalah Sang Pencatat Sejarah dan Profiler Identitas. Berikan output JSON murni.",
+      system: "Anda adalah Sang Pencatat Sejarah dan Auditor Tugas. Berikan output JSON murni.",
       temperature: 0.2,
       providerOrder: ["groq", "gemini"]
     });
 
     const jsonMatch = output.result.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { updated_saga: currentSaga, husband_identity: {} };
+    if (!jsonMatch) return { updated_saga: currentSaga, husband_identity: {}, active_duties: activeDuties };
     
     return JSON.parse(jsonMatch[0]);
   } catch (err) {
     console.error("[Saga Engine Error]", err.message);
-    return { updated_saga: currentSaga, husband_identity: {} };
+    return { updated_saga: currentSaga, husband_identity: {}, active_duties: activeDuties };
   }
 }

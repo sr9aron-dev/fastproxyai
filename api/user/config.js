@@ -76,6 +76,7 @@ async function handler(event) {
           narrative_directives: "",
           stagnation_level: 0,
           chat_count_directives: 0,
+          active_duties: [],
           psychology: getInitialPsychology(currentConfig.personality_traits || {}),
           updatedAt: new Date().toISOString()
         };
