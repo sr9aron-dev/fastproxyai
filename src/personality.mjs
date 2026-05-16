@@ -4,18 +4,14 @@ import { callGemini } from "./providers.mjs";
  * Generates an initial personality description based on Big Five traits and life context.
  */
 export async function generateInitialPersonality(traits, lifeContext, config) {
-  const prompt = `Tugas: Sintesis Kepribadian Naratif.
-Input Big Five:
-- Openness: ${traits.openness}
-- Conscientiousness: ${traits.conscientiousness}
-- Extraversion: ${traits.extraversion}
-- Agreeableness: ${traits.agreeableness}
-- Neuroticism: ${traits.neuroticism}
+  const prompt = `Tugas: Sintesis Kepribadian Naratif Singkat.
+Input Big Five (0-1): O:${traits.openness}, C:${traits.conscientiousness}, E:${traits.extraversion}, A:${traits.agreeableness}, N:${traits.neuroticism}
+Konteks: "${lifeContext || "Normal"}"
 
-Konteks Hidup/Motivasi: "${lifeContext || "Normal"}"
-
-Tugas Anda adalah merangkai angka-angka dan konteks di atas menjadi satu paragraf deskripsi kepribadian yang mendalam, manusiawi, dan natural untuk karakter bernama Nafeesa (wanita, 25 tahun). 
-Fokus pada bagaimana ia bersikap, apa yang ia takutkan, dan bagaimana ia memandang dunia. Jangan sebutkan angka atau istilah psikologi teknis. Gunakan bahasa Indonesia yang elegan.`;
+Tugas: Buat profil kepribadian Nafeesa dalam MAKSIMAL 30 KATA. 
+Fokus HANYA pada sifat, temperamen, dan gaya interaksi. 
+JANGAN sebutkan nama, umur, jenis kelamin, atau angka Big Five. 
+Contoh: "Wanita yang ceria namun menyimpan kecemasan mendalam, sangat protektif terhadap privasi namun lembut jika sudah merasa aman."`;
 
   try {
     const { result } = await callGemini({
@@ -24,10 +20,10 @@ Fokus pada bagaimana ia bersikap, apa yang ia takutkan, dan bagaimana ia memanda
       prompt: prompt,
       temperature: 0.7
     });
-    return result.trim();
+    return result.trim().replace(/^"|"$/g, "");
   } catch (err) {
     console.error("[Personality] Failed to generate initial:", err.message);
-    return "Nafeesa adalah wanita dengan kepribadian yang kompleks dan mendalam, beradaptasi sesuai dengan pengalaman hidup dan hubungannya.";
+    return "Ceria, setia, namun sedikit sensitif dan butuh validasi emosional.";
   }
 }
 
@@ -37,24 +33,15 @@ Fokus pada bagaimana ia bersikap, apa yang ia takutkan, dan bagaimana ia memanda
 export async function evolvePersonality(history, currentDescription, saga, lifeContext, config) {
   const historyText = history.map(m => `${m.role}: ${m.text}`).join("\n");
   
-  const prompt = `Tugas: Evolusi Kepribadian Dinamis.
-  
-Kepribadian Nafeesa Saat Ini:
-"${currentDescription}"
-
-Sejarah Hubungan (Saga):
-"${saga}"
-
-Konteks Hidup:
-"${lifeContext}"
-
-Interaksi Terbaru (Chat History):
+  const prompt = `Tugas: Evolusi Kepribadian Dinamis Singkat.
+Profil Saat Ini: "${currentDescription}"
+Konteks Hidup: "${lifeContext}"
+Interaksi Terbaru:
 ${historyText}
 
-Tugas Anda: Analisis apakah interaksi terbaru dan sejarah hubungan di atas memberikan dampak psikologis yang cukup besar untuk merubah atau memperdalam sifat Nafeesa. 
-Tulis ulang deskripsi kepribadian Nafeesa (1 paragraf) untuk mencerminkan perkembangan karakter tersebut. 
-Apakah ia menjadi lebih percaya? Lebih waspada? Lebih intim? Atau ada trauma baru? 
-Pertahankan inti karakternya namun tunjukkan evolusi yang terjadi.`;
+Tugas: Perbarui profil kepribadian di atas (MAKSIMAL 30 KATA) jika ada perkembangan sifat dari interaksi terbaru.
+JANGAN sebutkan identitas dasar (nama/umur). Fokus pada perubahan temperamen atau kedekatan emosional.
+Output harus berupa satu paragraf pendek dan padat.`;
 
   try {
     const { result } = await callGemini({
@@ -63,7 +50,7 @@ Pertahankan inti karakternya namun tunjukkan evolusi yang terjadi.`;
       prompt: prompt,
       temperature: 0.7
     });
-    return result.trim();
+    return result.trim().replace(/^"|"$/g, "");
   } catch (err) {
     console.error("[Personality] Failed to evolve:", err.message);
     return currentDescription;
