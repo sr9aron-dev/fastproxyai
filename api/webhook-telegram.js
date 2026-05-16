@@ -195,33 +195,35 @@ async function handleAIMessage(chatId, text, photo, event) {
       const shouldUpdateSaga = userConfig.chat_count_saga >= 10 || isManualStory || !userConfig.saga;
       const shouldEvolvePersonality = userConfig.chat_count_personality >= 50;
 
+      console.log(`[Stats] Chat Count for ${chatId} -> Saga: ${userConfig.chat_count_saga}/10, Personality: ${userConfig.chat_count_personality}/50`);
+
       const updateTask = (async () => {
         try {
-          let needsSave = false;
+          let needsSave = true; // Always save at the end to persist counters
           if (shouldUpdateSaga) {
             console.log(`[Saga Engine] Updating story & identity for ${chatId}...`);
             const sagaResult = await updateSaga(history, userConfig.saga || "", config);
-            userConfig.saga = sagaResult.updated_saga;
-            userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status;
-            userConfig.chat_count_saga = 0;
-            if (sagaResult.husband_identity) {
-              userConfig.husband_profile = { ...userConfig.husband_profile, ...sagaResult.husband_identity };
+            if (sagaResult && sagaResult.updated_saga) {
+              userConfig.saga = sagaResult.updated_saga;
+              userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status;
+              userConfig.chat_count_saga = 0;
+              if (sagaResult.husband_identity) {
+                userConfig.husband_profile = { ...userConfig.husband_profile, ...sagaResult.husband_identity };
+              }
+              if (isManualStory) await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${userConfig.saga}`);
             }
-            needsSave = true;
-            if (isManualStory) await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${userConfig.saga}`);
           }
 
           if (shouldEvolvePersonality) {
             console.log(`[Personality Engine] Evolving character description for ${chatId}...`);
             const newDesc = await evolvePersonality(history, userConfig.personality_description || "", userConfig.saga || "", lifeContext, config);
-            userConfig.personality_description = newDesc;
-            userConfig.chat_count_personality = 0;
-            needsSave = true;
+            if (newDesc) {
+              userConfig.personality_description = newDesc;
+              userConfig.chat_count_personality = 0;
+            }
           }
 
-          if (needsSave || shouldUpdateSaga) {
-            await saveUserConfig(chatId, userConfig);
-          }
+          await saveUserConfig(chatId, userConfig);
         } catch (e) { console.error("[Update Task Error]", e.message); }
       });
 
