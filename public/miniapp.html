@@ -522,7 +522,7 @@
                 traitsList.innerHTML += `
                     <div class="slider-container">
                         <div class="stat-label"><span>${labels[key]}</span><span id="val-${key}">${traits[key].toFixed(2)}</span></div>
-                        <input type="range" min="0" max="1" step="0.05" value="${traits[key]}" 
+                        <input type="range" min="0" max="1" step="0.01" value="${traits[key]}" 
                             oninput="updateTrait('${key}', this.value)">
                         <span class="trait-desc">${descs[key]}</span>
                     </div>
