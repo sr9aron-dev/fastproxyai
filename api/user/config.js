@@ -1,8 +1,9 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../../src/http.mjs";
-import { loadUserConfig, saveUserConfig, clearChatHistory } from "../../src/store.mjs";
+import { loadUserConfig, saveUserConfig, clearChatHistory, loadChatHistory } from "../../src/store.mjs";
 import { getInitialPsychology, getPreferredAddress } from "../../src/psychology.mjs";
 import { generateInitialPersonality } from "../../src/personality.mjs";
 import { loadConfig } from "../../src/store.mjs";
+import { deleteMessage } from "../../src/telegram.mjs";
 import redis, { KEYS } from "../../src/redis.mjs";
 
 async function handler(event) {
@@ -48,7 +49,18 @@ async function handler(event) {
       if (body.action === 'TOTAL_RESET') {
         console.log(`[API] Triggering total reset for ${chatId} from UI...`);
         
-        // 1. Hapus Chat
+        // 1. Hapus Chat di Layar Telegram (Best Effort)
+        try {
+          const history = await loadChatHistory(chatId, 100);
+          const messageIds = history.map(m => m.messageId).filter(Boolean);
+          for (const msgId of messageIds) {
+            deleteMessage(chatId, msgId).catch(() => {}); // Non-blocking
+          }
+        } catch (e) {
+          console.error("[API] Failed to cleanup Telegram screen:", e.message);
+        }
+
+        // 2. Hapus Riwayat di DB
         await clearChatHistory(chatId);
         
         // 2. Reset Config

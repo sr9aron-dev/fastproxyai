@@ -24,6 +24,19 @@ export async function sendMessage(chatId, text, options = {}) {
   }
 }
 
+export async function deleteMessage(chatId, messageId) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/deleteMessage`;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId })
+    });
+  } catch (error) {
+    console.error("[Telegram Bot] Failed to delete message:", error);
+  }
+}
+
 export async function sendChatAction(chatId, action = "typing") {
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendChatAction`;
   try {

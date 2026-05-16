@@ -261,7 +261,7 @@ export async function loadChatHistory(chatId, limit = 10) {
   }
 }
 
-export async function saveChatMessage(chatId, role, text) {
+export async function saveChatMessage(chatId, role, text, messageId = null) {
   if (shouldUseLocalStore()) return;
 
   try {
@@ -271,6 +271,7 @@ export async function saveChatMessage(chatId, role, text) {
       .add({
         role,
         text,
+        messageId,
         timestamp: admin.firestore.FieldValue.serverTimestamp()
       });
   } catch (err) {

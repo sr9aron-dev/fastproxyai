@@ -175,12 +175,15 @@ async function handleAIMessage(chatId, text, photo, event) {
         await sendChatAction(chatId, "typing");
         await new Promise(r => setTimeout(r, 1000 + (i * 200)));
       }
-      await sendMessage(chatId, chatParts[i]);
-      backgroundTasks.push(saveChatMessage(chatId, "assistant", chatParts[i]));
+      const sentMsg = await sendMessage(chatId, chatParts[i]);
+      if (sentMsg?.ok) {
+        backgroundTasks.push(saveChatMessage(chatId, "assistant", chatParts[i], sentMsg.result.message_id));
+      }
     }
 
     // 4. Background Updates
-    backgroundTasks.push(saveChatMessage(chatId, "user", text || "[Photo]"));
+    const userMsgId = event.body?.message?.message_id;
+    backgroundTasks.push(saveChatMessage(chatId, "user", text || "[Photo]", userMsgId));
     backgroundTasks.push(trackUsage(output.provider, output.model, "success"));
     
     // Saga & Personality Update Logic
