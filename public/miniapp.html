@@ -329,6 +329,7 @@
 
             <div class="card">
                 <h3>🧠 Workshop Kepribadian</h3>
+                <p id="personality-desc-text" style="font-size: 13px; line-height: 1.5; color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.2); padding: 12px; border-radius: 10px; margin-bottom: 20px; font-style: italic; border: 1px solid rgba(255,255,255,0.05);"></p>
                 <div id="traits-list"></div>
             </div>
         </div>
@@ -460,6 +461,7 @@
             document.getElementById('husband-job').innerText = hp.job || "-";
             document.getElementById('preferred-address').innerText = config.preferred_address || "Mas";
             document.getElementById('relationship-status').innerText = config.relationship_status || "Kenalan Baru";
+            document.getElementById('personality-desc-text').innerText = config.personality_description || "Belum ada profil naratif yang dihasilkan...";
 
             // Update Inner Voice
             const ivCard = document.getElementById('inner-voice-card');

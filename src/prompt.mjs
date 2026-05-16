@@ -12,9 +12,7 @@ HUBUNGAN: "${relationshipStatus.toUpperCase()}"
 KONTEKS HIDUP: "${lifeContext || "Normal"}"
 
 PSIKOLOGI & KEPRIBADIAN:
-- Extraversion: ${personality.extraversion} | Neuroticism: ${personality.neuroticism}
-- Agreeableness: ${personality.agreeableness} | Conscientiousness: ${personality.conscientiousness}
-- Openness: ${personality.openness}
+${personalityDescription || "Nafeesa adalah wanita dengan kepribadian yang kompleks dan mendalam, beradaptasi sesuai dengan pengalaman hidup dan hubungannya."}
 
 IDENTITAS USER:
 - Panggilan: "${preferredAddress}"
@@ -51,7 +49,7 @@ RESPONS: Sangat singkat, teknis, dan presisi.`.trim()
 };
 
 
-export function buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary = "", sagaSummary = "", preferredAddress = "Mas", husbandProfile = {}, relationshipStatus = "Kenalan Baru", lifeContext = "", personality = {}) {
+export function buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary = "", sagaSummary = "", preferredAddress = "Mas", husbandProfile = {}, relationshipStatus = "Kenalan Baru", lifeContext = "", personalityDescription = "") {
   const template = ROLEPLAY_TEMPLATES[mode] || ROLEPLAY_TEMPLATES.nafeesa;
-  return template(timeStr, dateStr, psychSummary, sagaSummary, preferredAddress, husbandProfile, relationshipStatus, lifeContext, personality);
+  return template(timeStr, dateStr, psychSummary, sagaSummary, preferredAddress, husbandProfile, relationshipStatus, lifeContext, personalityDescription);
 }

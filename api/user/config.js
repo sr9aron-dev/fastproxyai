@@ -1,6 +1,8 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../../src/http.mjs";
 import { loadUserConfig, saveUserConfig, clearChatHistory } from "../../src/store.mjs";
 import { getInitialPsychology, getPreferredAddress } from "../../src/psychology.mjs";
+import { generateInitialPersonality } from "../../src/personality.mjs";
+import { loadConfig } from "../../src/store.mjs";
 import redis, { KEYS } from "../../src/redis.mjs";
 
 async function handler(event) {
@@ -74,6 +76,19 @@ async function handler(event) {
 
         await saveUserConfig(chatId, resetConfig);
         return json(200, { ok: true, config: resetConfig });
+      }
+
+      const hasContextChanged = body.life_context !== undefined && body.life_context !== currentConfig.life_context;
+      const hasTraitsChanged = body.personality_traits && JSON.stringify(body.personality_traits) !== JSON.stringify(currentConfig.personality_traits);
+
+      if (!currentConfig.personality_description || hasContextChanged || hasTraitsChanged) {
+        console.log(`[API] Generating/Updating personality description for ${chatId}...`);
+        const appConfig = await loadConfig();
+        const traits = body.personality_traits || currentConfig.personality_traits || {
+          openness: 0.5, conscientiousness: 0.5, extraversion: 0.5, agreeableness: 0.5, neuroticism: 0.5
+        };
+        const lifeContext = body.life_context !== undefined ? body.life_context : (currentConfig.life_context || "");
+        body.personality_description = await generateInitialPersonality(traits, lifeContext, appConfig);
       }
 
       const newConfig = {

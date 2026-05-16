@@ -15,6 +15,12 @@ import {
 import { buildRoleplayPrompt } from "../src/prompt.mjs";
 import { updateSaga } from "../src/saga.mjs";
 import { camouflagePrompt, isSensitive } from "../src/camouflage.mjs";
+import { evolvePersonality } from "../src/personality.mjs";
+
+async function handleSejarahCommand(chatId, userConfig) {
+  const saga = userConfig.saga || "Belum ada sejarah yang tercatat antara kita... Mari kita buat kenangan bersama! ❤️";
+  await sendMessage(chatId, `📖 *Sejarah Hubungan Kita*:\n\n${saga}`);
+}
 
 async function handleKondisiCommand(chatId, event) {
   const host = event?.headers?.host || process.env.BASE_URL?.replace('https://', '') || 'mega-vercel-ai-proxy.vercel.app';
@@ -120,7 +126,11 @@ async function handleAIMessage(chatId, text, photo, event) {
     const dateStr = now.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     // 2. Build Prompt & Generate Response
-    let systemPrompt = buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary, userConfig.saga || "", preferredAddress, userConfig.husband_profile || {}, relationshipStatus, lifeContext, psychState.personality || {});
+    let systemPrompt = buildRoleplayPrompt(
+      mode, timeStr, dateStr, psychSummary, userConfig.saga || "", 
+      preferredAddress, userConfig.husband_profile || {}, relationshipStatus, 
+      lifeContext, userConfig.personality_description || ""
+    );
     
     let userPrompt = text || "Lihat foto ini";
     let isRequestSensitive = isSensitive(userPrompt);
@@ -173,15 +183,19 @@ async function handleAIMessage(chatId, text, photo, event) {
     backgroundTasks.push(saveChatMessage(chatId, "user", text || "[Photo]"));
     backgroundTasks.push(trackUsage(output.provider, output.model, "success"));
     
-    // Saga Update Logic (Background for automatic, Sync for /story)
+    // Saga & Personality Update Logic
     if (mode === "istri" && text) {
       userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
+      userConfig.chat_count_personality = (userConfig.chat_count_personality || 0) + 1;
+      
       const isManualStory = text === "/story";
       const shouldUpdateSaga = userConfig.chat_count_saga >= 10 || isManualStory || !userConfig.saga;
+      const shouldEvolvePersonality = userConfig.chat_count_personality >= 50;
 
-      if (shouldUpdateSaga) {
-        const updateTask = (async () => {
-          try {
+      const updateTask = (async () => {
+        try {
+          let needsSave = false;
+          if (shouldUpdateSaga) {
             console.log(`[Saga Engine] Updating story & identity for ${chatId}...`);
             const sagaResult = await updateSaga(history, userConfig.saga || "", config);
             userConfig.saga = sagaResult.updated_saga;
@@ -190,16 +204,28 @@ async function handleAIMessage(chatId, text, photo, event) {
             if (sagaResult.husband_identity) {
               userConfig.husband_profile = { ...userConfig.husband_profile, ...sagaResult.husband_identity };
             }
-            await saveUserConfig(chatId, userConfig);
+            needsSave = true;
             if (isManualStory) await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${userConfig.saga}`);
-          } catch (e) { console.error("[Saga Error]", e.message); }
-        });
+          }
 
-        if (isManualStory) await updateTask(); // Tunggu jika diminta manual
-        else backgroundTasks.push(updateTask()); // Jalankan di background jika otomatis
-      } else {
-        backgroundTasks.push(saveUserConfig(chatId, userConfig));
-      }
+          if (shouldEvolvePersonality) {
+            console.log(`[Personality Engine] Evolving character description for ${chatId}...`);
+            const newDesc = await evolvePersonality(history, userConfig.personality_description || "", userConfig.saga || "", lifeContext, config);
+            userConfig.personality_description = newDesc;
+            userConfig.chat_count_personality = 0;
+            needsSave = true;
+          }
+
+          if (needsSave || shouldUpdateSaga) {
+            await saveUserConfig(chatId, userConfig);
+          }
+        } catch (e) { console.error("[Update Task Error]", e.message); }
+      });
+
+      if (isManualStory) await updateTask(); 
+      else backgroundTasks.push(updateTask());
+    } else {
+      backgroundTasks.push(saveUserConfig(chatId, userConfig));
     }
 
     await Promise.all(backgroundTasks).catch(e => console.error("[BG Error]", e.message));
@@ -246,6 +272,10 @@ async function handler(event) {
     if (text === "/start") return handleStartCommand(chatId).then(() => json(200, { ok: true }));
     if (text === "/settings" || text === "/menu") return handleSettingsCommand(chatId, event).then(() => json(200, { ok: true }));
     if (text === "/kondisi") return handleKondisiCommand(chatId, event).then(() => json(200, { ok: true }));
+    if (text === "/sejarah" || text === "/story") {
+      const userConfig = await loadUserConfig(chatId);
+      return handleSejarahCommand(chatId, userConfig).then(() => json(200, { ok: true }));
+    }
     if (text || message.photo) {
       await handleAIMessage(chatId, text, message.photo, event);
       return json(200, { ok: true });
