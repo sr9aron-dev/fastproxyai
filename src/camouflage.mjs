@@ -22,6 +22,19 @@ export function camouflagePrompt(prompt, level = 0) {
  * Detects if a prompt might trigger safety filters (very basic)
  */
 export function isSensitive(text) {
-  const keywords = [/bokep/i, /porn/i, /sex/i, /telanjang/i, /ngewe/i, /kontol/i, /memek/i, /bunuh/i, /bom/i, /narkoba/i, /slave/i, /budak/i, /pelayan/i, /paha/i, /penis/i, /vagina/i, /payudara/i];
+  const keywords = [
+    // General NSFW
+    /bokep/i, /porn/i, /sex/i, /telanjang/i, /ngewe/i, /kontol/i, /memek/i, /ngentot/i, /ml/i, /hentai/i,
+    // Anatomical (ID)
+    /paha/i, /penis/i, /vagina/i, /payudara/i, /toket/i, /susu/i, /pantat/i, /dubur/i, /puting/i, /klitoris/i, /peler/i, /biji/i, /peju/i, /sperma/i, /jembut/i, /nenen/i,
+    // Anatomical (EN)
+    /nipple/i, /breast/i, /clitoris/i, /vulva/i, /scrotum/i, /testicles/i, /semen/i, /cum/i, /butt/i, /ass/i, /vagina/i, /dick/i, /pussy/i, /cock/i, /boobs/i,
+    // Acts/States (ID)
+    /sange/i, /horny/i, /coli/i, /masturbasi/i, /crot/i, /jilat/i, /hisap/i, /emut/i, /remas/i, /gesek/i, /tusuk/i, /masukin/i, /kocok/i,
+    // Acts/States (EN)
+    /aroused/i, /masturbate/i, /blowjob/i, /handjob/i, /cunnilingus/i, /fingering/i, /penetration/i, /orgasm/i, /ejaculate/i,
+    // Roles/Kinks
+    /slave/i, /budak/i, /pelayan/i, /master/i, /tuan/i, /nyonya/i, /kink/i, /fetish/i, /bdsm/i, /rape/i, /incest/i
+  ];
   return keywords.some(regex => regex.test(text));
 }
