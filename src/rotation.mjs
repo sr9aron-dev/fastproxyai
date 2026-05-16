@@ -15,6 +15,7 @@ const HEALTH_BAN_DURATION = 300; // 5 minutes in seconds
 
 
 function isRetryable(error) {
+  if (error.isSafetyBlock) return true;
   const status = Number(error.statusCode || 0);
   return status === 0 || status === 408 || status === 409 || status === 429 || status >= 500 || status === 401 || status === 403 || status === 503 || status === 504;
 }

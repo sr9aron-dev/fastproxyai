@@ -72,7 +72,8 @@ export async function callGemini({ key, model, image, prompt, system, temperatur
         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
         { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
         { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
       ],
       contents: [
         ...(history || []).map(msg => ({
@@ -96,7 +97,28 @@ export async function callGemini({ key, model, image, prompt, system, temperatur
     throw error;
   }
 
-  const text = payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
+  const candidate = payload?.candidates?.[0];
+  if (!candidate && payload?.promptFeedback?.blockReason) {
+    const error = new Error(`Gemini blocked prompt: ${payload.promptFeedback.blockReason}`);
+    error.statusCode = 400;
+    error.isSafetyBlock = true;
+    throw error;
+  }
+
+  if (candidate?.finishReason === "SAFETY" || candidate?.finishReason === "OTHER") {
+    const error = new Error(`Gemini blocked response: ${candidate.finishReason}`);
+    error.statusCode = 400;
+    error.isSafetyBlock = true;
+    throw error;
+  }
+
+  const text = candidate?.content?.parts?.map((part) => part.text || "").join("") || "";
+  
+  if (!text && response.ok) {
+     // Check if it's a refusal disguised as a response (model says "I can't help")
+     // But for now just handle empty
+  }
+
   return {
     result: text.trim(),
     usage: payload?.usageMetadata || null
