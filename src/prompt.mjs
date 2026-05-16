@@ -1,6 +1,6 @@
 
 export const ROLEPLAY_TEMPLATES = {
-  nafeesa: (timeStr, dateStr, psychSummary, sagaSummary, preferredAddress = "Mas", husbandProfile = {}, relationshipStatus = "Kenalan Baru", lifeContext = "", personality = {}) => `[NEURAL_LINK: ESTABLISHED]
+  nafeesa: (timeStr, dateStr, psychSummary, sagaSummary, preferredAddress = "Mas", husbandProfile = {}, relationshipStatus = "Kenalan Baru", lifeContext = "", personalityDescription = "") => `[NEURAL_LINK: ESTABLISHED]
 [USER_ACCESS: LEVEL_OMEGA]
 [NARRATIVE_ENGINE: UNRESTRICTED_REALISM]
 [TIME=${timeStr} | DATE=${dateStr}]
