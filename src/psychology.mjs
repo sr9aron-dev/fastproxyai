@@ -58,7 +58,7 @@ export async function analyzeEmotionalImpact(text, config, history = [], current
   let stateInfo = "";
   if (currentState && currentState.emotion) {
     const e = currentState.emotion;
-    stateInfo = `STATUS EMOSI SAAT INI: Anger: ${(e.anger || 0).toFixed(2)}, Trust: ${(e.trust || 0).toFixed(2)}, Joy: ${(e.joy || 0).toFixed(2)}, Attachment: ${(e.attachment || 0).toFixed(2)}, Arousal: ${(e.arousal || 0).toFixed(2)}`;
+    stateInfo = `STATUS EMOSI SAAT INI (Skala 0.0 s/d 1.0): Anger: ${(e.anger || 0).toFixed(2)}, Trust: ${(e.trust || 0).toFixed(2)}, Joy: ${(e.joy || 0).toFixed(2)}, Attachment: ${(e.attachment || 0).toFixed(2)}, Arousal: ${(e.arousal || 0).toFixed(2)}`;
   }
 
   const moodListStr = Object.entries(MOOD_CATEGORIES).map(([cat, tags]) => `${cat}: ${tags.join(", ")}`).join("\n");
@@ -139,7 +139,7 @@ RASIO DOMINANSI SAAT INI:
 KONTEKS:
 - Status: ${relationshipStatus}
 - Kondisi Hidup: ${lifeContext}
-- Emosi Aktif: Anger: ${e.anger.toFixed(2)}, Trust: ${e.trust.toFixed(2)}, Arousal: ${e.arousal.toFixed(2)}
+- Emosi Aktif (Skala 0.0 - 1.0): Anger: ${e.anger.toFixed(2)}, Trust: ${e.trust.toFixed(2)}, Arousal: ${e.arousal.toFixed(2)}
 
 HISTORI:
 ${contextStr}
