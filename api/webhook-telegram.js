@@ -133,35 +133,54 @@ async function handleAIMessage(chatId, text, photo, event) {
     );
     
     let userPrompt = text || "Lihat foto ini";
-    let isRequestSensitive = isSensitive(userPrompt);
+    const isRequestSensitive = isSensitive(userPrompt);
+    
+    // Proactive Camouflage for known sensitive prompts
+    if (isRequestSensitive) {
+      console.log(`[Safety] Proactive camouflage for sensitive prompt: "${userPrompt.substring(0, 20)}..."`);
+      userPrompt = camouflagePrompt(userPrompt, Math.floor(Math.random() * 5));
+    }
 
     let output;
-    try {
-      const result = await generateWithRotation(config, {
-        prompt: userPrompt,
-        system: systemPrompt,
-        temperature: 0.8,
-        history: history,
-        image: imagePayload,
-        forceProvider: userConfig.provider
-      });
-      output = result.output;
-    } catch (err) {
-      if (err.isSafetyBlock || isRequestSensitive) {
-        console.log(`[Safety] Attempting camouflage for ${chatId}...`);
-        const camouflaged = camouflagePrompt(userPrompt, 0);
+    const maxAttempts = 3;
+    let attempt = 0;
+
+    while (attempt < maxAttempts) {
+      try {
         const result = await generateWithRotation(config, {
-          prompt: camouflaged,
+          prompt: userPrompt,
           system: systemPrompt,
-          temperature: 0.9, // Higher temp for more 'creative' bypass
+          temperature: 0.8 + (attempt * 0.1), // Increase temp on retries
           history: history,
           image: imagePayload,
-          // If gemini blocked it, try groq/mistral first on retry
-          providerOrder: ["groq", "mistral", "gemini"] 
+          forceProvider: userConfig.provider,
+          // If first attempt fails or is sensitive, shift providers
+          providerOrder: isRequestSensitive || attempt > 0 ? ["groq", "mistral", "gemini"] : config.providerOrder
         });
+        
         output = result.output;
-      } else {
-        throw err;
+        const resultText = output.result.toLowerCase();
+        
+        // Detect "Soft Refusal" (AI says no politely)
+        const refusalKeywords = ["maaf", "tidak bisa", "standar komunitas", "pantas", "kebijakan keamanan", "ai model", "unfortunate", "policy", "cannot fulfill"];
+        const isRefusal = refusalKeywords.some(k => resultText.includes(k)) && resultText.length < 150;
+
+        if (isRefusal && attempt < maxAttempts - 1) {
+          console.log(`[Safety] Detected soft refusal on attempt ${attempt + 1}. Retrying with camouflage...`);
+          attempt++;
+          userPrompt = camouflagePrompt(text || userPrompt, attempt);
+          continue;
+        }
+
+        break; // Success or final attempt
+      } catch (err) {
+        if (err.isSafetyBlock && attempt < maxAttempts - 1) {
+          console.log(`[Safety] Hard block on attempt ${attempt + 1}. Retrying with camouflage...`);
+          attempt++;
+          userPrompt = camouflagePrompt(text || userPrompt, attempt);
+        } else {
+          throw err;
+        }
       }
     }
 
