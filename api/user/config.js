@@ -73,6 +73,9 @@ async function handler(event) {
           husband_profile: {},
           life_context: "",
           personality_description: "",
+          narrative_directives: "",
+          stagnation_level: 0,
+          chat_count_directives: 0,
           psychology: getInitialPsychology(currentConfig.personality_traits || {}),
           updatedAt: new Date().toISOString()
         };

@@ -24,8 +24,9 @@ ${recentHistory}
 
 TUGAS: 
 1. Perbarui sejarah hubungan (Saga) secara naratif.
-2. Identifikasi informasi baru tentang IDENTITAS SUAMI.
+2. Identifikasi informasi baru tentang IDENTITAS USER (Nama, hobi, pekerjaan, dll).
 3. Tentukan STATUS HUBUNGAN secara dinamis.
+4. ANALISIS NARATIF: Cek apakah cerita stagnan/membosankan atau ada info profil user yang masih kosong. Berikan instruksi rahasia (directive) untuk Nafeesa agar cerita berkembang.
 
 ATURAN STABILITAS HUBUNGAN:
 - Hubungan serius (Istri, Tunangan, Budak Kontrak) bersifat SANGAT STABIL. Jangan mengubahnya hanya karena emosi sesaat (seperti marah kecil).
@@ -36,6 +37,8 @@ ATURAN STABILITAS HUBUNGAN:
 {
   "updated_saga": "teks narasi sejarah...",
   "relationship_status": "deskripsi status saat ini...",
+  "stagnation_level": 0.5, // 0.0 s/d 1.0 (seberapa membosankan/berulang chatnya)
+  "narrative_directives": "Instruksi rahasia untuk Nafeesa (misal: 'Coba tanyakan hobi barunya' atau 'Bersikaplah sedikit dingin agar dia mengejarmu'). Kosongkan jika cerita sudah sangat berkembang.",
   "husband_identity": {
     "name": "...",
     "nickname": "...",

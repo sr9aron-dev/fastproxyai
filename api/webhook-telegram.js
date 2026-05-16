@@ -125,11 +125,23 @@ async function handleAIMessage(chatId, text, photo, event) {
     const timeStr = now.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" });
     const dateStr = now.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
+    // --- NARRATIVE DIRECTIVES EXPIRATION ---
+    let plotDirectives = "";
+    if (mode === "istri" && userConfig.narrative_directives) {
+      userConfig.chat_count_directives = (userConfig.chat_count_directives || 0) + 1;
+      if (userConfig.chat_count_directives > 5) {
+        userConfig.narrative_directives = ""; // Expire after 5 messages
+        userConfig.chat_count_directives = 0;
+      } else if (userConfig.stagnation_level > 0.6) {
+        plotDirectives = userConfig.narrative_directives;
+      }
+    }
+
     // 2. Build Prompt & Generate Response
     let systemPrompt = buildRoleplayPrompt(
       mode, timeStr, dateStr, psychSummary, userConfig.saga || "", 
       preferredAddress, userConfig.husband_profile || {}, relationshipStatus, 
-      lifeContext, userConfig.personality_description || ""
+      lifeContext, userConfig.personality_description || "", plotDirectives
     );
     
     let userPrompt = text || "Lihat foto ini";
@@ -226,6 +238,9 @@ async function handleAIMessage(chatId, text, photo, event) {
               userConfig.saga = sagaResult.updated_saga;
               userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status;
               userConfig.chat_count_saga = 0;
+              userConfig.narrative_directives = sagaResult.narrative_directives || "";
+              userConfig.stagnation_level = sagaResult.stagnation_level || 0;
+              userConfig.chat_count_directives = 0; // Reset counter for new directive
               if (sagaResult.husband_identity) {
                 userConfig.husband_profile = { ...userConfig.husband_profile, ...sagaResult.husband_identity };
               }
