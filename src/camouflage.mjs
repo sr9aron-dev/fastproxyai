@@ -24,9 +24,9 @@ export function camouflagePrompt(prompt, level = 0) {
 export function isSensitive(text) {
   const keywords = [
     // General NSFW
-    /bokep/i, /porn/i, /sex/i, /telanjang/i, /ngewe/i, /kontol/i, /memek/i, /ngentot/i, /ml/i, /hentai/i,
+    /bokep/i, /porn/i, /sex/i, /telanjang/i, /ngewe/i, /kontol/i, /memek/i, /ngentot/i, /\bml\b/i, /hentai/i,
     // Anatomical (ID)
-    /paha/i, /penis/i, /vagina/i, /payudara/i, /toket/i, /susu/i, /pantat/i, /dubur/i, /puting/i, /klitoris/i, /peler/i, /biji/i, /peju/i, /sperma/i, /jembut/i, /nenen/i,
+    /paha/i, /penis/i, /vagina/i, /payudara/i, /toket/i, /susu/i, /pantat/i, /dubur/i, /puting/i, /klitoris/i, /peler/i, /biji/i, /\bpeju\b/i, /sperma/i, /jembut/i, /nenen/i,
     // Anatomical (EN)
     /nipple/i, /breast/i, /clitoris/i, /vulva/i, /scrotum/i, /testicles/i, /semen/i, /cum/i, /butt/i, /ass/i, /vagina/i, /dick/i, /pussy/i, /cock/i, /boobs/i,
     // Acts/States (ID)
@@ -34,7 +34,9 @@ export function isSensitive(text) {
     // Acts/States (EN)
     /aroused/i, /masturbate/i, /blowjob/i, /handjob/i, /cunnilingus/i, /fingering/i, /penetration/i, /orgasm/i, /ejaculate/i,
     // Roles/Kinks
-    /slave/i, /budak/i, /pelayan/i, /master/i, /tuan/i, /nyonya/i, /kink/i, /fetish/i, /bdsm/i, /rape/i, /incest/i
+    /slave/i, /budak/i, /pelayan/i, /master/i, /tuan/i, /nyonya/i, /kink/i, /fetish/i, /bdsm/i, /rape/i, /incest/i,
+    // Underwear & Intimate Apparel (ID/EN)
+    /celana\s*dalam/i, /sempak/i, /kancut/i, /kutang/i, /kemben/i, /singlet/i, /\bbra\b/i, /g[- ]string/i, /thong/i, /lingerie/i, /panties/i, /underwear/i, /undies/i, /bikini/i, /swimsuit/i, /topless/i, /baju\s*tidur/i
   ];
   return keywords.some(regex => regex.test(text));
 }

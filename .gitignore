@@ -26,3 +26,6 @@ build/
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Scratch/temporary folder
+scratch/
