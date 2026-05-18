@@ -6,9 +6,8 @@ import redis, { KEYS } from "../src/redis.mjs";
 import { 
   getInitialPsychology, 
   updatePsychology, 
-  analyzeEmotionalImpact, 
+  analyzeAndInstinct, 
   calculateDominanceRatio,
-  generateInstinct,
   generatePsychologicalSummary, 
   getPreferredAddress 
 } from "../src/psychology.mjs";
@@ -72,7 +71,7 @@ async function handleAIMessage(chatId, text, photo, event) {
       }
     }
 
-    await sendChatAction(chatId, "typing");
+    sendChatAction(chatId, "typing").catch(() => {});
     typingInterval = setInterval(() => sendChatAction(chatId, "typing").catch(() => {}), 4000);
 
     let imagePayload = null;
@@ -86,35 +85,34 @@ async function handleAIMessage(chatId, text, photo, event) {
     const relationshipStatus = userConfig.relationship_status || "Kenalan Baru";
     let psychState = userConfig.psychology || getInitialPsychology(userConfig.personality_traits || {});
 
-    // --- SINKRONISASI PSIKOLOGI & KATA HATI ---
+    // --- SINKRONISASI PSIKOLOGI & KATA HATI (1 AI call gabungan) ---
     let extractedImpact = null;
     const analysisInput = text || (photo ? "[User mengirim sebuah foto]" : null);
     
     if (mode === "istri" && analysisInput) {
-      console.log(`[Analyzer] Phase 1: Emotional Impact for ${chatId}...`);
-      extractedImpact = await analyzeEmotionalImpact(analysisInput, config, history, psychState, lifeContext, relationshipStatus);
+      console.log(`[Analyzer] Combined analysis + instinct for ${chatId}...`);
+      extractedImpact = await analyzeAndInstinct(analysisInput, config, history, psychState, lifeContext, relationshipStatus);
       
       if (extractedImpact) {
-        // Update angka emosi terlebih dahulu
+        // Update angka emosi
         psychState = updatePsychology(psychState, extractedImpact, hoursPassed);
         
-        // Fase 1.5: Hitung Rasio Dominansi Logika vs Emosi
+        // Hitung Rasio Dominansi (deterministic, untuk storage)
         const ratio = calculateDominanceRatio(psychState, lifeContext, relationshipStatus);
-        console.log(`[Analyzer] Phase 1.5: Dominance Ratio -> Logic: ${ratio.logic}%, Emotion: ${ratio.emotion}%`);
+        console.log(`[Analyzer] Dominance Ratio -> Logic: ${ratio.logic}%, Emotion: ${ratio.emotion}%`);
         
-        // Fase 2: Generate Kata Hati (Insting) berdasarkan Rasio
-        console.log(`[Analyzer] Phase 2: Generating Instinct...`);
-        const innerVoice = await generateInstinct(analysisInput, config, history, psychState, lifeContext, relationshipStatus, ratio);
-        
-        psychState.inner_voice = innerVoice;
+        // Inner voice sudah ada dari combined call
+        psychState.inner_voice = extractedImpact.inner_voice || "";
         psychState.last_mood_tag = extractedImpact.mood_tag;
-        psychState.cognitive_ratio = ratio; // SIMPAN RASIO KE STATE
+        psychState.cognitive_ratio = ratio;
         userConfig.psychology = psychState;
 
-        // Simpan ke Redis agar persisten
+        // Simpan ke Redis (non-blocking)
         if (redis) {
-          if (innerVoice) await redis.set(KEYS.innerVoice(chatId), innerVoice, { ex: 3600 });
-          if (extractedImpact.mood_tag) await redis.set(KEYS.moodTag(chatId), extractedImpact.mood_tag, { ex: 10800 });
+          const redisWrites = [];
+          if (extractedImpact.inner_voice) redisWrites.push(redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 }));
+          if (extractedImpact.mood_tag) redisWrites.push(redis.set(KEYS.moodTag(chatId), extractedImpact.mood_tag, { ex: 10800 }));
+          Promise.all(redisWrites).catch(() => {});
         }
       }
     }
@@ -205,7 +203,7 @@ async function handleAIMessage(chatId, text, photo, event) {
     for (let i = 0; i < chatParts.length; i++) {
       if (i > 0) {
         await sendChatAction(chatId, "typing");
-        await new Promise(r => setTimeout(r, 1000 + (i * 200)));
+        await new Promise(r => setTimeout(r, 500 + (i * 150)));
       }
       const sentMsg = await sendMessage(chatId, chatParts[i]);
       if (sentMsg?.ok) {

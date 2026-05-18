@@ -11,13 +11,37 @@ const callers = {
 
 const MAX_CONCURRENT_PER_KEY = Number(process.env.MAX_CONCURRENT_PER_KEY || 2);
 const HEALTH_BAN_DURATION = 300; // 5 minutes in seconds
+const INVALID_KEY_BAN = 3600; // 1 hour for revoked/invalid keys
 
+// In-memory circuit breaker fallback (when Redis is down)
+const localHealthMap = new Map();
 
+function isKeyHealthyLocal(healthKey) {
+  const expiry = localHealthMap.get(healthKey);
+  if (!expiry) return true;
+  if (Date.now() > expiry) {
+    localHealthMap.delete(healthKey);
+    return true;
+  }
+  return false;
+}
 
-function isRetryable(error) {
-  if (error.isSafetyBlock) return true;
+function markKeyUnhealthyLocal(healthKey, durationSeconds) {
+  localHealthMap.set(healthKey, Date.now() + (durationSeconds * 1000));
+}
+
+/**
+ * Determines retry strategy for failed provider calls.
+ * - "next_key": Try next key in same provider (rate limit, server error, safety block)
+ * - "skip_provider": Skip to next provider entirely (auth failure — key invalid)
+ * - "abort": Stop trying (unknown/client error)
+ */
+function getRetryStrategy(error) {
+  if (error.isSafetyBlock) return "next_key";
   const status = Number(error.statusCode || 0);
-  return status === 0 || status === 408 || status === 409 || status === 429 || status >= 500 || status === 401 || status === 403 || status === 503 || status === 504;
+  if (status === 401 || status === 403) return "skip_provider";
+  if (status === 0 || status === 408 || status === 409 || status === 429 || status >= 500) return "next_key";
+  return "abort";
 }
 
 export async function generateWithRotation(config, request) {
@@ -55,20 +79,31 @@ export async function generateWithRotation(config, request) {
       const activeKey = KEYS.activeCount(provider, keyHash);
       const healthKey = KEYS.health(provider, keyHash);
 
-      // 1. Check Health (Circuit Breaker)
+      // 1. Check Health + Concurrency (batched)
       if (redis) {
-        const isBanned = await redis.get(healthKey);
-        if (isBanned) {
-          console.log(`[Proxy] Skipping unhealthy key for ${provider} (${keyHash.slice(0, 8)})`);
-          continue;
+        try {
+          const [isBanned, currentActive] = await Promise.all([
+            redis.get(healthKey),
+            redis.get(activeKey)
+          ]);
+          if (isBanned) {
+            console.log(`[Proxy] Skipping unhealthy key for ${provider} (${keyHash.slice(0, 8)}): ${isBanned}`);
+            continue;
+          }
+          if ((currentActive || 0) >= MAX_CONCURRENT_PER_KEY) {
+            console.log(`[Proxy] Key at capacity for ${provider} (${keyHash.slice(0, 8)}): ${currentActive}/${MAX_CONCURRENT_PER_KEY}`);
+            continue;
+          }
+        } catch (redisErr) {
+          console.warn(`[Proxy] Redis check failed, using local fallback:`, redisErr.message);
+          if (!isKeyHealthyLocal(healthKey)) {
+            console.log(`[Proxy] Skipping unhealthy key (local) for ${provider} (${keyHash.slice(0, 8)})`);
+            continue;
+          }
         }
-
-        // 2. Check Concurrency
-        const currentActive = await redis.get(activeKey) || 0;
-        if (currentActive >= MAX_CONCURRENT_PER_KEY) {
-          console.log(`[Proxy] Key at capacity for ${provider} (${keyHash.slice(0, 8)}): ${currentActive}/${MAX_CONCURRENT_PER_KEY}`);
-          continue;
-        }
+      } else if (!isKeyHealthyLocal(healthKey)) {
+        console.log(`[Proxy] Skipping unhealthy key (no-redis) for ${provider} (${keyHash.slice(0, 8)})`);
+        continue;
       }
 
       // Update local memory & Firestore (Non-blocking backup)
@@ -112,13 +147,25 @@ export async function generateWithRotation(config, request) {
           statusCode: error.statusCode || null
         });
 
-        // 3. Reactive Circuit Breaker (Mark unhealthy if rate limited or server error)
-        if (redis && (error.statusCode === 429 || error.statusCode >= 500)) {
-          console.warn(`[Proxy] Marking key ${keyHash.slice(0, 8)} as unhealthy for ${HEALTH_BAN_DURATION}s`);
-          await redis.set(healthKey, "unhealthy", { ex: HEALTH_BAN_DURATION });
+        // 3. Reactive Circuit Breaker (expanded: 401/403 + 429 + 500+)
+        const status = error.statusCode;
+        if (status === 401 || status === 403) {
+          const banDuration = INVALID_KEY_BAN;
+          markKeyUnhealthyLocal(healthKey, banDuration);
+          if (redis) redis.set(healthKey, "invalid", { ex: banDuration }).catch(() => {});
+          console.warn(`[Proxy] Key ${keyHash.slice(0, 8)} marked INVALID for ${banDuration}s`);
+        } else if (status === 429 || status >= 500) {
+          markKeyUnhealthyLocal(healthKey, HEALTH_BAN_DURATION);
+          if (redis) redis.set(healthKey, "rate_limited", { ex: HEALTH_BAN_DURATION }).catch(() => {});
+          console.warn(`[Proxy] Key ${keyHash.slice(0, 8)} marked rate_limited for ${HEALTH_BAN_DURATION}s`);
         }
 
-        if (!isRetryable(error)) break;
+        const strategy = getRetryStrategy(error);
+        if (strategy === "skip_provider") {
+          console.log(`[Proxy] Skipping provider ${provider} entirely (auth failure)`);
+          break;
+        }
+        if (strategy === "abort") break;
         console.log(`[Proxy] Rotating to next key for ${provider}...`);
       }
     }

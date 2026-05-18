@@ -1,4 +1,22 @@
 
+const PROVIDER_TIMEOUT = Number(process.env.PROVIDER_TIMEOUT || 15000); // 15s default
+
+async function fetchWithTimeout(url, options, timeoutMs = PROVIDER_TIMEOUT) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err.name === "AbortError") {
+      const error = new Error(`Provider timeout after ${timeoutMs}ms`);
+      error.statusCode = 408;
+      throw error;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export async function callGroq({ key, model, image, prompt, system, temperature, history }) {
   const content = [{ type: "text", text: prompt }];
@@ -8,7 +26,7 @@ export async function callGroq({ key, model, image, prompt, system, temperature,
       image_url: { url: `data:${image.mime};base64,${image.base64}` }
     });
   }
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const response = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${key}`,
@@ -58,7 +76,7 @@ export async function callGemini({ key, model, image, prompt, system, temperatur
     });
   }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: {
       "content-type": "application/json"
@@ -137,7 +155,7 @@ export async function callMistral({ key, model, image, prompt, system, temperatu
     });
   }
 
-  const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+  const response = await fetchWithTimeout("https://api.mistral.ai/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${key}`,

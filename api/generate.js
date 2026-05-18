@@ -63,8 +63,8 @@ async function handler(event) {
        throw new Error(`AI returned invalid format: ${err.message}`);
     }
 
-    // Update lastUsedAt for the specific extension key used
-    await updateKeyLastUsed(sha256(token) || token);
+    // Update lastUsedAt (non-blocking — no need to wait for timestamp update)
+    updateKeyLastUsed(sha256(token) || token).catch(() => {});
 
     // Track Success
     // Track Usage & Record Log (Non-blocking)

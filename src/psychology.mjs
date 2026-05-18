@@ -1,6 +1,8 @@
 /**
  * NAFEESA PSYCHOLOGY ENGINE - Core Service
  */
+import { generateWithRotation } from "./rotation.mjs";
+
 
 export const MOOD_CATEGORIES = {
   POSITIVE: ["happy", "cheerful", "excited", "playful", "confident", "flirty", "affectionate", "caring", "grateful", "hopeful", "energetic", "proud", "inspired", "dreamy", "peaceful"],
@@ -47,7 +49,69 @@ export function getInitialPsychology(personality = {}) {
 }
 
 /**
- * TAHAP 1: Menganalisis dampak emosional (Angka & Mood)
+ * COMBINED: Analisis emosi + Generate kata hati dalam 1 AI call
+ * Menggantikan analyzeEmotionalImpact() + generateInstinct() yang sequential
+ */
+export async function analyzeAndInstinct(text, config, history = [], currentState = null, lifeContext = "", relationshipStatus = "Kenalan Baru") {
+  if (!text) return null;
+
+  const contextStr = history.slice(-12).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
+  
+  let stateInfo = "";
+  if (currentState?.emotion) {
+    const e = currentState.emotion;
+    stateInfo = `STATUS EMOSI: Anger: ${(e.anger||0).toFixed(2)}, Trust: ${(e.trust||0).toFixed(2)}, Joy: ${(e.joy||0).toFixed(2)}, Attachment: ${(e.attachment||0).toFixed(2)}, Arousal: ${(e.arousal||0).toFixed(2)}`;
+  }
+
+  const p = currentState?.personality || {};
+  const personalityInfo = `PERSONALITY (Big5): Conscientiousness: ${(p.conscientiousness||0.5).toFixed(2)}, Neuroticism: ${(p.neuroticism||0.3).toFixed(2)}, Agreeableness: ${(p.agreeableness||0.8).toFixed(2)}`;
+
+  const moodListStr = Object.entries(MOOD_CATEGORIES).map(([cat, tags]) => `${cat}: ${tags.join(", ")}`).join("\n");
+
+  const prompt = `Analisis dampak emosional pesan user DAN buat Kata Hati Nafeesa.
+KONTEKS:
+- Status: ${relationshipStatus}
+- Kondisi Hidup: ${lifeContext || "Normal"}
+${stateInfo}
+${personalityInfo}
+
+HISTORI CHAT:
+${contextStr}
+
+PESAN USER: "${text}"
+
+TUGAS (selesaikan semua dalam 1 JSON):
+1. Hitung perubahan emosi (impact) -1.0 s/d 1.0.
+2. Pilih satu Mood Tag baru:
+${moodListStr}
+3. Buat Kata Hati (Inner Voice) Nafeesa (Maks 15 kata).
+   - Jika conscientiousness tinggi & emosi rendah: berhitung, waspada, logis.
+   - Jika neuroticism tinggi & anger/arousal tinggi: impulsif, penuh perasaan.
+   - Jika seimbang: tunjukkan pertarungan batin.
+4. Cek kepatuhan format (compliance_violation: true jika >20 kata atau tanpa "|").
+
+JSON:
+{
+  "impact": { "anger": 0, "trust": 0, "joy": 0, "attachment": 0, "arousal": 0 },
+  "mood_tag": "tag_name",
+  "inner_voice": "...",
+  "compliance_violation": false
+}`;
+
+  try {
+    const { output } = await generateWithRotation(config, {
+      prompt,
+      system: "Anda adalah Emotional Analyzer & Instinct Generator. Berikan JSON murni.",
+      temperature: 0.3,
+      providerOrder: ["groq", "gemini"]
+    });
+    const jsonMatch = output.result.match(/\{[\s\S]*\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+  } catch (e) { return null; }
+}
+
+/**
+ * LEGACY: Menganalisis dampak emosional saja (dipertahankan untuk backward compatibility)
  */
 export async function analyzeEmotionalImpact(text, config, history = [], currentState = null, lifeContext = "", relationshipStatus = "Kenalan Baru") {
   if (!text) return null;
@@ -88,7 +152,6 @@ Gunakan JSON:
 }`;
 
   try {
-    const { generateWithRotation } = await import('./rotation.mjs');
     const { output } = await generateWithRotation(config, {
       prompt: prompt,
       system: "Anda adalah Emotional Impact Analyzer. Berikan JSON murni.",
@@ -125,7 +188,7 @@ export function calculateDominanceRatio(state, lifeContext, relationshipStatus) 
 }
 
 /**
- * TAHAP 2: Generate Kata Hati (The Instinct Pass) dengan Rasio Dominansi
+ * LEGACY: Generate Kata Hati saja (dipertahankan untuk backward compatibility)
  */
 export async function generateInstinct(text, config, history, state, lifeContext, relationshipStatus, ratio) {
   const contextStr = history.slice(-12).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
@@ -155,11 +218,10 @@ Ciptakan kalimat insting/hasrat batin Nafeesa (Maks 15 kata).
 Gunakan JSON: { "inner_voice": "..." }`;
 
   try {
-    const { generateWithRotation } = await import('./rotation.mjs');
     const { output } = await generateWithRotation(config, {
       prompt: prompt,
       system: "Anda adalah Instinct Generator. Buat hasrat batin yang mencerminkan rasio dominansi.",
-      temperature: 0.8, // Beri sedikit kreatifitas untuk insting
+      temperature: 0.8,
       providerOrder: ["groq", "gemini"]
     });
     const jsonMatch = output.result.match(/\{[\s\S]*\}/);
