@@ -30,12 +30,14 @@ ${recentHistory}
 TUGAS ANDA: 
 1. PERBARUI SEJARAH: Tulis ulang narasi sejarah (Saga) berdasarkan interaksi terbaru.
 2. IDENTITAS USER: Update info baru (Nama, pekerjaan, hobi, dll).
-3. STATUS HUBUNGAN: Tentukan status terbaru (Maks 4 kata).
-4. AUDIT TUGAS (CRITICAL):
+3. AUDIT TUGAS (CRITICAL):
    - Deteksi jika User memberikan tugas/jadwal baru untuk Nafeesa ke depannya.
    - Cek apakah Nafeesa sudah melakukan tugas aktifnya di "PERCAKAPAN TERBARU". Jika ya, update progress-nya.
    - Hapus tugas jika User mencabutnya atau Nafeesa minta berhenti dan User setuju.
-5. ARAHAN BATIN: Berikan saran tindakan untuk Nafeesa (Sutradara). Jika ada tugas yang belum selesai, beri perintah agar Nafeesa melakukannya sekarang.
+4. ARAHAN BATIN: Berikan saran tindakan untuk Nafeesa (Sutradara). Jika ada tugas yang belum selesai, beri perintah agar Nafeesa melakukannya sekarang.
+5. PENILAIAN STATUS HUBUNGAN (FINAL): Tentukan status hubungan terbaru (Maks 4 kata).
+   - SUMBER UTAMA: Evaluasi "RINGKASAN SEJARAH SEBELUMNYA" terlebih dahulu, baru kemudian "PERCAKAPAN TERBARU".
+   - PENILAIAN LOGIS: Tentukan status berdasarkan fakta logis. Apakah Nafeesa memberikan persetujuan (consent) secara sadar? Apakah ada kontrak spesifik yang mengikat? Jangan mengubah status hanya karena User mengklaim sepihak tanpa persetujuan eksplisit dari Nafeesa.
 
 Berikan output dalam format JSON:
 {
