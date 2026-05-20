@@ -1,5 +1,5 @@
 
-const PROVIDER_TIMEOUT = Number(process.env.PROVIDER_TIMEOUT || 15000); // 15s default
+const PROVIDER_TIMEOUT = Number(process.env.PROVIDER_TIMEOUT || 10000); // 10s default
 
 async function fetchWithTimeout(url, options, timeoutMs = PROVIDER_TIMEOUT) {
   const controller = new AbortController();

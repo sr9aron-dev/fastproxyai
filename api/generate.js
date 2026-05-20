@@ -36,13 +36,16 @@ async function handler(event) {
 
   try {
     const token = bearerToken(event);
-    const keyRecord = await validateExtensionToken(token);
+    const body = readJson(event);
+
+    // Parallel: validate token & load config simultaneously
+    const [keyRecord, config] = await Promise.all([
+      validateExtensionToken(token),
+      loadConfig()
+    ]);
     if (!keyRecord) {
       return json(401, { ok: false, error: { code: "UNAUTHORIZED", message: "Invalid extension API key" } });
     }
-
-    const config = await loadConfig();
-    const body = readJson(event);
     
     // Require prompt from client
     const prompt = body.prompt;
@@ -63,21 +66,19 @@ async function handler(event) {
        throw new Error(`AI returned invalid format: ${err.message}`);
     }
 
-    // Update lastUsedAt (non-blocking — no need to wait for timestamp update)
-    updateKeyLastUsed(sha256(token) || token).catch(() => {});
-
-    // Track Success
-    // Track Usage & Record Log (Non-blocking)
-    trackUsage(output.provider, output.model, "success").catch(() => {});
-    recordLog({
-      method: event.httpMethod,
-      path: "/api/generate",
-      status: 200,
-      host: event.headers?.host || "unknown",
-      provider: output.provider,
-      model: output.model,
-      message: `Generated metadata for image`
-    }).catch(() => {});
+    // Non-blocking background writes (batched)
+    const tokenHash = sha256(token) || token;
+    Promise.all([
+      trackUsage(output.provider, output.model, "success"),
+      recordLog({
+        method: event.httpMethod, path: "/api/generate", status: 200,
+        host: event.headers?.host || "unknown",
+        provider: output.provider, model: output.model,
+        message: `Generated metadata for image`
+      }),
+      // Reduce updateKeyLastUsed frequency: only 10% of requests
+      Math.random() < 0.1 ? updateKeyLastUsed(tokenHash) : Promise.resolve()
+    ]).catch(() => {});
 
     return json(200, {
       ok: true,
@@ -118,6 +119,7 @@ async function handler(event) {
       error: {
         code: statusCode === 502 ? "NO_PROVIDER_AVAILABLE" : "GENERATE_ERROR",
         message: error.message,
+        retryAfter: statusCode === 502 ? 3 : undefined,
         details: error.details || undefined
       }
     });

@@ -1,6 +1,7 @@
 import { sha256 } from "./crypto.mjs";
 import { loadConfig } from "./store.mjs";
 import { db } from "./firebase.mjs";
+import redis from "./redis.mjs";
 
 export async function validateExtensionToken(token) {
   if (!token) return null;
@@ -32,6 +33,14 @@ export async function validateExtensionToken(token) {
 export async function checkSubscription(email) {
   if (!email) return { active: true }; // No email linked = unlimited/legacy key
 
+  // Check Redis cache first (avoids Firestore read per request)
+  if (redis) {
+    try {
+      const cached = await redis.get(`sub:${email}`);
+      if (cached) return typeof cached === 'string' ? JSON.parse(cached) : cached;
+    } catch (e) { /* fallthrough to Firestore */ }
+  }
+
   try {
     if (!db) {
       throw new Error("Database not initialized");
@@ -50,17 +59,20 @@ export async function checkSubscription(email) {
     const expiry = new Date(expiryStr);
     const now = new Date();
     
-    return {
+    const result = {
       active: expiry > now,
       expiry: expiryStr,
       status: expiry > now ? "active" : "expired"
     };
+
+    // Cache result in Redis for 5 minutes
+    if (redis) {
+      redis.set(`sub:${email}`, JSON.stringify(result), { ex: 300 }).catch(() => {});
+    }
+
+    return result;
   } catch (e) {
     console.error("[Auth] Sub check failed:", e.message);
-    // If DB is down, we might want to fail-safe based on config, 
-    // but for now we return false to be safe if it's a paid service.
-    // However, the original code returned active: true as fallback.
-    // Let's stick to a safer fallback or a configurable one.
     return { active: false, error: e.message, status: "error" };
   }
 }

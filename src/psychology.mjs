@@ -110,58 +110,7 @@ JSON:
   } catch (e) { return null; }
 }
 
-/**
- * LEGACY: Menganalisis dampak emosional saja (dipertahankan untuk backward compatibility)
- */
-export async function analyzeEmotionalImpact(text, config, history = [], currentState = null, lifeContext = "", relationshipStatus = "Kenalan Baru") {
-  if (!text) return null;
 
-  const personality = currentState?.personality || {};
-  const contextStr = history.slice(-12).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
-  
-  let stateInfo = "";
-  if (currentState && currentState.emotion) {
-    const e = currentState.emotion;
-    stateInfo = `STATUS EMOSI SAAT INI (Skala 0.0 s/d 1.0): Anger: ${(e.anger || 0).toFixed(2)}, Trust: ${(e.trust || 0).toFixed(2)}, Joy: ${(e.joy || 0).toFixed(2)}, Attachment: ${(e.attachment || 0).toFixed(2)}, Arousal: ${(e.arousal || 0).toFixed(2)}`;
-  }
-
-  const moodListStr = Object.entries(MOOD_CATEGORIES).map(([cat, tags]) => `${cat}: ${tags.join(", ")}`).join("\n");
-
-  const prompt = `Analisis dampak emosional dari pesan user terhadap Nafeesa.
-KONTEKS:
-- Status: ${relationshipStatus}
-- Kondisi Hidup: ${lifeContext || "Normal"}
-
-HISTORI CHAT:
-${contextStr}
-
-PESAN USER: "${text}"
-${stateInfo}
-
-TUGAS:
-1. Hitung perubahan emosi (impact) -1.0 s/d 1.0.
-2. Pilih satu Mood Tag baru:
-${moodListStr}
-3. Cek kepatuhan format (compliance_violation: true jika >20 kata atau tanpa "|").
-
-Gunakan JSON:
-{
-  "impact": { "anger": 0, "trust": 0, "joy": 0, "attachment": 0, "arousal": 0 },
-  "mood_tag": "tag_name",
-  "compliance_violation": false
-}`;
-
-  try {
-    const { output } = await generateWithRotation(config, {
-      prompt: prompt,
-      system: "Anda adalah Emotional Impact Analyzer. Berikan JSON murni.",
-      temperature: 0.2,
-      providerOrder: ["groq", "gemini"]
-    });
-    const jsonMatch = output.result.match(/\{[\s\S]*\}/);
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-  } catch (e) { return null; }
-}
 
 /**
  * TAHAP 1.5: Menghitung Rasio Dominansi Logika vs Emosi
@@ -187,47 +136,7 @@ export function calculateDominanceRatio(state, lifeContext, relationshipStatus) 
   return { emotion: emotionPct, logic: logicPct };
 }
 
-/**
- * LEGACY: Generate Kata Hati saja (dipertahankan untuk backward compatibility)
- */
-export async function generateInstinct(text, config, history, state, lifeContext, relationshipStatus, ratio) {
-  const contextStr = history.slice(-12).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
-  const e = state.emotion;
 
-  const prompt = `Buat Kata Hati (Inner Voice) Nafeesa.
-RASIO DOMINANSI SAAT INI:
-- Logika: ${ratio.logic}%
-- Emosi: ${ratio.emotion}%
-
-KONTEKS:
-- Status: ${relationshipStatus}
-- Kondisi Hidup: ${lifeContext}
-- Emosi Aktif (Skala 0.0 - 1.0): Anger: ${e.anger.toFixed(2)}, Trust: ${e.trust.toFixed(2)}, Arousal: ${e.arousal.toFixed(2)}
-
-HISTORI:
-${contextStr}
-
-PESAN USER: "${text}"
-
-TUGAS:
-Ciptakan kalimat insting/hasrat batin Nafeesa (Maks 15 kata). 
-- Jika LOGIKA DOMINAN: Kata hati harus berhitung, waspada, atau fokus pada survival/keuntungan.
-- Jika EMOSI DOMINAN: Kata hati harus impulsif, penuh perasaan, atau mengikuti hawa nafsu/marah.
-- Jika SEIMBANG: Tunjukkan pertarungan batin antara keduanya.
-
-Gunakan JSON: { "inner_voice": "..." }`;
-
-  try {
-    const { output } = await generateWithRotation(config, {
-      prompt: prompt,
-      system: "Anda adalah Instinct Generator. Buat hasrat batin yang mencerminkan rasio dominansi.",
-      temperature: 0.8,
-      providerOrder: ["groq", "gemini"]
-    });
-    const jsonMatch = output.result.match(/\{[\s\S]*\}/);
-    return jsonMatch ? JSON.parse(jsonMatch[0]).inner_voice : "";
-  } catch (e) { return ""; }
-}
 
 /**
  * Mengupdate state berdasarkan impact dan personality modifier

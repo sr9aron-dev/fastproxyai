@@ -1,4 +1,4 @@
-import { callGemini } from "./providers.mjs";
+import { generateWithRotation } from "./rotation.mjs";
 
 /**
  * Generates an initial personality description based on Big Five traits and life context.
@@ -14,13 +14,12 @@ JANGAN sebutkan nama, umur, jenis kelamin, atau angka Big Five.
 Contoh: "Wanita yang ceria namun menyimpan kecemasan mendalam, sangat protektif terhadap privasi namun lembut jika sudah merasa aman."`;
 
   try {
-    const { result } = await callGemini({
-      key: config.gemini.keys[0],
-      model: config.gemini.model,
+    const { output } = await generateWithRotation(config, {
       prompt: prompt,
-      temperature: 0.7
+      temperature: 0.7,
+      providerOrder: ["gemini", "groq"]
     });
-    return result.trim().replace(/^"|"$/g, "");
+    return output.result.trim().replace(/^"|"$/g, "");
   } catch (err) {
     console.error("[Personality] Failed to generate initial:", err.message);
     return "Ceria, setia, namun sedikit sensitif dan butuh validasi emosional.";
@@ -44,13 +43,12 @@ JANGAN sebutkan identitas dasar (nama/umur). Fokus pada perubahan temperamen ata
 Output harus berupa satu paragraf pendek dan padat.`;
 
   try {
-    const { result } = await callGemini({
-      key: config.gemini.keys[0],
-      model: config.gemini.model,
+    const { output } = await generateWithRotation(config, {
       prompt: prompt,
-      temperature: 0.7
+      temperature: 0.7,
+      providerOrder: ["gemini", "groq"]
     });
-    return result.trim().replace(/^"|"$/g, "");
+    return output.result.trim().replace(/^"|"$/g, "");
   } catch (err) {
     console.error("[Personality] Failed to evolve:", err.message);
     return currentDescription;

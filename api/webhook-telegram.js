@@ -80,42 +80,21 @@ async function handleAIMessage(chatId, text, photo, event) {
       imagePayload = await getTelegramFile(fileId);
     }
 
+    // --- USE PSYCHOLOGY FROM PREVIOUS MESSAGE (already in userConfig/Redis) ---
     const mode = userConfig.mode || "istri";
     const lifeContext = userConfig.life_context || "";
     const relationshipStatus = userConfig.relationship_status || "Kenalan Baru";
     let psychState = userConfig.psychology || getInitialPsychology(userConfig.personality_traits || {});
 
-    // --- SINKRONISASI PSIKOLOGI & KATA HATI (1 AI call gabungan) ---
-    let extractedImpact = null;
-    const analysisInput = text || (photo ? "[User mengirim sebuah foto]" : null);
-    
-    if (mode === "istri" && analysisInput) {
-      console.log(`[Analyzer] Combined analysis + instinct for ${chatId}...`);
-      extractedImpact = await analyzeAndInstinct(analysisInput, config, history, psychState, lifeContext, relationshipStatus);
-      
-      if (extractedImpact) {
-        // Update angka emosi
-        psychState = updatePsychology(psychState, extractedImpact, hoursPassed);
-        
-        // Hitung Rasio Dominansi (deterministic, untuk storage)
-        const ratio = calculateDominanceRatio(psychState, lifeContext, relationshipStatus);
-        console.log(`[Analyzer] Dominance Ratio -> Logic: ${ratio.logic}%, Emotion: ${ratio.emotion}%`);
-        
-        // Inner voice sudah ada dari combined call
-        psychState.inner_voice = extractedImpact.inner_voice || "";
-        psychState.last_mood_tag = extractedImpact.mood_tag;
-        psychState.cognitive_ratio = ratio;
-        userConfig.psychology = psychState;
+    // Sync from Redis (already loaded in Promise.all above)
+    if (redisInnerVoice) psychState.inner_voice = redisInnerVoice;
+    if (redisMoodTag) psychState.last_mood_tag = redisMoodTag;
 
-        // Simpan ke Redis (non-blocking)
-        if (redis) {
-          const redisWrites = [];
-          if (extractedImpact.inner_voice) redisWrites.push(redis.set(KEYS.innerVoice(chatId), extractedImpact.inner_voice, { ex: 3600 }));
-          if (extractedImpact.mood_tag) redisWrites.push(redis.set(KEYS.moodTag(chatId), extractedImpact.mood_tag, { ex: 10800 }));
-          Promise.all(redisWrites).catch(() => {});
-        }
-      }
+    // Recalculate cognitive ratio (deterministic, ~0ms)
+    if (psychState.emotion) {
+      psychState.cognitive_ratio = calculateDominanceRatio(psychState, lifeContext, relationshipStatus);
     }
+
 
     const psychSummary = generatePsychologicalSummary(psychState);
     const preferredAddress = (mode === "istri") ? getPreferredAddress(psychState, userConfig.husband_profile || {}, relationshipStatus) : "Boss";
@@ -268,6 +247,29 @@ async function handleAIMessage(chatId, text, photo, event) {
       backgroundTasks.push(saveUserConfig(chatId, userConfig));
     }
 
+    // Psychology analysis in background (update for NEXT message)
+    const analysisInput = text || (photo ? "[User mengirim sebuah foto]" : null);
+    if (mode === "istri" && analysisInput) {
+      backgroundTasks.push((async () => {
+        try {
+          console.log(`[Analyzer] Background analysis for ${chatId}...`);
+          const impact = await analyzeAndInstinct(analysisInput, config, history, psychState, lifeContext, relationshipStatus);
+          if (impact) {
+            const updated = updatePsychology(psychState, impact, hoursPassed);
+            const ratio = calculateDominanceRatio(updated, lifeContext, relationshipStatus);
+            updated.inner_voice = impact.inner_voice || "";
+            updated.last_mood_tag = impact.mood_tag;
+            updated.cognitive_ratio = ratio;
+            userConfig.psychology = updated;
+            if (redis) {
+              if (impact.inner_voice) redis.set(KEYS.innerVoice(chatId), impact.inner_voice, { ex: 3600 }).catch(() => {});
+              if (impact.mood_tag) redis.set(KEYS.moodTag(chatId), impact.mood_tag, { ex: 10800 }).catch(() => {});
+            }
+          }
+        } catch (e) { console.error("[BG Psychology]", e.message); }
+      })());
+    }
+
     await Promise.all(backgroundTasks).catch(e => console.error("[BG Error]", e.message));
 
   } catch (err) {
@@ -304,7 +306,28 @@ async function handleCallback(body, event) {
 
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
+
+  // Validate Telegram webhook secret token
+  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const receivedSecret = event.headers["x-telegram-bot-api-secret-token"];
+    if (receivedSecret !== webhookSecret) {
+      return json(401, { ok: false, error: "Invalid webhook secret" });
+    }
+  }
+
   const body = readJson(event);
+
+  // Deduplicate Telegram webhooks (prevents double responses)
+  if (redis && body.update_id) {
+    const dedupKey = `tg_update:${body.update_id}`;
+    const isNew = await redis.set(dedupKey, "1", { nx: true, ex: 60 });
+    if (!isNew) {
+      console.log(`[Webhook] Duplicate update_id ${body.update_id}, skipping`);
+      return json(200, { ok: true });
+    }
+  }
+
   if (body.message) {
     const { message } = body;
     const chatId = message.chat.id;
@@ -317,7 +340,22 @@ async function handler(event) {
       return handleSejarahCommand(chatId, userConfig).then(() => json(200, { ok: true }));
     }
     if (text || message.photo) {
-      await handleAIMessage(chatId, text, message.photo, event);
+      // Per-user lock to prevent concurrent processing race condition
+      if (redis) {
+        const lockKey = `lock:user:${chatId}`;
+        const acquired = await redis.set(lockKey, "1", { nx: true, ex: 25 });
+        if (!acquired) {
+          sendMessage(chatId, "Tunggu sebentar ya, aku masih mikir... \u{1F4AD}").catch(() => {});
+          return json(200, { ok: true });
+        }
+        try {
+          await handleAIMessage(chatId, text, message.photo, event);
+        } finally {
+          await redis.del(lockKey);
+        }
+      } else {
+        await handleAIMessage(chatId, text, message.photo, event);
+      }
       return json(200, { ok: true });
     }
   }

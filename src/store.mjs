@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { db, admin } from "./firebase.mjs";
 import { sha256 } from "./crypto.mjs";
+import redis from "./redis.mjs";
 
 const CONFIG_DOC_ID = "proxy-settings";
 const COLLECTION_NAME = "config";
@@ -75,6 +76,19 @@ export async function loadConfig(force = false) {
     return cachedConfig;
   }
 
+  // Layer 2: Redis cache (survives cold start across instances)
+  if (!force && redis) {
+    try {
+      const redisConfig = await redis.get("config:global");
+      if (redisConfig) {
+        cachedConfig = typeof redisConfig === 'string' ? JSON.parse(redisConfig) : redisConfig;
+        lastCacheUpdate = now;
+        return cachedConfig;
+      }
+    } catch (e) { /* fallthrough to Firestore */ }
+  }
+
+  // Layer 3: Firestore (source of truth)
   let config;
   try {
     if (shouldUseLocalStore()) {
@@ -118,6 +132,11 @@ export async function loadConfig(force = false) {
   
   if (missingProviders.length > 0) {
     merged.providerOrder = [...currentOrder, ...missingProviders];
+  }
+
+  // Save to Redis cache for other instances
+  if (redis && merged) {
+    redis.set("config:global", JSON.stringify(merged), { ex: 60 }).catch(() => {});
   }
 
   cachedConfig = merged;
@@ -280,20 +299,20 @@ export async function saveChatMessage(chatId, role, text, messageId = null) {
 }
 
 export async function clearChatHistory(chatId) {
-  if (shouldUseLocalStore()) return; // Not implemented for local yet
+  if (shouldUseLocalStore()) return;
 
   try {
     const messagesRef = db.collection("chats").doc(String(chatId)).collection("messages");
-    const snapshot = await messagesRef.get();
-    
-    if (snapshot.empty) return;
-
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-    
-    await batch.commit();
+    let snapshot;
+    do {
+      snapshot = await messagesRef.limit(400).get();
+      if (snapshot.empty) break;
+      const batch = db.batch();
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+    } while (!snapshot.empty);
   } catch (err) {
     console.error("Error clearing chat history:", err.message);
     throw err;
@@ -302,30 +321,49 @@ export async function clearChatHistory(chatId) {
 
 export async function loadUserConfig(chatId) {
   const now = Date.now();
-  if (userConfigCache.has(String(chatId))) {
-    const cached = userConfigCache.get(String(chatId));
+  const cacheKey = String(chatId);
+
+  // Layer 1: In-memory cache (warm start)
+  if (userConfigCache.has(cacheKey)) {
+    const cached = userConfigCache.get(cacheKey);
     if (now - cached.timestamp < USER_CACHE_TTL) {
       return cached.data;
     }
   }
 
+  // Layer 2: Redis cache (survives cold start)
+  if (redis) {
+    try {
+      const redisData = await redis.get(`uc:${cacheKey}`);
+      if (redisData) {
+        const data = typeof redisData === 'string' ? JSON.parse(redisData) : redisData;
+        userConfigCache.set(cacheKey, { data, timestamp: now });
+        return data;
+      }
+    } catch (e) { /* fallthrough to Firestore */ }
+  }
+
+  // Layer 3: Firestore (source of truth)
   if (shouldUseLocalStore()) {
     const config = await readLocalConfig();
-    const data = config?.users?.[String(chatId)] || { mode: "istri" };
-    userConfigCache.set(String(chatId), { data, timestamp: now });
+    const data = config?.users?.[cacheKey] || { mode: "istri" };
+    userConfigCache.set(cacheKey, { data, timestamp: now });
     return data;
   }
 
   try {
     if (!db) throw new Error("Database not initialized");
-    const doc = await db.collection("users").doc(String(chatId)).get();
+    const doc = await db.collection("users").doc(cacheKey).get();
     let data;
     if (doc.exists) {
       data = { mode: "istri", ...doc.data() };
     } else {
       data = { mode: "istri" };
     }
-    userConfigCache.set(String(chatId), { data, timestamp: now });
+    userConfigCache.set(cacheKey, { data, timestamp: now });
+    if (redis) {
+      redis.set(`uc:${cacheKey}`, JSON.stringify(data), { ex: 300 }).catch(() => {});
+    }
     return data;
   } catch (err) {
     console.error("Error loading user config:", err.message);
@@ -334,19 +372,25 @@ export async function loadUserConfig(chatId) {
 }
 
 export async function saveUserConfig(chatId, data) {
-  userConfigCache.set(String(chatId), { data, timestamp: Date.now() });
+  const cacheKey = String(chatId);
+  userConfigCache.set(cacheKey, { data, timestamp: Date.now() });
+
+  // Update Redis cache
+  if (redis) {
+    redis.set(`uc:${cacheKey}`, JSON.stringify(data), { ex: 300 }).catch(() => {});
+  }
 
   if (shouldUseLocalStore()) {
     const config = await loadConfig();
     if (!config.users) config.users = {};
-    config.users[String(chatId)] = { ...(config.users[String(chatId)] || {}), ...data };
+    config.users[cacheKey] = { ...(config.users[cacheKey] || {}), ...data };
     await saveConfig(config);
     return;
   }
 
   try {
     if (!db) throw new Error("Database not initialized");
-    await db.collection("users").doc(String(chatId)).set(data, { merge: true });
+    await db.collection("users").doc(cacheKey).set(data, { merge: true });
   } catch (err) {
     console.error("Error saving user config:", err.message);
   }

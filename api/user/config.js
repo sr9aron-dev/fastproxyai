@@ -13,6 +13,16 @@ async function handler(event) {
     const chatId = event.headers["x-telegram-chat-id"];
     if (!chatId) return json(401, { ok: false, message: "Chat ID required" });
 
+    // Minimal protection: require same-origin or admin token
+    const adminToken = event.headers["x-admin-token"];
+    const origin = event.headers["origin"] || event.headers["referer"] || "";
+    const host = event.headers["host"] || "";
+    const isFromMiniApp = host && origin.includes(host);
+    const isAdmin = adminToken && adminToken === process.env.ADMIN_TOKEN;
+    if (!isFromMiniApp && !isAdmin) {
+      return json(403, { ok: false, message: "Forbidden" });
+    }
+
     if (event.httpMethod === "GET") {
       const config = await loadUserConfig(chatId);
       if (!config.psychology) config.psychology = getInitialPsychology(config.personality_traits);

@@ -62,12 +62,28 @@ export async function generateWithRotation(config, request) {
 
     // Use Redis for atomic cursor if available
     let currentIndex = Number(providerConfig.cursor || 0);
+    let redisCursor = 0;
     if (redis) {
       try {
-        const redisCursor = await redis.incr(KEYS.cursor(provider));
+        redisCursor = await redis.incr(KEYS.cursor(provider));
         currentIndex = redisCursor % keys.length;
       } catch (e) {
         console.warn("[Proxy] Redis cursor failed, fallback to memory:", e.message);
+      }
+    }
+
+    // Batch prefetch health status for all keys at once (reduces N round-trips to 1)
+    const healthStatuses = {};
+    if (redis) {
+      try {
+        const healthKeys = keys.map((_, i) => {
+          const idx = (currentIndex + i) % keys.length;
+          return KEYS.health(provider, sha256(keys[idx]));
+        });
+        const results = await Promise.all(healthKeys.map(k => redis.get(k)));
+        healthKeys.forEach((k, i) => { healthStatuses[k] = results[i]; });
+      } catch (e) {
+        console.warn("[Proxy] Batch health prefetch failed:", e.message);
       }
     }
 
@@ -79,23 +95,16 @@ export async function generateWithRotation(config, request) {
       const activeKey = KEYS.activeCount(provider, keyHash);
       const healthKey = KEYS.health(provider, keyHash);
 
-      // 1. Check Health + Concurrency (batched)
+      // 1. Check Health (use prefetched data or fallback)
       if (redis) {
         try {
-          const [isBanned, currentActive] = await Promise.all([
-            redis.get(healthKey),
-            redis.get(activeKey)
-          ]);
+          const isBanned = healthStatuses[healthKey] ?? await redis.get(healthKey);
           if (isBanned) {
             console.log(`[Proxy] Skipping unhealthy key for ${provider} (${keyHash.slice(0, 8)}): ${isBanned}`);
             continue;
           }
-          if ((currentActive || 0) >= MAX_CONCURRENT_PER_KEY) {
-            console.log(`[Proxy] Key at capacity for ${provider} (${keyHash.slice(0, 8)}): ${currentActive}/${MAX_CONCURRENT_PER_KEY}`);
-            continue;
-          }
         } catch (redisErr) {
-          console.warn(`[Proxy] Redis check failed, using local fallback:`, redisErr.message);
+          console.warn(`[Proxy] Redis health check failed, using local fallback:`, redisErr.message);
           if (!isKeyHealthyLocal(healthKey)) {
             console.log(`[Proxy] Skipping unhealthy key (local) for ${provider} (${keyHash.slice(0, 8)})`);
             continue;
@@ -106,13 +115,27 @@ export async function generateWithRotation(config, request) {
         continue;
       }
 
-      // Update local memory & Firestore (Non-blocking backup)
+      // 2. Atomic Concurrency: INCR first, check after (prevents race condition)
+      if (redis) {
+        try {
+          const newCount = await redis.incr(activeKey);
+          redis.expire(activeKey, 30).catch(() => {}); // Safety TTL for crash recovery
+          if (newCount > MAX_CONCURRENT_PER_KEY) {
+            await redis.decr(activeKey); // Rollback
+            console.log(`[Proxy] Key at capacity for ${provider} (${keyHash.slice(0, 8)}): ${newCount}/${MAX_CONCURRENT_PER_KEY}`);
+            continue;
+          }
+        } catch (redisErr) {
+          console.warn(`[Proxy] Redis concurrency check failed:`, redisErr.message);
+        }
+      }
+
+      // Update local memory & Firestore (reduced frequency — cursor is in Redis)
       const nextIdx = (index + 1) % keys.length;
       providerConfig.cursor = nextIdx;
-      updateProviderCursor(provider, nextIdx).catch(() => {});
-
-      // Track start
-      if (redis) await redis.incr(activeKey);
+      if (!redis || redisCursor % 50 === 0) {
+        updateProviderCursor(provider, nextIdx).catch(() => {});
+      }
 
       try {
         const output = await caller({
@@ -126,7 +149,7 @@ export async function generateWithRotation(config, request) {
         });
 
         // Track success completion
-        if (redis) await redis.decr(activeKey);
+        if (redis) redis.decr(activeKey).catch(() => {});
 
         return {
           output: {
@@ -137,7 +160,7 @@ export async function generateWithRotation(config, request) {
         };
       } catch (error) {
         // Track failure completion
-        if (redis) await redis.decr(activeKey);
+        if (redis) redis.decr(activeKey).catch(() => {});
 
         console.warn(`[Proxy] Provider ${provider} (${providerConfig.model}) failed: ${error.message} (Status: ${error.statusCode})`);
         errors.push({
