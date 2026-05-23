@@ -9,7 +9,10 @@ import {
   analyzeAndInstinct, 
   calculateDominanceRatio,
   generatePsychologicalSummary, 
-  getPreferredAddress 
+  getPreferredAddress,
+  getInitialEgo,
+  updateEgo,
+  generateEgoSummary
 } from "../src/psychology.mjs";
 import { buildRoleplayPrompt } from "../src/prompt.mjs";
 import { updateSaga } from "../src/saga.mjs";
@@ -80,11 +83,12 @@ async function handleAIMessage(chatId, text, photo, event) {
       imagePayload = await getTelegramFile(fileId);
     }
 
-    // --- USE PSYCHOLOGY FROM PREVIOUS MESSAGE (already in userConfig/Redis) ---
+    // --- USE PSYCHOLOGY & EGO FROM PREVIOUS MESSAGE (already in userConfig/Redis) ---
     const mode = userConfig.mode || "istri";
     const lifeContext = userConfig.life_context || "";
     const relationshipStatus = userConfig.relationship_status || "Kenalan Baru";
     let psychState = userConfig.psychology || getInitialPsychology(userConfig.personality_traits || {});
+    let egoState = userConfig.ego_identity || getInitialEgo();
 
     // Sync from Redis (already loaded in Promise.all above)
     if (redisInnerVoice) psychState.inner_voice = redisInnerVoice;
@@ -97,6 +101,7 @@ async function handleAIMessage(chatId, text, photo, event) {
 
 
     const psychSummary = generatePsychologicalSummary(psychState);
+    const egoSummary = (mode === "istri" || mode === "nafeesa") ? generateEgoSummary(egoState) : "";
     const preferredAddress = (mode === "istri" || mode === "nafeesa") ? getPreferredAddress(psychState, userConfig.husband_profile || {}, relationshipStatus) : "Boss";
     const now = new Date();
     const timeStr = now.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" });
@@ -119,7 +124,7 @@ async function handleAIMessage(chatId, text, photo, event) {
       mode, timeStr, dateStr, psychSummary, userConfig.saga || "", 
       preferredAddress, userConfig.husband_profile || {}, relationshipStatus, 
       lifeContext, userConfig.personality_description || "", plotDirectives,
-      userConfig.active_duties || []
+      userConfig.active_duties || [], egoSummary
     );
     
     let userPrompt = text || "Lihat foto ini";
@@ -196,78 +201,88 @@ async function handleAIMessage(chatId, text, photo, event) {
     backgroundTasks.push(trackUsage(output.provider, output.model, "success"));
     
     // Saga & Personality Update Logic
-    if ((mode === "istri" || mode === "nafeesa") && text) {
-      userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
-      userConfig.chat_count_personality = (userConfig.chat_count_personality || 0) + 1;
-      
+    if (mode === "istri" || mode === "nafeesa") {
       const isManualStory = text === "/story";
       const shouldUpdateSaga = userConfig.chat_count_saga >= 10 || isManualStory || !userConfig.saga;
       const shouldEvolvePersonality = userConfig.chat_count_personality >= 50;
 
-      console.log(`[Stats] Chat Count for ${chatId} -> Saga: ${userConfig.chat_count_saga}/10, Personality: ${userConfig.chat_count_personality}/50`);
-
-      const updateTask = (async () => {
+      const unifiedBackgroundPipeline = (async () => {
         try {
-          let needsSave = true; // Always save at the end to persist counters
-          if (shouldUpdateSaga) {
-            console.log(`[Saga Engine] Updating story & identity for ${chatId}...`);
-            const fullTime = `${dateStr}, ${timeStr}`;
-            const sagaResult = await updateSaga(history, userConfig.saga || "", config, userConfig.active_duties || [], fullTime);
-            if (sagaResult && sagaResult.updated_saga) {
-              userConfig.saga = sagaResult.updated_saga;
-              userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status;
-              userConfig.chat_count_saga = 0;
-              userConfig.narrative_directives = sagaResult.narrative_directives || "";
-              userConfig.stagnation_level = sagaResult.stagnation_level || 0;
-              userConfig.chat_count_directives = 0; // Reset counter for new directive
-              userConfig.active_duties = sagaResult.active_duties || userConfig.active_duties || [];
-              if (sagaResult.husband_identity) {
-                userConfig.husband_profile = { ...userConfig.husband_profile, ...sagaResult.husband_identity };
+          let needsSave = true; // Always save at least to persist chat counters or analysis
+          
+          // Step A: Psychology & Ego Analysis
+          const analysisInput = text || (photo ? "[User mengirim sebuah foto]" : null);
+          if (analysisInput) {
+            console.log(`[Analyzer] Background analysis for ${chatId}...`);
+            const impactResult = await analyzeAndInstinct(analysisInput, config, history, psychState, lifeContext, relationshipStatus, egoState);
+            if (impactResult) {
+              const updated = updatePsychology(psychState, impactResult, hoursPassed);
+              const ratio = calculateDominanceRatio(updated, lifeContext, relationshipStatus);
+              updated.inner_voice = impactResult.inner_voice || "";
+              updated.last_mood_tag = impactResult.mood_tag;
+              updated.cognitive_ratio = ratio;
+              userConfig.psychology = updated;
+
+              // Step B: Update Ego Identity
+              if (impactResult.ego_updates) {
+                userConfig.ego_identity = updateEgo(egoState, impactResult.ego_updates);
               }
-              if (isManualStory) await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${userConfig.saga}`);
+
+              if (redis) {
+                if (impactResult.inner_voice) redis.set(KEYS.innerVoice(chatId), impactResult.inner_voice, { ex: 3600 }).catch(() => {});
+                if (impactResult.mood_tag) redis.set(KEYS.moodTag(chatId), impactResult.mood_tag, { ex: 10800 }).catch(() => {});
+              }
             }
           }
 
-          if (shouldEvolvePersonality) {
-            console.log(`[Personality Engine] Evolving character description for ${chatId}...`);
-            const newDesc = await evolvePersonality(history, userConfig.personality_description || "", userConfig.saga || "", lifeContext, config);
-            if (newDesc) {
-              userConfig.personality_description = newDesc;
-              userConfig.chat_count_personality = 0;
+          // Step C: Saga & Personality Updates
+          if (text) {
+            userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
+            userConfig.chat_count_personality = (userConfig.chat_count_personality || 0) + 1;
+
+            console.log(`[Stats] Chat Count for ${chatId} -> Saga: ${userConfig.chat_count_saga}/10, Personality: ${userConfig.chat_count_personality}/50`);
+
+            if (shouldUpdateSaga) {
+              console.log(`[Saga Engine] Updating story & identity for ${chatId}...`);
+              const fullTime = `${dateStr}, ${timeStr}`;
+              const sagaResult = await updateSaga(history, userConfig.saga || "", config, userConfig.active_duties || [], fullTime);
+              if (sagaResult && sagaResult.updated_saga) {
+                userConfig.saga = sagaResult.updated_saga;
+                userConfig.relationship_status = sagaResult.relationship_status || userConfig.relationship_status;
+                userConfig.chat_count_saga = 0;
+                userConfig.narrative_directives = sagaResult.narrative_directives || "";
+                userConfig.stagnation_level = sagaResult.stagnation_level || 0;
+                userConfig.chat_count_directives = 0; 
+                userConfig.active_duties = sagaResult.active_duties || userConfig.active_duties || [];
+                if (sagaResult.husband_identity) {
+                  userConfig.husband_profile = { ...userConfig.husband_profile, ...sagaResult.husband_identity };
+                }
+                if (isManualStory) await sendMessage(chatId, `📖 *Kisah Kita Diperbarui*:\n\n${userConfig.saga}`);
+              }
+            }
+
+            if (shouldEvolvePersonality) {
+              console.log(`[Personality Engine] Evolving character description for ${chatId}...`);
+              const newDesc = await evolvePersonality(history, userConfig.personality_description || "", userConfig.saga || "", lifeContext, config);
+              if (newDesc) {
+                userConfig.personality_description = newDesc;
+                userConfig.chat_count_personality = 0;
+              }
             }
           }
 
+          // Step D: Unified Save
           await saveUserConfig(chatId, userConfig);
-        } catch (e) { console.error("[Update Task Error]", e.message); }
+        } catch (e) {
+          console.error("[BG Pipeline Error]", e.message);
+        }
       });
 
-      if (isManualStory) await updateTask(); 
-      else backgroundTasks.push(updateTask());
+      if (isManualStory) await unifiedBackgroundPipeline();
+      else backgroundTasks.push(unifiedBackgroundPipeline());
     } else {
+      // In Non-Roleplay mode (e.g. Asisten), just save the configuration normally
       backgroundTasks.push(saveUserConfig(chatId, userConfig));
-    }
-
-    // Psychology analysis in background (update for NEXT message)
-    const analysisInput = text || (photo ? "[User mengirim sebuah foto]" : null);
-    if ((mode === "istri" || mode === "nafeesa") && analysisInput) {
-      backgroundTasks.push((async () => {
-        try {
-          console.log(`[Analyzer] Background analysis for ${chatId}...`);
-          const impact = await analyzeAndInstinct(analysisInput, config, history, psychState, lifeContext, relationshipStatus);
-          if (impact) {
-            const updated = updatePsychology(psychState, impact, hoursPassed);
-            const ratio = calculateDominanceRatio(updated, lifeContext, relationshipStatus);
-            updated.inner_voice = impact.inner_voice || "";
-            updated.last_mood_tag = impact.mood_tag;
-            updated.cognitive_ratio = ratio;
-            userConfig.psychology = updated;
-            if (redis) {
-              if (impact.inner_voice) redis.set(KEYS.innerVoice(chatId), impact.inner_voice, { ex: 3600 }).catch(() => {});
-              if (impact.mood_tag) redis.set(KEYS.moodTag(chatId), impact.mood_tag, { ex: 10800 }).catch(() => {});
-            }
-          }
-        } catch (e) { console.error("[BG Psychology]", e.message); }
-      })());
     }
 
     await Promise.all(backgroundTasks).catch(e => console.error("[BG Error]", e.message));

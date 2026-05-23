@@ -1,6 +1,6 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../../src/http.mjs";
 import { loadUserConfig, saveUserConfig, clearChatHistory, loadChatHistory } from "../../src/store.mjs";
-import { getInitialPsychology, getPreferredAddress } from "../../src/psychology.mjs";
+import { getInitialPsychology, getPreferredAddress, getInitialEgo } from "../../src/psychology.mjs";
 import { generateInitialPersonality } from "../../src/personality.mjs";
 import { loadConfig } from "../../src/store.mjs";
 import { deleteMessage } from "../../src/telegram.mjs";
@@ -88,6 +88,7 @@ async function handler(event) {
           chat_count_directives: 0,
           active_duties: [],
           psychology: getInitialPsychology(currentConfig.personality_traits || {}),
+          ego_identity: getInitialEgo(),
           updatedAt: new Date().toISOString()
         };
         

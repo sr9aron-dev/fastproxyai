@@ -48,11 +48,53 @@ export function getInitialPsychology(personality = {}) {
   };
 }
 
+export function getInitialEgo() {
+  return {
+    core_desires: {
+      attention: 0.5,
+      validation: 0.5,
+      security: 0.5
+    },
+    core_fears: {
+      abandonment: 0.5,
+      irrelevance: 0.5
+    },
+    self_image: "seorang wanita yang setia, penuh perasaan, namun menyembunyikan kerapuhan batinnya di balik sikapnya.",
+    defensive_mechanisms: ["denial", "clingy_overdrive"]
+  };
+}
+
+export function updateEgo(ego, updates) {
+  if (!ego) ego = getInitialEgo();
+  if (!updates) return ego;
+
+  const nextEgo = { ...ego };
+  if (updates.desires) {
+    nextEgo.core_desires = { ...nextEgo.core_desires };
+    for (const key in updates.desires) {
+      if (nextEgo.core_desires[key] !== undefined) {
+        nextEgo.core_desires[key] = Math.max(0, Math.min(1, nextEgo.core_desires[key] + (updates.desires[key] || 0)));
+      }
+    }
+  }
+
+  if (updates.fears) {
+    nextEgo.core_fears = { ...nextEgo.core_fears };
+    for (const key in updates.fears) {
+      if (nextEgo.core_fears[key] !== undefined) {
+        nextEgo.core_fears[key] = Math.max(0, Math.min(1, nextEgo.core_fears[key] + (updates.fears[key] || 0)));
+      }
+    }
+  }
+
+  return nextEgo;
+}
+
 /**
- * COMBINED: Analisis emosi + Generate kata hati dalam 1 AI call
+ * COMBINED: Analisis emosi + Generate kata hati + Ego updates dalam 1 AI call
  * Menggantikan analyzeEmotionalImpact() + generateInstinct() yang sequential
  */
-export async function analyzeAndInstinct(text, config, history = [], currentState = null, lifeContext = "", relationshipStatus = "Kenalan Baru") {
+export async function analyzeAndInstinct(text, config, history = [], currentState = null, lifeContext = "", relationshipStatus = "Kenalan Baru", currentEgo = null) {
   if (!text) return null;
 
   const contextStr = history.slice(-12).map(m => `${m.role === 'assistant' ? 'Nafeesa' : 'User'}: ${m.text}`).join("\n");
@@ -63,16 +105,22 @@ export async function analyzeAndInstinct(text, config, history = [], currentStat
     stateInfo = `STATUS EMOSI: Anger: ${(e.anger||0).toFixed(2)}, Trust: ${(e.trust||0).toFixed(2)}, Joy: ${(e.joy||0).toFixed(2)}, Attachment: ${(e.attachment||0).toFixed(2)}, Arousal: ${(e.arousal||0).toFixed(2)}`;
   }
 
+  let egoInfo = "";
+  if (currentEgo) {
+    egoInfo = `EGO STATE: Core Desires: ${JSON.stringify(currentEgo.core_desires)}, Core Fears: ${JSON.stringify(currentEgo.core_fears)}`;
+  }
+
   const p = currentState?.personality || {};
   const personalityInfo = `PERSONALITY (Big5): Conscientiousness: ${(p.conscientiousness||0.5).toFixed(2)}, Neuroticism: ${(p.neuroticism||0.3).toFixed(2)}, Agreeableness: ${(p.agreeableness||0.8).toFixed(2)}`;
 
   const moodListStr = Object.entries(MOOD_CATEGORIES).map(([cat, tags]) => `${cat}: ${tags.join(", ")}`).join("\n");
 
-  const prompt = `Analisis dampak emosional pesan user DAN buat Kata Hati Nafeesa.
+  const prompt = `Analisis dampak emosional pesan user, buat Kata Hati Nafeesa, dan evaluasi penyesuaian Ego-State.
 KONTEKS:
 - Status: ${relationshipStatus}
 - Kondisi Hidup: ${lifeContext || "Normal"}
 ${stateInfo}
+${egoInfo}
 ${personalityInfo}
 
 HISTORI CHAT:
@@ -82,26 +130,28 @@ PESAN USER: "${text}"
 
 TUGAS (selesaikan semua dalam 1 JSON):
 1. Hitung perubahan emosi (impact) -1.0 s/d 1.0.
-2. Pilih satu Mood Tag baru:
+2. Pilih satu Mood Tag baru dari kategori berikut:
 ${moodListStr}
-3. Buat Kata Hati (Inner Voice) Nafeesa (Maks 15 kata).
-   - Jika conscientiousness tinggi & emosi rendah: berhitung, waspada, logis.
-   - Jika neuroticism tinggi & anger/arousal tinggi: impulsif, penuh perasaan.
-   - Jika seimbang: tunjukkan pertarungan batin.
-4. Cek kepatuhan format (compliance_violation: true jika >20 kata atau tanpa "|").
+3. Buat Kata Hati (Inner Voice) Nafeesa (Maks 15 kata). Tunjukkan konflik batin, insecurity, ketakutan, pertahanan ego, atau kontradiksi batinnya.
+4. Hitung penyesuaian Ego-State (ego_updates) antara -0.1 s/d 0.1 untuk core_desires (attention, validation, security) dan core_fears (abandonment, irrelevance) berdasarkan interaksi ini.
+5. Cek kepatuhan format (compliance_violation: true jika >20 kata atau tanpa "|").
 
 JSON:
 {
   "impact": { "anger": 0, "trust": 0, "joy": 0, "attachment": 0, "arousal": 0 },
   "mood_tag": "tag_name",
   "inner_voice": "...",
+  "ego_updates": {
+    "desires": { "attention": 0, "validation": 0, "security": 0 },
+    "fears": { "abandonment": 0, "irrelevance": 0 }
+  },
   "compliance_violation": false
 }`;
 
   try {
     const { output } = await generateWithRotation(config, {
       prompt,
-      system: "Anda adalah Emotional Analyzer & Instinct Generator. Berikan JSON murni.",
+      system: "Anda adalah Emotional Analyzer, Instinct Generator & Ego Identity Evaluator. Berikan JSON murni.",
       temperature: 0.3,
       providerOrder: ["groq", "gemini"]
     });
@@ -233,6 +283,21 @@ Behavioral Bias:
   }
 
   return summary;
+}
+
+export function generateEgoSummary(ego) {
+  if (!ego) return "";
+  return `[CORE_EGO_IDENTITY]
+Self-Image: ${ego.self_image || "seorang wanita yang setia namun menyimpan kerapuhan."}
+Core Desires:
+- Attention: ${(ego.core_desires?.attention || 0.5).toFixed(2)}
+- Validation: ${(ego.core_desires?.validation || 0.5).toFixed(2)}
+- Security: ${(ego.core_desires?.security || 0.5).toFixed(2)}
+Core Fears:
+- Abandonment: ${(ego.core_fears?.abandonment || 0.5).toFixed(2)}
+- Irrelevance: ${(ego.core_fears?.irrelevance || 0.5).toFixed(2)}
+Defensive Mechanisms: ${Array.isArray(ego.defensive_mechanisms) ? ego.defensive_mechanisms.join(", ") : "denial"}
+`;
 }
 
 function getIntensity(val) {
