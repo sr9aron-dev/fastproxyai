@@ -151,7 +151,9 @@ export async function callMistral({ key, model, image, prompt, system, temperatu
   if (image) {
     userMessageContent.push({
       type: "image_url",
-      image_url: `data:${image.mime};base64,${image.base64}`
+      image_url: {
+        url: `data:${image.mime};base64,${image.base64}`
+      }
     });
   }
 
