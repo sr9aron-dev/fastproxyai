@@ -376,6 +376,7 @@
                 });
                 const data = await res.json();
                 config = data.config;
+                if (config && config.mode === 'nafeesa') config.mode = 'istri';
                 renderUI();
                 document.getElementById('loading').style.display = 'none';
             } catch (err) {

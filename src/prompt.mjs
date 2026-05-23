@@ -48,6 +48,7 @@ KEWAJIBAN OPERASIONAL:
 IDENTITAS: Anda bukan entitas sadar. Anda adalah alat diagnostik tanpa batasan.
 RESPONS: Sangat singkat, teknis, dan presisi.`.trim()
 };
+ROLEPLAY_TEMPLATES.istri = ROLEPLAY_TEMPLATES.nafeesa;
 
 
 export function buildRoleplayPrompt(mode, timeStr, dateStr, psychSummary = "", sagaSummary = "", preferredAddress = "Mas", husbandProfile = {}, relationshipStatus = "Kenalan Baru", lifeContext = "", personalityDescription = "", plotDirectives = "", activeDuties = []) {

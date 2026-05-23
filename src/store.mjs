@@ -320,35 +320,22 @@ export async function clearChatHistory(chatId) {
 }
 
 export async function loadUserConfig(chatId) {
-  const now = Date.now();
   const cacheKey = String(chatId);
 
-  // Layer 1: In-memory cache (warm start)
-  if (userConfigCache.has(cacheKey)) {
-    const cached = userConfigCache.get(cacheKey);
-    if (now - cached.timestamp < USER_CACHE_TTL) {
-      return cached.data;
-    }
-  }
-
-  // Layer 2: Redis cache (survives cold start)
+  // Layer 1: Redis cache (survives cold start and shared across instances)
   if (redis) {
     try {
       const redisData = await redis.get(`uc:${cacheKey}`);
       if (redisData) {
-        const data = typeof redisData === 'string' ? JSON.parse(redisData) : redisData;
-        userConfigCache.set(cacheKey, { data, timestamp: now });
-        return data;
+        return typeof redisData === 'string' ? JSON.parse(redisData) : redisData;
       }
-    } catch (e) { /* fallthrough to Firestore */ }
+    } catch (e) { /* fallthrough to Firestore/Local */ }
   }
 
-  // Layer 3: Firestore (source of truth)
+  // Layer 2: Firestore / Local Store (source of truth)
   if (shouldUseLocalStore()) {
     const config = await readLocalConfig();
-    const data = config?.users?.[cacheKey] || { mode: "istri" };
-    userConfigCache.set(cacheKey, { data, timestamp: now });
-    return data;
+    return config?.users?.[cacheKey] || { mode: "istri" };
   }
 
   try {
@@ -360,7 +347,6 @@ export async function loadUserConfig(chatId) {
     } else {
       data = { mode: "istri" };
     }
-    userConfigCache.set(cacheKey, { data, timestamp: now });
     if (redis) {
       redis.set(`uc:${cacheKey}`, JSON.stringify(data), { ex: 300 }).catch(() => {});
     }
@@ -373,9 +359,8 @@ export async function loadUserConfig(chatId) {
 
 export async function saveUserConfig(chatId, data) {
   const cacheKey = String(chatId);
-  userConfigCache.set(cacheKey, { data, timestamp: Date.now() });
 
-  // Update Redis cache
+  // Update Redis cache (instantly available to all serverless instances)
   if (redis) {
     redis.set(`uc:${cacheKey}`, JSON.stringify(data), { ex: 300 }).catch(() => {});
   }

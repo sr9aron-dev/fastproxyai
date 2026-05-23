@@ -97,14 +97,14 @@ async function handleAIMessage(chatId, text, photo, event) {
 
 
     const psychSummary = generatePsychologicalSummary(psychState);
-    const preferredAddress = (mode === "istri") ? getPreferredAddress(psychState, userConfig.husband_profile || {}, relationshipStatus) : "Boss";
+    const preferredAddress = (mode === "istri" || mode === "nafeesa") ? getPreferredAddress(psychState, userConfig.husband_profile || {}, relationshipStatus) : "Boss";
     const now = new Date();
     const timeStr = now.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" });
     const dateStr = now.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     // --- NARRATIVE DIRECTIVES EXPIRATION ---
     let plotDirectives = "";
-    if (mode === "istri" && userConfig.narrative_directives) {
+    if ((mode === "istri" || mode === "nafeesa") && userConfig.narrative_directives) {
       userConfig.chat_count_directives = (userConfig.chat_count_directives || 0) + 1;
       if (userConfig.chat_count_directives > 5) {
         userConfig.narrative_directives = ""; // Expire after 5 messages
@@ -196,7 +196,7 @@ async function handleAIMessage(chatId, text, photo, event) {
     backgroundTasks.push(trackUsage(output.provider, output.model, "success"));
     
     // Saga & Personality Update Logic
-    if (mode === "istri" && text) {
+    if ((mode === "istri" || mode === "nafeesa") && text) {
       userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
       userConfig.chat_count_personality = (userConfig.chat_count_personality || 0) + 1;
       
@@ -249,7 +249,7 @@ async function handleAIMessage(chatId, text, photo, event) {
 
     // Psychology analysis in background (update for NEXT message)
     const analysisInput = text || (photo ? "[User mengirim sebuah foto]" : null);
-    if (mode === "istri" && analysisInput) {
+    if ((mode === "istri" || mode === "nafeesa") && analysisInput) {
       backgroundTasks.push((async () => {
         try {
           console.log(`[Analyzer] Background analysis for ${chatId}...`);
