@@ -203,8 +203,6 @@ async function handleAIMessage(chatId, text, photo, event) {
     // Saga & Personality Update Logic
     if (mode === "istri" || mode === "nafeesa") {
       const isManualStory = text === "/story";
-      const shouldUpdateSaga = userConfig.chat_count_saga >= 10 || isManualStory || !userConfig.saga;
-      const shouldEvolvePersonality = userConfig.chat_count_personality >= 50;
 
       const unifiedBackgroundPipeline = (async () => {
         try {
@@ -239,6 +237,9 @@ async function handleAIMessage(chatId, text, photo, event) {
           if (text) {
             userConfig.chat_count_saga = (userConfig.chat_count_saga || 0) + 1;
             userConfig.chat_count_personality = (userConfig.chat_count_personality || 0) + 1;
+
+            const shouldUpdateSaga = userConfig.chat_count_saga >= 10 || isManualStory || !userConfig.saga;
+            const shouldEvolvePersonality = userConfig.chat_count_personality >= 50;
 
             console.log(`[Stats] Chat Count for ${chatId} -> Saga: ${userConfig.chat_count_saga}/10, Personality: ${userConfig.chat_count_personality}/50`);
 
