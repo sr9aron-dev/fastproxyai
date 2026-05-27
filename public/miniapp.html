@@ -351,6 +351,16 @@
                     <div class="option-btn provider-btn" data-provider="mistral">Mistral</div>
                 </div>
             </div>
+            <div class="card">
+                <h3>🥷 Camouflage Bypass</h3>
+                <p style="font-size: 11px; opacity: 0.6; margin-bottom: 10px;">
+                    Aktifkan untuk menyamarkan prompt NSFW agar lolos filter AI (Resiko diblokir provider).
+                </p>
+                <div class="option-group" id="camouflage-group">
+                    <div class="option-btn camo-btn" data-camo="true">Aktif</div>
+                    <div class="option-btn camo-btn" data-camo="false">Mati</div>
+                </div>
+            </div>
             <div class="card" style="border: 1px solid rgba(255, 71, 87, 0.3); background: rgba(255, 71, 87, 0.05); margin-top: 30px;">
                 <h3 style="color: #ff4757;">⚠️ Zona Bahaya</h3>
                 <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 15px;">Hapus riwayat chat, ingatan (Saga), dan reset emosi ke awal.</p>
@@ -543,6 +553,9 @@
             document.querySelectorAll('.provider-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.provider === config.provider);
             });
+            document.querySelectorAll('.camo-btn').forEach(btn => {
+                btn.classList.toggle('active', (btn.dataset.camo === 'true') === !!config.camouflage_enabled);
+            });
         }
 
         window.updateTrait = (key, val) => {
@@ -572,6 +585,14 @@
             btn.addEventListener('click', () => {
                 config.provider = btn.dataset.provider;
                 document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        document.querySelectorAll('.camo-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                config.camouflage_enabled = btn.dataset.camo === 'true';
+                document.querySelectorAll('.camo-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
             });
         });

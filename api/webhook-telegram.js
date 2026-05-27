@@ -131,7 +131,7 @@ async function handleAIMessage(chatId, text, photo, event) {
     const isRequestSensitive = isSensitive(userPrompt);
     
     // Proactive Camouflage for known sensitive prompts
-    if (isRequestSensitive) {
+    if (isRequestSensitive && userConfig.camouflage_enabled) {
       console.log(`[Safety] Proactive camouflage for sensitive prompt: "${userPrompt.substring(0, 20)}..."`);
       userPrompt = camouflagePrompt(userPrompt, Math.floor(Math.random() * 5));
     }
@@ -161,15 +161,20 @@ async function handleAIMessage(chatId, text, photo, event) {
         const isRefusal = refusalKeywords.some(k => resultText.includes(k)) && resultText.length < 150;
 
         if (isRefusal && attempt < maxAttempts - 1) {
-          console.log(`[Safety] Detected soft refusal on attempt ${attempt + 1}. Retrying with camouflage...`);
-          attempt++;
-          userPrompt = camouflagePrompt(text || userPrompt, attempt);
-          continue;
+          if (userConfig.camouflage_enabled) {
+            console.log(`[Safety] Detected soft refusal on attempt ${attempt + 1}. Retrying with camouflage...`);
+            attempt++;
+            userPrompt = camouflagePrompt(text || userPrompt, attempt);
+            continue;
+          } else {
+            console.log(`[Safety] Detected soft refusal, but camouflage is disabled. Breaking.`);
+            break;
+          }
         }
 
         break; // Success or final attempt
       } catch (err) {
-        if (err.isSafetyBlock && attempt < maxAttempts - 1) {
+        if (err.isSafetyBlock && attempt < maxAttempts - 1 && userConfig.camouflage_enabled) {
           console.log(`[Safety] Hard block on attempt ${attempt + 1}. Retrying with camouflage...`);
           attempt++;
           userPrompt = camouflagePrompt(text || userPrompt, attempt);
