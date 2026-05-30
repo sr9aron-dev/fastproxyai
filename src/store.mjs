@@ -4,10 +4,12 @@ import { db, admin } from "./firebase.mjs";
 import { sha256 } from "./crypto.mjs";
 import redis from "./redis.mjs";
 
-const CONFIG_DOC_ID = "proxy-settings";
+const CONFIG_ID = process.env.CONFIG_ID || "";
+const CONFIG_DOC_ID = CONFIG_ID ? `proxy-settings-${CONFIG_ID}` : "proxy-settings";
+const REDIS_CONFIG_KEY = CONFIG_ID ? `config:global:${CONFIG_ID}` : "config:global";
 const COLLECTION_NAME = "config";
 const LOCAL_DATA_DIR = path.join(process.cwd(), ".data");
-const LOCAL_CONFIG_PATH = path.join(LOCAL_DATA_DIR, "config.json");
+const LOCAL_CONFIG_PATH = CONFIG_ID ? path.join(LOCAL_DATA_DIR, `config-${CONFIG_ID}.json`) : path.join(LOCAL_DATA_DIR, "config.json");
 const CONFIG_CACHE_TTL = 60 * 1000; // 1 minute
 const USER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 let cachedConfig = null;
@@ -79,7 +81,7 @@ export async function loadConfig(force = false) {
   // Layer 2: Redis cache (survives cold start across instances)
   if (!force && redis) {
     try {
-      const redisConfig = await redis.get("config:global");
+      const redisConfig = await redis.get(REDIS_CONFIG_KEY);
       if (redisConfig) {
         cachedConfig = typeof redisConfig === 'string' ? JSON.parse(redisConfig) : redisConfig;
         lastCacheUpdate = now;
@@ -136,7 +138,7 @@ export async function loadConfig(force = false) {
 
   // Save to Redis cache for other instances
   if (redis && merged) {
-    redis.set("config:global", JSON.stringify(merged), { ex: 60 }).catch(() => {});
+    redis.set(REDIS_CONFIG_KEY, JSON.stringify(merged), { ex: 60 }).catch(() => {});
   }
 
   cachedConfig = merged;
