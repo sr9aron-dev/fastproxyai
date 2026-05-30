@@ -2,6 +2,22 @@ import { json, optionsResponse, requireAdmin, vercelHandler } from "../../src/ht
 import { db } from "../../src/firebase.mjs";
 import { loadConfig } from "../../src/store.mjs";
 
+// Firestore stores dot-notation paths as flat keys when using FieldValue.increment().
+// This converts e.g. { "history.2026-05-05.total": 377 } into { history: { "2026-05-05": { total: 377 } } }
+function unflatten(obj) {
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const parts = key.split(".");
+    let current = result;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!(parts[i] in current)) current[parts[i]] = {};
+      current = current[parts[i]];
+    }
+    current[parts[parts.length - 1]] = value;
+  }
+  return result;
+}
+
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
   
@@ -11,7 +27,14 @@ async function handler(event) {
     const configId = process.env.CONFIG_ID || "";
     const statsCollection = configId ? `stats-${configId}` : "stats";
     const statsDoc = await db.collection(statsCollection).doc("global").get();
-    const stats = statsDoc.exists ? statsDoc.data() : { total: 0, providers: {}, models: {}, status: {}, history: {} };
+    const rawStats = statsDoc.exists ? statsDoc.data() : {};
+    const stats = unflatten(rawStats);
+    // Ensure all expected keys exist
+    stats.total = stats.total || 0;
+    stats.providers = stats.providers || {};
+    stats.models = stats.models || {};
+    stats.status = stats.status || {};
+    stats.history = stats.history || {};
 
     // Get config to count keys (respects CONFIG_ID dynamically)
     const config = await loadConfig();
