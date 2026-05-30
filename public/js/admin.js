@@ -2,8 +2,11 @@ const $ = (id) => document.getElementById(id);
 const state = {
     token: localStorage.getItem('admin_token') || '',
     config: null,
-    activeTab: 'groq'
+    activeTab: 'groq',
+    editingProviderKey: null
 };
+
+const providers = ['groq', 'gemini', 'mistral'];
 
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
@@ -11,6 +14,15 @@ function showToast(message, type = 'success') {
     toast.textContent = message;
     $('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 async function api(path, method = 'GET', body = null) {
@@ -104,12 +116,10 @@ async function loadConfig() {
 
 function renderConfig() {
     const c = state.config;
-    $('groq-keys').value = c.groq.keys.join('\n');
     $('groq-model').value = c.groq.model;
-    $('gemini-keys').value = c.gemini.keys.join('\n');
     $('gemini-model').value = c.gemini.model;
-    $('mistral-keys').value = (c.mistral?.keys || []).join('\n');
     $('mistral-model').value = c.mistral?.model || 'mistral-tiny';
+    renderProviderKeyLists();
     
     // Render provider order
     const orderList = $('provider-order');
@@ -121,6 +131,56 @@ function renderConfig() {
         item.draggable = true;
         item.innerHTML = `${id.toUpperCase()} <span>⠿</span>`;
         orderList.appendChild(item);
+    });
+}
+
+function providerKeys(provider) {
+    if (!state.config?.[provider]) return [];
+    if (!Array.isArray(state.config[provider].keys)) state.config[provider].keys = [];
+    return state.config[provider].keys;
+}
+
+function renderProviderKeyLists() {
+    providers.forEach(renderProviderKeyList);
+}
+
+function renderProviderKeyList(provider) {
+    const list = $(`${provider}-key-list`);
+    const keys = providerKeys(provider);
+    list.innerHTML = '';
+
+    if (keys.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'provider-key-empty';
+        empty.textContent = 'No keys configured';
+        list.appendChild(empty);
+        return;
+    }
+
+    keys.forEach((key, index) => {
+        const editing = state.editingProviderKey?.provider === provider && state.editingProviderKey?.index === index;
+        const item = document.createElement('div');
+        item.className = 'provider-key-item fade-in';
+
+        if (editing) {
+            item.innerHTML = `
+                <input class="provider-key-input" type="password" value="${key.includes('...') ? '' : escapeHtml(key)}" placeholder="Paste replacement key">
+                <div class="provider-key-actions">
+                    <button class="secondary-btn compact-btn" type="button" onclick="saveProviderKeyEdit('${provider}', ${index})">Save</button>
+                    <button class="secondary-btn compact-btn" type="button" onclick="cancelProviderKeyEdit()">Cancel</button>
+                </div>
+            `;
+        } else {
+            item.innerHTML = `
+                <code class="provider-key-mask">${escapeHtml(key)}</code>
+                <div class="provider-key-actions">
+                    <button class="secondary-btn compact-btn" type="button" onclick="editProviderKey('${provider}', ${index})">Edit</button>
+                    <button class="secondary-btn compact-btn danger-btn" type="button" onclick="deleteProviderKey('${provider}', ${index})">Delete</button>
+                </div>
+            `;
+        }
+
+        list.appendChild(item);
     });
 }
 
@@ -149,15 +209,15 @@ function renderKeys() {
 $('save-provider-btn').addEventListener('click', async () => {
     const body = {
         groq: {
-            keys: $('groq-keys').value.split('\n').filter(k => k.trim()),
+            keys: providerKeys('groq'),
             model: $('groq-model').value.trim()
         },
         gemini: {
-            keys: $('gemini-keys').value.split('\n').filter(k => k.trim()),
+            keys: providerKeys('gemini'),
             model: $('gemini-model').value.trim()
         },
         mistral: {
-            keys: $('mistral-keys').value.split('\n').filter(k => k.trim()),
+            keys: providerKeys('mistral'),
             model: $('mistral-model').value.trim()
         },
         providerOrder: Array.from($('provider-order').children).map(el => el.dataset.id)
@@ -167,6 +227,56 @@ $('save-provider-btn').addEventListener('click', async () => {
     state.config = data.config;
     showToast('Configuration updated successfully');
     renderConfig();
+});
+
+window.addProviderKey = (provider) => {
+    const input = $(`${provider}-new-key`);
+    const value = input.value.trim();
+    if (!value) return showToast('Please paste a key first', 'error');
+
+    const keys = providerKeys(provider);
+    if (keys.includes(value)) return showToast('Key already exists', 'error');
+
+    keys.push(value);
+    input.value = '';
+    renderProviderKeyList(provider);
+    showToast(`${provider.toUpperCase()} key added. Click Update Provider Config to save.`);
+};
+
+window.editProviderKey = (provider, index) => {
+    state.editingProviderKey = { provider, index };
+    renderProviderKeyList(provider);
+};
+
+window.cancelProviderKeyEdit = () => {
+    const provider = state.editingProviderKey?.provider;
+    state.editingProviderKey = null;
+    if (provider) renderProviderKeyList(provider);
+};
+
+window.saveProviderKeyEdit = (provider, index) => {
+    const row = $(`${provider}-key-list`).children[index];
+    const input = row?.querySelector('.provider-key-input');
+    const value = input?.value.trim();
+
+    if (!value) return showToast('Paste the replacement key to edit this item', 'error');
+
+    const keys = providerKeys(provider);
+    keys[index] = value;
+    state.editingProviderKey = null;
+    renderProviderKeyList(provider);
+    showToast(`${provider.toUpperCase()} key updated. Click Update Provider Config to save.`);
+};
+
+window.deleteProviderKey = (provider, index) => {
+    if (!confirm(`Delete this ${provider.toUpperCase()} key?`)) return;
+    providerKeys(provider).splice(index, 1);
+    renderProviderKeyList(provider);
+    showToast(`${provider.toUpperCase()} key deleted. Click Update Provider Config to save.`);
+};
+
+document.querySelectorAll('[data-add-provider]').forEach(btn => {
+    btn.addEventListener('click', () => addProviderKey(btn.dataset.addProvider));
 });
 
 $('gen-ext-key-btn').addEventListener('click', async () => {
@@ -208,9 +318,8 @@ window.deleteKey = async (id) => {
 // Test Keys Logic
 async function testProviderKeys(provider) {
     const btn = $(`test-${provider}-btn`);
-    const area = $(`${provider}-keys`);
     const model = $(`${provider}-model`).value;
-    const keys = area.value.split('\n').filter(k => k.trim());
+    const keys = providerKeys(provider).filter(k => k.trim());
     
     if (keys.length === 0) return showToast('No keys to test', 'error');
     
@@ -227,8 +336,9 @@ async function testProviderKeys(provider) {
         if (invalidCount > 0) {
             const remove = confirm(`Found ${invalidCount} invalid keys. Would you like to remove them?`);
             if (remove) {
-                area.value = validKeys.join('\n');
-                showToast(`Removed ${invalidCount} invalid keys`);
+                state.config[provider].keys = validKeys;
+                renderProviderKeyList(provider);
+                showToast(`Removed ${invalidCount} invalid keys. Click Update Provider Config to save.`);
             } else {
                 showToast(`Test complete: ${invalidCount} keys failed`, 'error');
             }

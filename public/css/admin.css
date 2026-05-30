@@ -205,6 +205,81 @@ textarea {
     margin-bottom: 1rem;
 }
 
+.provider-key-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+}
+
+.provider-key-item,
+.key-add-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.provider-key-item {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 0.75rem;
+}
+
+.provider-key-mask {
+    color: var(--accent-secondary);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.provider-key-input {
+    font-family: 'Courier New', Courier, monospace;
+    padding: 0.75rem;
+}
+
+.provider-key-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.compact-btn {
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    white-space: nowrap;
+}
+
+.danger-btn {
+    color: var(--error);
+}
+
+.provider-key-empty {
+    border: 1px dashed var(--glass-border);
+    border-radius: 12px;
+    color: var(--text-dim);
+    padding: 1rem;
+    text-align: center;
+}
+
+.key-add-row {
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 640px) {
+    .provider-key-item,
+    .key-add-row {
+        grid-template-columns: 1fr;
+    }
+
+    .provider-key-actions {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+}
+
 .label-row {
     display: flex;
     justify-content: space-between;

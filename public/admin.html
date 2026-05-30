@@ -47,28 +47,40 @@
                     </div>
                     <div class="tab-content" id="groq-tab">
                         <div class="label-row">
-                            <label>Groq API Keys (one per line)</label>
+                            <label>Groq API Keys</label>
                             <button id="test-groq-btn" class="text-btn">Test All Keys</button>
                         </div>
-                        <textarea id="groq-keys" placeholder="gsk_..."></textarea>
+                        <div class="provider-key-list" id="groq-key-list"></div>
+                        <div class="key-add-row">
+                            <input type="password" id="groq-new-key" placeholder="Add Groq key">
+                            <button class="secondary-btn" type="button" data-add-provider="groq">Add Key</button>
+                        </div>
                         <label>Model</label>
                         <input type="text" id="groq-model">
                     </div>
                     <div class="tab-content hidden" id="gemini-tab">
                         <div class="label-row">
-                            <label>Gemini API Keys (one per line)</label>
+                            <label>Gemini API Keys</label>
                             <button id="test-gemini-btn" class="text-btn">Test All Keys</button>
                         </div>
-                        <textarea id="gemini-keys" placeholder="AIza..."></textarea>
+                        <div class="provider-key-list" id="gemini-key-list"></div>
+                        <div class="key-add-row">
+                            <input type="password" id="gemini-new-key" placeholder="Add Gemini key">
+                            <button class="secondary-btn" type="button" data-add-provider="gemini">Add Key</button>
+                        </div>
                         <label>Model</label>
                         <input type="text" id="gemini-model">
                     </div>
                     <div class="tab-content hidden" id="mistral-tab">
                         <div class="label-row">
-                            <label>Mistral API Keys (one per line)</label>
+                            <label>Mistral API Keys</label>
                             <button id="test-mistral-btn" class="text-btn">Test All Keys</button>
                         </div>
-                        <textarea id="mistral-keys" placeholder="tKS..."></textarea>
+                        <div class="provider-key-list" id="mistral-key-list"></div>
+                        <div class="key-add-row">
+                            <input type="password" id="mistral-new-key" placeholder="Add Mistral key">
+                            <button class="secondary-btn" type="button" data-add-provider="mistral">Add Key</button>
+                        </div>
                         <label>Model</label>
                         <input type="text" id="mistral-model">
                     </div>
