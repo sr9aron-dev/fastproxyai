@@ -9,7 +9,9 @@ async function handler(event) {
 
   try {
     const limit = parseInt(event.queryStringParameters?.limit || "50");
-    const snapshot = await db.collection("logs")
+    const configId = process.env.CONFIG_ID || "";
+    const logsCollection = configId ? `logs-${configId}` : "logs";
+    const snapshot = await db.collection(logsCollection)
       .orderBy("timestamp", "desc")
       .limit(limit)
       .get();

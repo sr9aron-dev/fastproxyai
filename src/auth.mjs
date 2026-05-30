@@ -45,7 +45,9 @@ export async function checkSubscription(email) {
     if (!db) {
       throw new Error("Database not initialized");
     }
-    const docRef = db.collection('users').doc(email);
+    const configId = process.env.CONFIG_ID || "";
+    const usersCollection = configId ? `users-${configId}` : "users";
+    const docRef = db.collection(usersCollection).doc(email);
     const doc = await docRef.get();
     
     if (!doc.exists) {
@@ -84,7 +86,9 @@ export async function extendSubscription(email, days = 40) {
     throw new Error("Database not initialized");
   }
 
-  const docRef = db.collection("users").doc(email);
+  const configId = process.env.CONFIG_ID || "";
+  const usersCollection = configId ? `users-${configId}` : "users";
+  const docRef = db.collection(usersCollection).doc(email);
   const doc = await docRef.get();
   
   let currentExpiry = new Date();

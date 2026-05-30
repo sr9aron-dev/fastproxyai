@@ -8,6 +8,10 @@ const CONFIG_ID = process.env.CONFIG_ID || "";
 const CONFIG_DOC_ID = CONFIG_ID ? `proxy-settings-${CONFIG_ID}` : "proxy-settings";
 const REDIS_CONFIG_KEY = CONFIG_ID ? `config:global:${CONFIG_ID}` : "config:global";
 const COLLECTION_NAME = "config";
+const STATS_COLLECTION = CONFIG_ID ? `stats-${CONFIG_ID}` : "stats";
+const LOGS_COLLECTION = CONFIG_ID ? `logs-${CONFIG_ID}` : "logs";
+const CHATS_COLLECTION = CONFIG_ID ? `chats-${CONFIG_ID}` : "chats";
+const USERS_COLLECTION = CONFIG_ID ? `users-${CONFIG_ID}` : "users";
 const LOCAL_DATA_DIR = path.join(process.cwd(), ".data");
 const LOCAL_CONFIG_PATH = CONFIG_ID ? path.join(LOCAL_DATA_DIR, `config-${CONFIG_ID}.json`) : path.join(LOCAL_DATA_DIR, "config.json");
 const CONFIG_CACHE_TTL = 60 * 1000; // 1 minute
@@ -227,7 +231,7 @@ export async function trackUsage(provider, model, status = "success") {
   if (shouldUseLocalStore()) return; // Skip local for now to avoid IO overhead
 
   try {
-    const statsRef = db.collection("stats").doc("global");
+    const statsRef = db.collection(STATS_COLLECTION).doc("global");
     const dateStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
     
     // Increments using Firestore FieldValue.increment
@@ -250,7 +254,7 @@ export async function recordLog(details) {
   if (shouldUseLocalStore()) return;
 
   try {
-    const logRef = db.collection("logs").doc();
+    const logRef = db.collection(LOGS_COLLECTION).doc();
     await logRef.set({
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       time: new Date().toISOString(),
@@ -268,7 +272,7 @@ export async function loadChatHistory(chatId, limit = 10) {
   if (shouldUseLocalStore()) return [];
 
   try {
-    const snapshot = await db.collection("chats")
+    const snapshot = await db.collection(CHATS_COLLECTION)
       .doc(String(chatId))
       .collection("messages")
       .orderBy("timestamp", "desc")
@@ -286,7 +290,7 @@ export async function saveChatMessage(chatId, role, text, messageId = null) {
   if (shouldUseLocalStore()) return;
 
   try {
-    await db.collection("chats")
+    await db.collection(CHATS_COLLECTION)
       .doc(String(chatId))
       .collection("messages")
       .add({
@@ -304,7 +308,7 @@ export async function clearChatHistory(chatId) {
   if (shouldUseLocalStore()) return;
 
   try {
-    const messagesRef = db.collection("chats").doc(String(chatId)).collection("messages");
+    const messagesRef = db.collection(CHATS_COLLECTION).doc(String(chatId)).collection("messages");
     let snapshot;
     do {
       snapshot = await messagesRef.limit(400).get();
@@ -342,7 +346,7 @@ export async function loadUserConfig(chatId) {
 
   try {
     if (!db) throw new Error("Database not initialized");
-    const doc = await db.collection("users").doc(cacheKey).get();
+    const doc = await db.collection(USERS_COLLECTION).doc(cacheKey).get();
     let data;
     if (doc.exists) {
       data = { mode: "istri", ...doc.data() };
@@ -377,7 +381,7 @@ export async function saveUserConfig(chatId, data) {
 
   try {
     if (!db) throw new Error("Database not initialized");
-    await db.collection("users").doc(cacheKey).set(data, { merge: true });
+    await db.collection(USERS_COLLECTION).doc(cacheKey).set(data, { merge: true });
   } catch (err) {
     console.error("Error saving user config:", err.message);
   }

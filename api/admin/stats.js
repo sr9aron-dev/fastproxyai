@@ -1,5 +1,6 @@
 import { json, optionsResponse, requireAdmin, vercelHandler } from "../../src/http.mjs";
 import { db } from "../../src/firebase.mjs";
+import { loadConfig } from "../../src/store.mjs";
 
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
@@ -7,12 +8,13 @@ async function handler(event) {
   try {
     requireAdmin(event);
     
-    const statsDoc = await db.collection("stats").doc("global").get();
+    const configId = process.env.CONFIG_ID || "";
+    const statsCollection = configId ? `stats-${configId}` : "stats";
+    const statsDoc = await db.collection(statsCollection).doc("global").get();
     const stats = statsDoc.exists ? statsDoc.data() : { total: 0, providers: {}, models: {}, status: {}, history: {} };
 
-    // Get config to count keys
-    const configDoc = await db.collection("config").doc("proxy-settings").get();
-    const config = configDoc.exists ? configDoc.data() : { extensionKeys: [] };
+    // Get config to count keys (respects CONFIG_ID dynamically)
+    const config = await loadConfig();
     
     const totalKeys = config.extensionKeys?.length || 0;
     const activeKeys = config.extensionKeys?.filter(k => k.active)?.length || 0;
