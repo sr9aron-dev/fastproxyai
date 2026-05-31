@@ -17,9 +17,13 @@ export default async function handler(req, res) {
       userMessageContent.push({ type: 'text', text: prompt });
     }
     if (image) {
+      let imageUrl = typeof image === 'string' 
+        ? (image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`) 
+        : `data:${image.mime || 'image/jpeg'};base64,${image.base64}`;
+        
       userMessageContent.push({
         type: 'image_url',
-        image_url: { url: `data:${image.mime || 'image/jpeg'};base64,${image.base64 || image}` } // Assuming image structure or base64 string
+        image_url: { url: imageUrl }
       });
     }
 
