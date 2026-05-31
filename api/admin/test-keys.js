@@ -1,5 +1,5 @@
 import { json, optionsResponse, readJson, requireAdmin, vercelHandler } from "../../src/http.mjs";
-import { callGroq, callGemini, callMistral } from "../../src/providers.mjs";
+import { callGroq, callGemini, callMistral, callNvidia } from "../../src/providers.mjs";
 
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
@@ -35,6 +35,9 @@ async function handler(event) {
         } else if (provider === "mistral") {
           caller = callMistral;
           defaultModel = "mistral-tiny";
+        } else if (provider === "nvidia") {
+          caller = callNvidia;
+          defaultModel = "mistralai/mistral-large-3-675b-instruct-2512";
         }
 
         await caller({ key, model: model || defaultModel, prompt: testPrompt });
