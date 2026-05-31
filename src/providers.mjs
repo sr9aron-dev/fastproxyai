@@ -195,3 +195,58 @@ export async function callMistral({ key, model, image, prompt, system, temperatu
     usage: payload?.usage || null
   };
 }
+
+export async function callNvidia({ key, model, image, prompt, system, temperature, history }) {
+  const userMessageContent = [];
+  if (prompt) {
+    userMessageContent.push({ type: "text", text: prompt });
+  }
+  if (image) {
+    userMessageContent.push({
+      type: "image_url",
+      image_url: {
+        url: `data:${image.mime};base64,${image.base64}`
+      }
+    });
+  }
+
+  const response = await fetchWithTimeout("https://integrate.api.nvidia.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${key}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      model: model || "mistralai/mistral-large-3-675b-instruct-2512",
+      messages: [
+        ...(system ? [{ role: "system", content: system }] : []),
+        ...(history || []).map(msg => ({ 
+          role: msg.role === "assistant" ? "assistant" : "user", 
+          content: msg.text 
+        })),
+        {
+          role: "user",
+          content: userMessageContent
+        }
+      ],
+      temperature: temperature ?? 0.15,
+      max_tokens: 2048,
+      top_p: 1.00
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const rawMessage = payload?.error?.message || `Status ${response.status}`;
+    console.error(`[Nvidia] Error: ${rawMessage}`);
+    const error = new Error(`Nvidia provider error: ${response.status}`);
+    error.statusCode = response.status;
+    throw error;
+  }
+
+  const text = payload?.choices?.[0]?.message?.content || "";
+  return {
+    result: text.trim(),
+    usage: payload?.usage || null
+  };
+}

@@ -29,7 +29,7 @@ function parseEnvKeys(key) {
 const defaultConfig = {
   version: 2,
   updatedAt: null,
-  providerOrder: ["groq", "gemini", "mistral"],
+  providerOrder: ["groq", "gemini", "mistral", "nvidia"],
   groq: {
     model: process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
     keys: parseEnvKeys("GROQ_KEYS"),
@@ -43,6 +43,11 @@ const defaultConfig = {
   mistral: {
     model: process.env.MISTRAL_MODEL || "mistral-tiny",
     keys: parseEnvKeys("MISTRAL_KEYS"),
+    cursor: 0
+  },
+  nvidia: {
+    model: process.env.NVIDIA_MODEL || "mistralai/mistral-large-3-675b-instruct-2512",
+    keys: parseEnvKeys("NVIDIA_KEYS"),
     cursor: 0
   },
   extensionKeys: parseEnvKeys("EXTENSION_KEYS").map(k => ({
@@ -128,12 +133,17 @@ export async function loadConfig(force = false) {
       ...(config?.mistral || {}),
       keys: (config?.mistral?.keys?.length ? config.mistral.keys : defaultConfig.mistral.keys)
     },
+    nvidia: {
+      ...defaultConfig.nvidia,
+      ...(config?.nvidia || {}),
+      keys: (config?.nvidia?.keys?.length ? config.nvidia.keys : defaultConfig.nvidia.keys)
+    },
     extensionKeys: (config?.extensionKeys?.length ? config.extensionKeys : defaultConfig.extensionKeys)
   };
 
   // Reconcile providerOrder: Ensure new system providers are added to the list if missing
   const currentOrder = Array.isArray(merged.providerOrder) ? merged.providerOrder : defaultConfig.providerOrder;
-  const systemProviders = ["groq", "gemini", "mistral"];
+  const systemProviders = ["groq", "gemini", "mistral", "nvidia"];
   const missingProviders = systemProviders.filter(p => !currentOrder.includes(p));
   
   if (missingProviders.length > 0) {
@@ -160,6 +170,7 @@ export async function saveConfig(config) {
   if (next.groq?.keys) next.groq.keys = [...new Set(next.groq.keys)];
   if (next.gemini?.keys) next.gemini.keys = [...new Set(next.gemini.keys)];
   if (next.mistral?.keys) next.mistral.keys = [...new Set(next.mistral.keys)];
+  if (next.nvidia?.keys) next.nvidia.keys = [...new Set(next.nvidia.keys)];
 
   if (shouldUseLocalStore()) {
     await writeLocalConfig(next);

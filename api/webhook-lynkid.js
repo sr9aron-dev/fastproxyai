@@ -49,8 +49,8 @@ async function handler(event) {
        return json(200, { ok: true, message: "Webhook ignored: invalid product UUID" });
     }
 
-    // Extend subscription by 40 days
-    const result = await extendSubscription(email, 40);
+    // Extend subscription by 30 days
+    const result = await extendSubscription(email, 30);
 
     console.log(`[Webhook] Successfully extended subscription for ${email} until ${result.expiry}`);
 
@@ -59,7 +59,7 @@ async function handler(event) {
       path: "/api/webhook-lynkid",
       status: 200,
       host: "Lynk.id",
-      message: `Subscription extended for ${email} (+40 days)`
+      message: `Subscription extended for ${email} (+30 days)`
     });
 
     return json(200, { 

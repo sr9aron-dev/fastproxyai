@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pembayaran Berhasil - Smart Keywords</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;800&display=swap');
+
+    :root {
+      --bg: #09090e;
+      --bg-glass: rgba(18, 18, 28, 0.6);
+      --accent: #8b5cf6;
+      --accent-hover: #a78bfa;
+      --accent-gradient: linear-gradient(135deg, #a78bfa, #c4b5fd, #8b5cf6);
+      --green: #10b981;
+      --green-glow: rgba(16, 185, 129, 0.4);
+      --text: #f8fafc;
+      --text2: #94a3b8;
+      --border: rgba(255, 255, 255, 0.08);
+      --radius: 24px;
+      --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Ambient Background Blobs */
+    .blob {
+      position: absolute;
+      filter: blur(100px);
+      z-index: -1;
+      opacity: 0.6;
+      animation: float 10s ease-in-out infinite alternate;
+      border-radius: 50%;
+    }
+    .blob-1 { top: -10%; left: 10%; width: 400px; height: 400px; background: rgba(16, 185, 129, 0.25); }
+    .blob-2 { bottom: -10%; right: 10%; width: 500px; height: 500px; background: rgba(139, 92, 246, 0.2); animation-delay: -5s; }
+
+    @keyframes float {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(30px, 50px) scale(1.1); }
+    }
+
+    .container {
+      max-width: 500px;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
+
+    .card {
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-top: 1px solid rgba(255,255,255,0.15);
+      border-left: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius);
+      padding: 40px;
+      text-align: center;
+      box-shadow: var(--shadow), 0 0 40px var(--green-glow);
+      animation: fadeInUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(40px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .icon-container {
+      width: 90px;
+      height: 90px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px var(--green-glow);
+      animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.3s backwards;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0); opacity: 0; }
+      80% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .icon-container svg {
+      width: 44px;
+      height: 44px;
+      fill: none;
+      stroke: #fff;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      animation: drawCheck 0.6s ease forwards 0.8s;
+    }
+
+    @keyframes drawCheck {
+      to { stroke-dashoffset: 0; }
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    p {
+      color: var(--text2);
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    .highlight-box {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .highlight-box span {
+      font-size: 14px;
+      color: var(--text2);
+    }
+
+    .highlight-box strong {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      color: #fff;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: 16px 32px;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+    }
+
+    .btn:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+  </style>
+</head>
+<body>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  
+  <div class="container">
+    <div class="card">
+      <div class="icon-container">
+        <svg viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      
+      <h1>Terima Kasih!</h1>
+      <p>Pembayaran langganan Smart Keywords Pro Anda telah berhasil dikonfirmasi. Sistem kami sedang memproses aktivasi akun Anda.</p>
+      
+      <div class="highlight-box">
+        <span>Paket Anda</span>
+        <strong>Sewa APIKey (1 Bulan)</strong>
+      </div>
+      
+      <!-- Ganti URL ini agar diarahkan ke halaman yang tepat (misal menutup tab atau kembali ke ekstensi jika memungkinkan) -->
+      <a href="#" onclick="window.close(); return false;" class="btn">Tutup Halaman</a>
+    </div>
+  </div>
+</body>
+</html>

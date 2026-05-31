@@ -43,6 +43,7 @@
                         <button class="tab-btn active" data-tab="groq">Groq</button>
                         <button class="tab-btn" data-tab="gemini">Gemini</button>
                         <button class="tab-btn" data-tab="mistral">Mistral</button>
+                        <button class="tab-btn" data-tab="nvidia">Nvidia</button>
                         <button class="tab-btn" data-tab="stats">Statistics</button>
                     </div>
                     <div class="tab-content" id="groq-tab">
@@ -83,6 +84,19 @@
                         </div>
                         <label>Model</label>
                         <input type="text" id="mistral-model">
+                    </div>
+                    <div class="tab-content hidden" id="nvidia-tab">
+                        <div class="label-row">
+                            <label>Nvidia API Keys</label>
+                            <button id="test-nvidia-btn" class="text-btn">Test All Keys</button>
+                        </div>
+                        <div class="provider-key-list" id="nvidia-key-list"></div>
+                        <div class="key-add-row">
+                            <input type="password" id="nvidia-new-key" placeholder="Add Nvidia key">
+                            <button class="secondary-btn" type="button" data-add-provider="nvidia">Add Key</button>
+                        </div>
+                        <label>Model</label>
+                        <input type="text" id="nvidia-model">
                     </div>
 
                     <div class="tab-content hidden" id="stats-tab">
@@ -136,6 +150,7 @@
                             <div class="sort-item" data-id="groq" draggable="true">Groq</div>
                             <div class="sort-item" data-id="gemini" draggable="true">Gemini</div>
                             <div class="sort-item" data-id="mistral" draggable="true">Mistral</div>
+                            <div class="sort-item" data-id="nvidia" draggable="true">Nvidia</div>
                         </div>
                     </div>
                     

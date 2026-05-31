@@ -79,7 +79,7 @@ export async function checkSubscription(email) {
   }
 }
 
-export async function extendSubscription(email, days = 40) {
+export async function extendSubscription(email, days = 30) {
   if (!email) throw new Error("Email is required");
 
   if (!db) {

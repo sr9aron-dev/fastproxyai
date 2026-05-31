@@ -21,6 +21,11 @@ export function publicConfig(config) {
       keyCount: config.mistral?.keys?.length || 0,
       keys: (config.mistral?.keys || []).map(maskKey)
     },
+    nvidia: {
+      model: config.nvidia?.model || "mistralai/mistral-large-3-675b-instruct-2512",
+      keyCount: config.nvidia?.keys?.length || 0,
+      keys: (config.nvidia?.keys || []).map(maskKey)
+    },
     extensionKeys: (config.extensionKeys || []).map((key) => ({
       id: key.id,
       label: key.label,
@@ -66,7 +71,7 @@ async function handler(event) {
     const next = {
       ...config,
       providerOrder: Array.isArray(body.providerOrder) && body.providerOrder.length
-        ? body.providerOrder.filter((name) => ["groq", "gemini", "mistral"].includes(name))
+        ? body.providerOrder.filter((name) => ["groq", "gemini", "mistral", "nvidia"].includes(name))
         : config.providerOrder,
       groq: {
         ...config.groq,
@@ -84,6 +89,12 @@ async function handler(event) {
         ...(config.mistral || {}),
         model: body.mistral?.model || config.mistral?.model || "mistral-tiny",
         keys: body.mistral?.keys === undefined ? (config.mistral?.keys || []) : restoreKeys(body.mistral.keys, (config.mistral?.keys || [])),
+        cursor: 0
+      },
+      nvidia: {
+        ...(config.nvidia || {}),
+        model: body.nvidia?.model || config.nvidia?.model || "mistralai/mistral-large-3-675b-instruct-2512",
+        keys: body.nvidia?.keys === undefined ? (config.nvidia?.keys || []) : restoreKeys(body.nvidia.keys, (config.nvidia?.keys || [])),
         cursor: 0
       }
     };
