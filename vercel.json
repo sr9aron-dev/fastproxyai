@@ -23,6 +23,7 @@
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/thankyou", "destination": "/public/thankyou.html" },
     { "source": "/api/mistral", "destination": "/api/mistral.js" },
+    { "source": "/api/nvidia", "destination": "/api/nvidia.js" },
     { "source": "/mistral", "destination": "/mistral/index.html" },
     { "source": "/.netlify/functions/:path*", "destination": "/api/:path*" }
   ]

@@ -150,7 +150,7 @@ async function handleAIMessage(chatId, text, photo, event) {
           image: imagePayload,
           forceProvider: userConfig.provider,
           // If first attempt fails or is sensitive, shift providers
-          providerOrder: isRequestSensitive || attempt > 0 ? ["groq", "mistral", "gemini"] : config.providerOrder
+          providerOrder: isRequestSensitive || attempt > 0 ? ["groq", "mistral", "gemini", "nvidia"] : config.providerOrder
         });
         
         output = result.output;
