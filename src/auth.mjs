@@ -64,7 +64,8 @@ export async function checkSubscription(email) {
     const result = {
       active: expiry > now,
       expiry: expiryStr,
-      status: expiry > now ? "active" : "expired"
+      status: expiry > now ? "active" : "expired",
+      isTrial: data.isTrial === true
     };
 
     // Cache result in Redis for 5 minutes
