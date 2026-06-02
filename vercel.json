@@ -4,28 +4,85 @@
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Credentials", "value": "true" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
-        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, x-admin-token" }
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, x-admin-token"
+        }
       ]
     }
   ],
   "rewrites": [
-    { "source": "/api/generate", "destination": "/api/generate.js" },
-    { "source": "/api/logs", "destination": "/api/logs.js" },
-    { "source": "/logs", "destination": "/public/logs.html" },
-    { "source": "/api/webhook-lynkid", "destination": "/api/webhook-lynkid.js" },
-    { "source": "/api/admin/config", "destination": "/api/admin/config.js" },
-    { "source": "/api/admin/extension-key", "destination": "/api/admin/extension-key.js" },
-    { "source": "/api/admin/test-keys", "destination": "/api/admin/test-keys.js" },
-    { "source": "/api/admin/auth", "destination": "/api/admin/auth.js" },
-    { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/thankyou", "destination": "/public/thankyou.html" },
-    { "source": "/api/mistral", "destination": "/api/mistral.js" },
-    { "source": "/api/nvidia", "destination": "/api/nvidia.js" },
-    { "source": "/mistral", "destination": "/mistral/index.html" },
-    { "source": "/.netlify/functions/:path*", "destination": "/api/:path*" }
+    {
+      "source": "/api/generate",
+      "destination": "/api/generate.js"
+    },
+    {
+      "source": "/api/logs",
+      "destination": "/api/logs.js"
+    },
+    {
+      "source": "/logs",
+      "destination": "/public/logs.html"
+    },
+    {
+      "source": "/api/webhook-lynkid",
+      "destination": "/api/subscription.js"
+    },
+    {
+      "source": "/api/admin/config",
+      "destination": "/api/admin/config.js"
+    },
+    {
+      "source": "/api/admin/extension-key",
+      "destination": "/api/admin/extension-key.js"
+    },
+    {
+      "source": "/api/admin/test-keys",
+      "destination": "/api/admin/test-keys.js"
+    },
+    {
+      "source": "/api/admin/auth",
+      "destination": "/api/admin/auth.js"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/thankyou",
+      "destination": "/public/thankyou.html"
+    },
+    {
+      "source": "/api/mistral",
+      "destination": "/api/mistral.js"
+    },
+    {
+      "source": "/api/nvidia",
+      "destination": "/api/nvidia.js"
+    },
+    {
+      "source": "/mistral",
+      "destination": "/mistral/index.html"
+    },
+    {
+      "source": "/.netlify/functions/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/api/start-trial",
+      "destination": "/api/subscription.js"
+    }
   ]
 }
-
