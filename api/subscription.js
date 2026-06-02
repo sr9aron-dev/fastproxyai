@@ -9,11 +9,11 @@ async function handler(event) {
     return json(405, { ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Use POST" } });
   }
 
-  const path = event.path || "";
   const body = readJson(event);
 
   // === 1. START TRIAL LOGIC ===
-  if (path.includes("start-trial") || body.action === "start-trial") {
+  // Use body.action to route since Vercel rewrites may alter event.path
+  if (body.action === "start-trial") {
     try {
       const { email, deviceHash } = body;
       if (!email || !deviceHash) return json(400, { ok: false, message: "Email and deviceHash required" });
