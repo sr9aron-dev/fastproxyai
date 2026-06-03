@@ -1,11 +1,151 @@
 import { recordLog } from "../src/store.mjs";
 
+/**
+ * Multi-function Mistral endpoint:
+ *
+ * MODE 1 (Legacy - Smart Keywords):
+ *   Body: { apiKey, model, prompt, image }
+ *   → Generates microstock metadata using Mistral
+ *
+ * MODE 2 (OpenAI-Compatible Proxy - Page Agent):
+ *   Body: { model, messages, tools?, tool_choice?, ... }
+ *   Header: Authorization: Bearer <MISTRAL_KEY or AGENT_ACCESS_KEY>
+ *   → Forwards request as-is to Mistral /chat/completions (OpenAI-compatible)
+ *
+ * Detection: If body contains `messages` array → Mode 2, otherwise → Mode 1
+ */
+
+// Keys allowed to use the agent proxy mode (set in env, comma-separated)
+function getAgentAccessKeys() {
+  const keys = process.env.AGENT_ACCESS_KEYS || process.env.EXTENSION_KEYS || "";
+  return keys.split(",").map(k => k.trim()).filter(Boolean);
+}
+
+// Get Mistral API keys from env (reuse existing rotation keys)
+function getMistralKey() {
+  const keys = process.env.MISTRAL_KEYS || "";
+  const keyList = keys.split(",").map(k => k.trim()).filter(Boolean);
+  if (keyList.length === 0) return null;
+  // Simple random rotation
+  return keyList[Math.floor(Math.random() * keyList.length)];
+}
+
 export default async function handler(req, res) {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.setHeader("Access-Control-Allow-Origin", process.env.ALLOWED_ORIGIN || "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    return res.status(204).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { apiKey, model, prompt, image } = req.body;
+  const body = req.body || {};
+
+  // ─── MODE DETECTION ───
+  // If body has `messages` array → OpenAI-compatible proxy mode (Page Agent)
+  if (Array.isArray(body.messages)) {
+    return handleAgentProxy(req, res, body);
+  }
+
+  // Otherwise → Legacy Smart Keywords mode
+  return handleLegacyMetadata(req, res, body);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODE 2: OpenAI-Compatible Proxy for Page Agent
+// ═══════════════════════════════════════════════════════════════
+async function handleAgentProxy(req, res, body) {
+  try {
+    // Auth: check Bearer token
+    const authHeader = req.headers.authorization || "";
+    const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+    // Allow either: direct Mistral API key, or an AGENT_ACCESS_KEY
+    const agentKeys = getAgentAccessKeys();
+    const mistralKeyFromEnv = getMistralKey();
+    let mistralApiKey = null;
+
+    if (bearerToken.startsWith("M") || bearerToken.startsWith("mistral")) {
+      // User provided their own Mistral key directly
+      mistralApiKey = bearerToken;
+    } else if (agentKeys.length > 0 && agentKeys.includes(bearerToken)) {
+      // User authenticated with an agent access key → use server's Mistral key
+      mistralApiKey = mistralKeyFromEnv;
+    } else if (!bearerToken && mistralKeyFromEnv) {
+      // No auth provided but server has keys → allow (for testing/demo)
+      mistralApiKey = mistralKeyFromEnv;
+    }
+
+    if (!mistralApiKey) {
+      return res.status(401).json({
+        error: {
+          message: "Unauthorized. Provide a Mistral API key or valid access key.",
+          type: "auth_error"
+        }
+      });
+    }
+
+    // Forward the entire request body to Mistral's OpenAI-compatible endpoint
+    const mistralModel = body.model || process.env.MISTRAL_MODEL || "mistral-large-latest";
+    const requestBody = {
+      ...body,
+      model: mistralModel,
+    };
+
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${mistralApiKey}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const data = await response.json();
+
+    // Forward the response status and body as-is (OpenAI-compatible)
+    res.status(response.status).json(data);
+
+    // Log (non-blocking)
+    recordLog({
+      method: "POST",
+      path: "/api/mistral",
+      status: response.status,
+      host: req.headers.host || "unknown",
+      provider: "mistral",
+      model: mistralModel,
+      message: response.ok ? "Agent proxy success" : `Agent proxy error: ${data?.error?.message || 'unknown'}`
+    }).catch(() => {});
+
+  } catch (error) {
+    console.error('Mistral Agent Proxy Error:', error);
+    res.status(500).json({
+      error: {
+        message: 'Internal Server Error: ' + error.message,
+        type: "server_error"
+      }
+    });
+    recordLog({
+      method: "POST",
+      path: "/api/mistral",
+      status: 500,
+      host: req.headers?.host || "unknown",
+      provider: "mistral",
+      message: `Agent proxy error: ${error.message}`,
+      error: true
+    }).catch(() => {});
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODE 1: Legacy Smart Keywords Metadata Generation
+// ═══════════════════════════════════════════════════════════════
+async function handleLegacyMetadata(req, res, body) {
+  const { apiKey, model, prompt, image } = body;
 
   if (!apiKey || (!prompt && !image)) {
     return res.status(400).json({ error: 'API Key and either Prompt or Image are required' });
