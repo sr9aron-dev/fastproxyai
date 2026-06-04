@@ -77,6 +77,10 @@
       "destination": "/mistral/index.html"
     },
     {
+      "source": "/privacy",
+      "destination": "/public/privacy.html"
+    },
+    {
       "source": "/.netlify/functions/:path*",
       "destination": "/api/:path*"
     },

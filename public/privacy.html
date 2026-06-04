@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — Smart Keywords Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #09090e;
+            --bg-card: rgba(18, 18, 28, 0.6);
+            --accent: #8b5cf6;
+            --accent-hover: #a78bfa;
+            --text: #f8fafc;
+            --text2: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.8;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Ambient blobs */
+        .blob {
+            position: fixed;
+            filter: blur(120px);
+            z-index: 0;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .blob-1 { top: -80px; left: -80px; width: 350px; height: 350px; background: rgba(139, 92, 246, 0.3); }
+        .blob-2 { bottom: -100px; right: -60px; width: 400px; height: 400px; background: rgba(16, 185, 129, 0.15); }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 24px 80px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .header .badge {
+            display: inline-block;
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: var(--accent-hover);
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 40px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a78bfa, #c4b5fd, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+        }
+
+        .header .subtitle {
+            color: var(--text2);
+            font-size: 15px;
+        }
+
+        .header .date {
+            color: var(--text2);
+            font-size: 13px;
+            margin-top: 8px;
+            opacity: 0.7;
+        }
+
+        /* Content card */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            margin: 32px 0 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h2:first-child {
+            margin-top: 0;
+        }
+
+        h2 .num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            border-radius: 8px;
+            font-size: 14px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        p {
+            color: var(--text2);
+            font-size: 15px;
+            margin-bottom: 14px;
+        }
+
+        ul {
+            list-style: none;
+            margin: 12px 0 18px;
+            padding: 0;
+        }
+
+        ul li {
+            color: var(--text2);
+            font-size: 14px;
+            padding: 8px 0 8px 28px;
+            position: relative;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        ul li:last-child { border-bottom: none; }
+
+        ul li::before {
+            content: '→';
+            position: absolute;
+            left: 4px;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        a {
+            color: var(--accent-hover);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        a:hover { color: #c4b5fd; text-decoration: underline; }
+
+        .highlight-box {
+            background: rgba(139, 92, 246, 0.08);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            font-size: 14px;
+            color: var(--text2);
+        }
+
+        .highlight-box.green {
+            background: rgba(16, 185, 129, 0.08);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 32px 0;
+            color: var(--text2);
+            font-size: 13px;
+            opacity: 0.6;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            padding: 10px 24px;
+            border-radius: 12px;
+            color: var(--text);
+            font-weight: 500;
+            font-size: 14px;
+            text-decoration: none;
+            transition: all 0.3s;
+            margin-bottom: 24px;
+            display: inline-block;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: var(--accent);
+            text-decoration: none;
+        }
+
+        @media (max-width: 640px) {
+            .container { padding: 32px 16px 48px; }
+            .card { padding: 24px; }
+            .header h1 { font-size: 28px; }
+            h2 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div class="container">
+        <a href="/" class="back-link">← Back to Home</a>
+
+        <div class="header">
+            <div class="badge">Legal Document</div>
+            <h1>Privacy Policy</h1>
+            <p class="subtitle">Smart Keywords Pro — Chrome Extension</p>
+            <p class="date">Last Updated: June 4, 2026</p>
+        </div>
+
+        <div class="card">
+            <h2><span class="num">1</span> Introduction</h2>
+            <p>Smart Keywords Pro ("the Extension") is a Chrome extension designed to help Adobe Stock contributors optimize their image metadata using AI. This Privacy Policy describes how we collect, use, and protect your information.</p>
+            <p>By installing and using the Extension, you agree to the practices described in this Privacy Policy.</p>
+
+            <h2><span class="num">2</span> Information We Collect</h2>
+            <p>We collect only the minimum information necessary to provide our services:</p>
+
+            <p><strong>a) Account Information (Optional)</strong></p>
+            <ul>
+                <li><strong>Email address</strong> — collected via Google Sign-In when you choose to log in for the API rental service or Cloud Sync features.</li>
+                <li><strong>Google display name and profile photo</strong> — used only for displaying your account info within the Extension UI.</li>
+            </ul>
+
+            <p><strong>b) Device Information (Optional)</strong></p>
+            <ul>
+                <li><strong>Device fingerprint hash</strong> — a one-way hashed identifier generated from non-sensitive hardware characteristics (screen resolution, timezone, etc.). Used solely to enforce the 2-device limit per subscription. The raw hardware data is never stored or transmitted.</li>
+                <li><strong>Browser user agent string</strong> — stored alongside the device fingerprint to help you identify which devices are registered to your account.</li>
+            </ul>
+
+            <p><strong>c) Usage Data</strong></p>
+            <ul>
+                <li><strong>File hashes</strong> — SHA-256 partial hashes of uploaded files are stored in Firebase Firestore to power the Anti-Duplicate Upload feature. These are irreversible cryptographic hashes — the original file content cannot be recovered from them.</li>
+                <li><strong>File names</strong> — original file names may be stored alongside hashes for duplicate detection display purposes.</li>
+            </ul>
+
+            <div class="highlight-box green">
+                <strong>What we DO NOT collect:</strong> We do not collect, store, or transmit your actual images, videos, browsing history, form data, passwords, payment card details, or any content from websites other than contributor.stock.adobe.com.
+            </div>
+
+            <h2><span class="num">3</span> How We Use Your Information</h2>
+            <ul>
+                <li><strong>Email</strong> — to authenticate your account, manage your API rental subscription, and enable Cloud Sync across multiple Adobe Stock accounts.</li>
+                <li><strong>Device fingerprint</strong> — to enforce the 2-device limit per paid subscription, preventing unauthorized sharing.</li>
+                <li><strong>File hashes</strong> — to detect and prevent duplicate uploads across your linked Adobe Stock accounts.</li>
+            </ul>
+
+            <h2><span class="num">4</span> Third-Party Services</h2>
+            <p>The Extension integrates with the following third-party services to provide its functionality:</p>
+            <ul>
+                <li><strong>Google Firebase</strong> (Authentication & Firestore) — for user login and data storage. Subject to <a href="https://firebase.google.com/support/privacy" target="_blank">Google's Privacy Policy</a>.</li>
+                <li><strong>Google Gemini API</strong> — for AI-powered keyword and title generation. Image data is sent to Google's API for processing and is subject to <a href="https://ai.google.dev/terms" target="_blank">Google AI Terms</a>.</li>
+                <li><strong>Groq API</strong> — alternative AI provider. Subject to <a href="https://groq.com/privacy-policy/" target="_blank">Groq's Privacy Policy</a>.</li>
+                <li><strong>Mistral AI API</strong> — alternative AI provider. Subject to <a href="https://mistral.ai/terms/#privacy-policy" target="_blank">Mistral's Privacy Policy</a>.</li>
+            </ul>
+
+            <div class="highlight-box">
+                <strong>Note:</strong> When using the "Own API Key" mode, your API keys are stored locally in your browser's <code>chrome.storage.local</code> and are never sent to our servers. They are only sent directly to the respective AI provider's official API endpoint.
+            </div>
+
+            <h2><span class="num">5</span> Data Storage & Security</h2>
+            <ul>
+                <li>Account data and file hashes are stored in <strong>Google Firebase Firestore</strong> with security rules that restrict access to authenticated users only.</li>
+                <li>API keys (Own API Key mode) are stored <strong>locally on your device</strong> using Chrome's built-in <code>chrome.storage.local</code> API and never leave your browser.</li>
+                <li>All network communications use <strong>HTTPS encryption</strong>.</li>
+                <li>Device fingerprint hashes are <strong>one-way cryptographic hashes</strong> — the original hardware data cannot be recovered.</li>
+            </ul>
+
+            <h2><span class="num">6</span> Data Sharing</h2>
+            <p>We do <strong>not</strong> sell, rent, or share your personal information with any third parties for marketing or advertising purposes.</p>
+            <p>Data is shared only with the third-party services listed in Section 4, solely for the purpose of providing the Extension's core functionality.</p>
+
+            <h2><span class="num">7</span> Data Retention & Deletion</h2>
+            <ul>
+                <li>You can delete your locally stored data at any time by uninstalling the Extension or clearing its data in <code>chrome://extensions</code>.</li>
+                <li>To request deletion of your cloud-stored data (account info, file hashes), please contact us at the email below.</li>
+                <li>Upon account deletion request, all associated data will be removed within 30 days.</li>
+            </ul>
+
+            <h2><span class="num">8</span> Permissions Justification</h2>
+            <p>The Extension requests the following Chrome permissions:</p>
+            <ul>
+                <li><strong>storage</strong> — to save your settings, API keys, and preferences locally.</li>
+                <li><strong>tabs</strong> — to navigate to the Adobe Stock uploads page and manage extension tabs.</li>
+                <li><strong>identity</strong> — to enable Google Sign-In for the API rental service.</li>
+                <li><strong>clipboardRead</strong> — to support keyword paste operations from AI chat interfaces.</li>
+                <li><strong>Host permissions</strong> — limited to specific domains required for AI API calls and Adobe Stock integration.</li>
+            </ul>
+
+            <h2><span class="num">9</span> Children's Privacy</h2>
+            <p>The Extension is not intended for use by children under the age of 13. We do not knowingly collect personal information from children.</p>
+
+            <h2><span class="num">10</span> Changes to This Policy</h2>
+            <p>We may update this Privacy Policy from time to time. Significant changes will be communicated through the Extension's update notes. Continued use of the Extension after changes constitutes acceptance of the updated policy.</p>
+
+            <h2><span class="num">11</span> Contact Us</h2>
+            <p>If you have any questions or concerns about this Privacy Policy, or if you wish to request data deletion, please contact us:</p>
+            <div class="highlight-box">
+                <strong>Email:</strong> <a href="mailto:sr7aron@gmail.com">sr7aron@gmail.com</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            &copy; 2026 Smart Keywords Pro. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>
