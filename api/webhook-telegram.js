@@ -45,6 +45,25 @@ async function sendTelegram(method, payload) {
     }
 }
 
+async function sendTelegramPhotoBuffer(chatId, buffer) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+    const formData = new FormData();
+    formData.append('chat_id', chatId);
+    formData.append('photo', new Blob([buffer], { type: 'image/jpeg' }), 'selfie.jpg');
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData
+        });
+        return response.ok;
+    } catch (error) {
+        await logEvent('ERROR', 'Telegram Photo Upload Exception', `Err: ${error.message}`);
+        return false;
+    }
+}
+
+
 // --- MISTRAL AI ---
 async function queryMistral(systemPrompt, history, userMessage) {
     // Karena ini berjalan di dalam proxy, kita bisa menggunakan endpoint proxy itu sendiri
@@ -115,35 +134,28 @@ async function queryMistral(systemPrompt, history, userMessage) {
     return response.json();
 }
 
-// --- FAL.AI ---
-async function generateSelfie(imageUrl, prompt) {
-    const falKey = process.env.FAL_KEY;
-    if (!falKey) throw new Error("FAL_KEY tidak ada di environment.");
+// --- CLOUDFLARE WORKERS AI (REPLACING FAL.AI) ---
+async function generateSelfieCF(prompt) {
+    const cfAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    const cfApiToken = process.env.CLOUDFLARE_API_TOKEN;
+    if (!cfAccountId || !cfApiToken) throw new Error("CLOUDFLARE_ACCOUNT_ID atau CLOUDFLARE_API_TOKEN tidak ada di environment.");
 
-    const res = await fetch("https://fal.run/fal-ai/pulid", {
+    const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning`, {
         method: "POST",
         headers: {
-            "Authorization": `Key ${falKey}`,
+            "Authorization": `Bearer ${cfApiToken}`,
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            reference_image_url: imageUrl,
-            prompt: prompt,
-            id_scale: 1,
-            num_inference_steps: 4,
-            guidance_scale: 1.5,
-            mode: "fidelity",
-            image_size: "portrait_4_3"
-        })
+        body: JSON.stringify({ prompt: prompt })
     });
 
     if (!res.ok) {
         const text = await res.text();
-        throw new Error(`Fal.ai Error: ${text}`);
+        throw new Error(`Cloudflare AI Error: ${text}`);
     }
 
-    const data = await res.json();
-    return data.images?.[0]?.url || null;
+    const buffer = await res.arrayBuffer();
+    return buffer;
 }
 
 // --- MAIN PROCESSOR ---
@@ -209,16 +221,22 @@ Jawablah dengan bahasa Indonesia santai sesuai dengan sifatmu.`;
                 await sendTelegram('sendChatAction', { chat_id: chatId, action: 'upload_photo' });
 
                 const context = args.context;
+                // Modifikasi prompt untuk Text-to-Image karena CF tidak pakai reference image
                 const prompt = args.mode === 'direct' 
-                    ? `a close-up selfie taken by herself at ${context}, direct eye contact, fully visible face`
-                    : `make a pic of this person, but ${context}. the person is taking a mirror selfie`;
+                    ? `A close-up selfie of a beautiful Indonesian girl, ${context}, direct eye contact, fully visible face, high quality, photorealistic`
+                    : `A mirror selfie of a beautiful Indonesian girl, ${context}, high quality, photorealistic`;
 
-                const imageUrl = await generateSelfie(refImage, prompt);
+                try {
+                    const imageBuffer = await generateSelfieCF(prompt);
+                    const success = await sendTelegramPhotoBuffer(chatId, imageBuffer);
 
-                if (imageUrl) {
-                    await sendTelegram('sendPhoto', { chat_id: chatId, photo: imageUrl });
-                    await supabase.from('chat_history').insert({ telegram_id: userId, role: 'assistant', content: "[Mengirim foto selfie]" });
-                } else {
+                    if (success) {
+                        await supabase.from('chat_history').insert({ telegram_id: userId, role: 'assistant', content: "[Mengirim foto selfie]" });
+                    } else {
+                        await sendTelegram('sendMessage', { chat_id: chatId, text: "Aduh, koneksi ke Telegram putus saat mengirim foto." });
+                    }
+                } catch (error) {
+                    await logEvent('ERROR', 'Generate Selfie CF Error', error.message, userId);
                     await sendTelegram('sendMessage', { chat_id: chatId, text: "Aduh, kamera aku lagi error nih." });
                 }
             } 
