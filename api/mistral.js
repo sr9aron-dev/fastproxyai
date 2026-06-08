@@ -1,4 +1,5 @@
-import { recordLog } from "../src/store.mjs";
+import { recordLog, loadConfig } from "../src/store.mjs";
+import { validateExtensionToken } from "../src/auth.mjs";
 
 /**
  * Multi-function Mistral endpoint:
@@ -21,10 +22,10 @@ function getAgentAccessKeys() {
   return keys.split(",").map(k => k.trim()).filter(Boolean);
 }
 
-// Get Mistral API keys from env (reuse existing rotation keys)
-function getMistralKey() {
-  const keys = process.env.MISTRAL_KEYS || "";
-  const keyList = keys.split(",").map(k => k.trim()).filter(Boolean);
+// Get Mistral API keys from database/env
+async function getMistralKey() {
+  const config = await loadConfig();
+  const keyList = config.mistral?.keys || [];
   if (keyList.length === 0) return null;
   // Simple random rotation
   return keyList[Math.floor(Math.random() * keyList.length)];
@@ -66,18 +67,34 @@ async function handleAgentProxy(req, res, body) {
 
     // Allow either: direct Mistral API key, or an AGENT_ACCESS_KEY
     const agentKeys = getAgentAccessKeys();
-    const mistralKeyFromEnv = getMistralKey();
+    const mistralKeyFromEnv = await getMistralKey();
     let mistralApiKey = null;
 
     if (bearerToken.startsWith("M") || bearerToken.startsWith("mistral")) {
       // User provided their own Mistral key directly
       mistralApiKey = bearerToken;
-    } else if (agentKeys.length > 0 && agentKeys.includes(bearerToken)) {
-      // User authenticated with an agent access key → use server's Mistral key
-      mistralApiKey = mistralKeyFromEnv;
-    } else if (!bearerToken && mistralKeyFromEnv) {
-      // No auth provided but server has keys → allow (for testing/demo)
-      mistralApiKey = mistralKeyFromEnv;
+    } else {
+      // Check if it's in AGENT_ACCESS_KEYS env
+      let isValidToken = agentKeys.length > 0 && agentKeys.includes(bearerToken);
+      
+      // If not in env, check Firestore database (using validateExtensionToken)
+      if (!isValidToken && bearerToken) {
+        try {
+          const validatedKey = await validateExtensionToken(bearerToken);
+          if (validatedKey) {
+            isValidToken = true;
+          }
+        } catch (e) {
+          console.warn("[Mistral Proxy] DB Token validation failed/expired:", e.message);
+        }
+      }
+
+      if (isValidToken) {
+        mistralApiKey = mistralKeyFromEnv;
+      } else if (!bearerToken && mistralKeyFromEnv) {
+        // No auth provided but server has keys → allow (for testing/demo)
+        mistralApiKey = mistralKeyFromEnv;
+      }
     }
 
     if (!mistralApiKey) {
