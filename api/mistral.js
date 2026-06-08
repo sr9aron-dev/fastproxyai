@@ -91,9 +91,24 @@ async function handleAgentProxy(req, res, body) {
 
       if (isValidToken) {
         mistralApiKey = mistralKeyFromEnv;
+        if (!mistralApiKey) {
+          return res.status(401).json({
+            error: {
+              message: "Token Akses DITERIMA, tapi Server Proxy belum dikonfigurasi dengan Kunci Provider Mistral di Admin UI!",
+              type: "missing_provider_key"
+            }
+          });
+        }
       } else if (!bearerToken && mistralKeyFromEnv) {
         // No auth provided but server has keys → allow (for testing/demo)
         mistralApiKey = mistralKeyFromEnv;
+      } else {
+        return res.status(401).json({
+          error: {
+            message: "Token Akses DITOLAK. Pastikan Bearer token sesuai dengan yang terdaftar di database.",
+            type: "invalid_access_token"
+          }
+        });
       }
     }
 
