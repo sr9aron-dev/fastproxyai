@@ -272,7 +272,7 @@ async function handler(event) {
 
     const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
     if (webhookSecret) {
-        const receivedSecret = event.headers["x-telegram-bot-api-secret-token"];
+        const receivedSecret = event.headers["x-telegram-bot-api-secret-token"] || (event.queryStringParameters && event.queryStringParameters.secret);
         if (receivedSecret !== webhookSecret) {
             return json(401, { ok: false, error: "Invalid webhook secret" });
         }
