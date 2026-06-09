@@ -1,19 +1,18 @@
 import { db } from "../../src/firebase.mjs";
-import { setupCors } from "../../src/http.mjs";
+import { json, optionsResponse, readJson, vercelHandler } from "../../src/http.mjs";
 
-export default async function handler(req, res) {
-  setupCors(req, res);
-  if (req.method === "OPTIONS") return res.status(200).end();
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
+async function handler(event) {
+  if (event.httpMethod === "OPTIONS") return optionsResponse();
+  if (event.httpMethod !== "POST") {
+    return json(405, { ok: false, error: "Method Not Allowed" });
   }
 
   try {
-    const { email } = req.body;
+    const body = readJson(event);
+    const email = body.email;
 
     if (!email) {
-      return res.status(400).json({ error: "Email is required" });
+      return json(400, { ok: false, error: "Email is required" });
     }
 
     // Check against teepublic_users collection
@@ -21,20 +20,19 @@ export default async function handler(req, res) {
     const snapshot = await usersRef.where("email", "==", email).get();
 
     if (snapshot.empty) {
-      return res.status(401).json({ error: "Akun email ini tidak terdaftar atau belum diizinkan." });
+      return json(401, { ok: false, error: "Akun email ini tidak terdaftar atau belum diizinkan." });
     }
 
     const userDoc = snapshot.docs[0];
     const userData = userDoc.data();
 
     if (userData.active === false) {
-      return res.status(403).json({ error: "Akun ini telah dinonaktifkan." });
+      return json(403, { ok: false, error: "Akun ini telah dinonaktifkan." });
     }
 
-    // We can use the proxy_token stored in the user document, or generate a simple one
     const token = userData.token || process.env.ADMIN_TOKEN || "proxy_default_token_123";
 
-    return res.status(200).json({
+    return json(200, {
       ok: true,
       token,
       user: {
@@ -44,6 +42,8 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("[Login API] Error:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return json(500, { ok: false, error: "Internal Server Error" });
   }
 }
+
+export default vercelHandler(handler);
