@@ -179,6 +179,32 @@ async function queryQwen(systemPrompt, history, userMessage, toolResponseMessage
     return response.json();
 }
 
+// --- QWEN VISION AI (DASHSCOPE) ---
+async function analyzeImage(imageBase64) {
+    const apiKey = process.env.QWEN_API_KEY || 'sk-ws-H.ILHDHP.fakn.MEYCIQDGQZgkorFTHh9mN1IlzQTeZ8zRIs6mpfQd9UiznuGVOgIhAKIPOHid-8zDdxd5uk0Fpz70IajHWahhfqgiFvq6NL1m';
+    const url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";
+    const body = {
+        model: "qwen-vl-max",
+        messages: [
+            {
+                role: "user",
+                content: [
+                    { type: "image_url", image_url: { url: imageBase64 } },
+                    { type: "text", text: "Tolong deskripsikan gambar ini dengan sangat detail dalam bahasa Indonesia. Jika ini adalah gambar pakaian/baju, sebutkan warna, bahan, motif, dan gayanya. (Maksimal 2-3 kalimat)" }
+                ]
+            }
+        ]
+    };
+    const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+        body: JSON.stringify(body)
+    });
+    if (!response.ok) return "Foto yang dikirim tidak jelas.";
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "Gambar tidak diketahui.";
+}
+
 // --- AI FALLBACK SYSTEM ---
 async function queryLLMWithFallback(systemPrompt, history, userMessage, toolResponseMessages = null) {
     try {
@@ -250,14 +276,43 @@ async function generateQwenImage(prompt) {
 
 // --- MAIN PROCESSOR ---
 async function processMessage(body) {
-    if (!body.message || !body.message.text) {
-        await logEvent('WARN', 'Webhook Message Ignored', 'Message body empty atau tidak berisi text.');
+    if (!body.message) return;
+    
+    let text = body.message.text || body.message.caption || "";
+    const photoInfo = body.message.photo;
+    
+    if (!text && !photoInfo) {
+        await logEvent('WARN', 'Webhook Message Ignored', 'Bukan pesan teks atau foto.');
         return;
     }
     
     const chatId = body.message.chat.id;
-    const text = body.message.text;
     const userId = body.message.from.id;
+
+    if (photoInfo && photoInfo.length > 0) {
+        await sendTelegram('sendMessage', { chat_id: chatId, text: "Bentar ya, aku perhatikan dulu fotonya... 👁️" });
+        await sendTelegram('sendChatAction', { chat_id: chatId, action: 'typing' });
+
+        try {
+            const photo = photoInfo[photoInfo.length - 1]; // Resolusi tertinggi
+            const fileRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${photo.file_id}`);
+            const fileData = await fileRes.json();
+            if (fileData.ok) {
+                const imageUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`;
+                const imgRes = await fetch(imageUrl);
+                const arrayBuffer = await imgRes.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                const imageBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+                
+                const description = await analyzeImage(imageBase64);
+                text = `[Pengguna mengirim foto: ${description}]. ${text}`;
+                await logEvent('INFO', 'Vision AI Success', `Melihat gambar: ${description}`, userId);
+            }
+        } catch (e) {
+            await logEvent('ERROR', 'Vision AI Failed', e.message, userId);
+            text = `[Pengguna mengirim foto, tapi kamu gagal melihatnya]. ${text}`;
+        }
+    }
 
     await logEvent('INFO', 'Message Received', `Dari user ${userId}: "${text}"`, userId);
 
