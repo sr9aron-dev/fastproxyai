@@ -69,10 +69,6 @@
       "destination": "/api/mistral.js"
     },
     {
-      "source": "/api/nvidia",
-      "destination": "/api/nvidia.js"
-    },
-    {
       "source": "/mistral",
       "destination": "/mistral/index.html"
     },
