@@ -1,0 +1,44 @@
+export const photoToolDefinition = {
+    type: "function",
+    function: {
+        name: "generate_photo",
+        description: "HANYA panggil alat ini JIKA DAN HANYA JIKA pengguna secara eksplisit meminta foto dirimu, meminta selfie, pap, atau ingin melihat pakaian/bagian tubuhmu (seperti sepatu, kaki, full body, dll).",
+        parameters: {
+            type: "object",
+            properties: {
+                image_prompt: { type: "string", description: "Instruksi gambar dalam bahasa Inggris untuk AI Image Generator. Contoh: 'A photorealistic close-up selfie of this person smiling', atau 'A photo of this person\\'s feet wearing new sneakers', atau 'A full body mirror selfie of this person'. Selalu gunakan kata 'this person' agar AI mengenali wajah aslimu." }
+            },
+            required: ["image_prompt"]
+        }
+    }
+};
+
+export async function executePhotoTool(args, context, services) {
+    const { chatId, userId } = context;
+    const { sendTelegram, sendTelegramPhotoBuffer, generateQwenImage, logEvent, supabase } = services;
+
+    await sendTelegram('sendMessage', { chat_id: chatId, text: "Bentar ya, aku fotokan dulu... 📸" });
+    await sendTelegram('sendChatAction', { chat_id: chatId, action: 'upload_photo' });
+
+    let prompt = args.image_prompt;
+    if (!prompt) {
+        const ctx = args.context || 'casual';
+        prompt = args.mode === 'direct' 
+            ? `Create a photorealistic close-up selfie of this person. ${ctx}. Direct eye contact, fully visible face, highly detailed.`
+            : `Create a photorealistic mirror selfie of this person. ${ctx}. Highly detailed.`;
+    }
+
+    try {
+        const imageBuffer = await generateQwenImage(prompt);
+        const success = await sendTelegramPhotoBuffer(chatId, imageBuffer);
+
+        if (success) {
+            await supabase.from('chat_history').insert({ telegram_id: userId, role: 'assistant', content: "[Mengirim foto]" });
+        } else {
+            await sendTelegram('sendMessage', { chat_id: chatId, text: "Aduh, koneksi ke Telegram putus saat mengirim foto." });
+        }
+    } catch (error) {
+        await logEvent('ERROR', 'Generate Selfie Error', error.message, userId);
+        await sendTelegram('sendMessage', { chat_id: chatId, text: "Aduh, kamera aku lagi error nih." });
+    }
+}

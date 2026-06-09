@@ -1,5 +1,6 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
 import { createClient } from "@supabase/supabase-js";
+import { AI_TOOLS, executeTool, analyzeImage } from "../src/skills/index.mjs";
 
 // --- KONFIGURASI SUPABASE ---
 const supabaseUrl = process.env.SUPABASE_URL || "https://dummy.supabase.co";
@@ -78,37 +79,7 @@ async function sendTelegramPhotoBuffer(chatId, buffer) {
     }
 }
 
-const AI_TOOLS = [
-    {
-        type: "function",
-        function: {
-            name: "generate_photo",
-            description: "HANYA panggil alat ini JIKA DAN HANYA JIKA pengguna secara eksplisit meminta foto dirimu, meminta selfie, pap, atau ingin melihat pakaian/bagian tubuhmu (seperti sepatu, kaki, full body, dll).",
-            parameters: {
-                type: "object",
-                properties: {
-                    image_prompt: { type: "string", description: "Instruksi gambar dalam bahasa Inggris untuk AI Image Generator. Contoh: 'A photorealistic close-up selfie of this person smiling', atau 'A photo of this person\\'s feet wearing new sneakers', atau 'A full body mirror selfie of this person'. Selalu gunakan kata 'this person' agar AI mengenali wajah aslimu." }
-                },
-                required: ["image_prompt"]
-            }
-        }
-    },
-    {
-        type: "function",
-        function: {
-            name: "save_memory",
-            description: "HANYA panggil alat ini JIKA pengguna memberikan informasi atau fakta baru yang penting tentang diri mereka yang harus kamu ingat (misalnya: nama hewan peliharaan, ulang tahun, kesukaan, dll).",
-            parameters: {
-                type: "object",
-                properties: {
-                    fact: { type: "string", description: "Fakta penting tentang pengguna yang harus disimpan." },
-                    event_date: { type: "string", description: "Tanggal kejadian (YYYY-MM-DD) jika disebutkan. Jika tidak, kosongkan saja." }
-                },
-                required: ["fact"]
-            }
-        }
-    }
-];
+// AI_TOOLS dipindahkan ke src/skills/index.mjs
 
 // --- MISTRAL AI ---
 async function queryMistral(systemPrompt, history, userMessage, toolResponseMessages = null) {
@@ -179,31 +150,7 @@ async function queryQwen(systemPrompt, history, userMessage, toolResponseMessage
     return response.json();
 }
 
-// --- QWEN VISION AI (DASHSCOPE) ---
-async function analyzeImage(imageBase64) {
-    const apiKey = process.env.QWEN_API_KEY || 'sk-ws-H.ILHDHP.fakn.MEYCIQDGQZgkorFTHh9mN1IlzQTeZ8zRIs6mpfQd9UiznuGVOgIhAKIPOHid-8zDdxd5uk0Fpz70IajHWahhfqgiFvq6NL1m';
-    const url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";
-    const body = {
-        model: "qwen-vl-max",
-        messages: [
-            {
-                role: "user",
-                content: [
-                    { type: "image_url", image_url: { url: imageBase64 } },
-                    { type: "text", text: "Tolong deskripsikan gambar ini dengan sangat detail dalam bahasa Indonesia. Jika ini adalah gambar pakaian/baju, sebutkan warna, bahan, motif, dan gayanya. (Maksimal 2-3 kalimat)" }
-                ]
-            }
-        ]
-    };
-    const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-        body: JSON.stringify(body)
-    });
-    if (!response.ok) return "Foto yang dikirim tidak jelas.";
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || "Gambar tidak diketahui.";
-}
+// analyzeImage dipindahkan ke src/skills/vision.mjs
 
 // --- AI FALLBACK SYSTEM ---
 async function queryLLMWithFallback(systemPrompt, history, userMessage, toolResponseMessages = null) {
@@ -387,55 +334,10 @@ ATURAN SANGAT PENTING:
             
             await logEvent('INFO', 'AI Tool Triggered', `Memanggil Tool: ${callName}`, userId);
             
-            if (callName === 'generate_photo' || callName === 'generate_selfie') {
-                await sendTelegram('sendMessage', { chat_id: chatId, text: "Bentar ya, aku fotokan dulu... 📸" });
-                await sendTelegram('sendChatAction', { chat_id: chatId, action: 'upload_photo' });
-
-                // Jika AI lama masih pakai args.context, kita beri fallback. Jika pakai image_prompt, gunakan itu.
-                let prompt = args.image_prompt;
-                if (!prompt) {
-                    const context = args.context || 'casual';
-                    prompt = args.mode === 'direct' 
-                        ? `Create a photorealistic close-up selfie of this person. ${context}. Direct eye contact, fully visible face, highly detailed.`
-                        : `Create a photorealistic mirror selfie of this person. ${context}. Highly detailed.`;
-                }
-
-                try {
-                    const imageBuffer = await generateQwenImage(prompt);
-                    const success = await sendTelegramPhotoBuffer(chatId, imageBuffer);
-
-                    if (success) {
-                        await supabase.from('chat_history').insert({ telegram_id: userId, role: 'assistant', content: "[Mengirim foto selfie]" });
-                    } else {
-                        await sendTelegram('sendMessage', { chat_id: chatId, text: "Aduh, koneksi ke Telegram putus saat mengirim foto." });
-                    }
-                } catch (error) {
-                    await logEvent('ERROR', 'Generate Selfie Error', error.message, userId);
-                    await sendTelegram('sendMessage', { chat_id: chatId, text: "Aduh, kamera aku lagi error nih." });
-                }
-            } 
-            else if (callName === 'save_memory') {
-                const fact = args.fact;
-                await supabase.from('memories').insert({ telegram_id: userId, fact: fact, event_date: args.event_date || null });
-                
-                // Follow up to AI
-                const toolResponseMessages = [
-                    { role: 'system', content: systemPrompt },
-                    ...(history || []).map((h) => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.content })),
-                    { role: 'user', content: text },
-                    message,
-                    { role: 'tool', name: 'save_memory', tool_call_id: toolCall.id, content: JSON.stringify({ success: true }) }
-                ];
-
-                try {
-                    const followupData = await queryLLMWithFallback(systemPrompt, null, null, toolResponseMessages);
-                    const replyText = followupData.choices?.[0]?.message?.content || "Memori telah disimpan!";
-                    await sendTelegram('sendMessage', { chat_id: chatId, text: replyText });
-                    await supabase.from('chat_history').insert({ telegram_id: userId, role: 'assistant', content: replyText });
-                } catch (e) {
-                    await sendTelegram('sendMessage', { chat_id: chatId, text: "Fakta sudah kuingat ya!" });
-                }
-            }
+            const context = { chatId, userId, history: history || [], systemPrompt, text, toolCall, message };
+            const services = { sendTelegram, sendTelegramPhotoBuffer, generateQwenImage, logEvent, supabase, queryLLMWithFallback };
+            
+            await executeTool(callName, args, context, services);
         } else {
             const replyText = message?.content || "Maaf, aku tidak mengerti.";
             await sendTelegram('sendMessage', { chat_id: chatId, text: replyText });
