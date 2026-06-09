@@ -257,13 +257,18 @@ async function processMessage(body) {
         
         let { data: persona } = await supabase.from('personas').select('*').eq('telegram_id', userId).single();
         
-        let systemPrompt = "Kamu adalah Airish, AI companion yang ramah. Jawablah dengan bahasa Indonesia santai.";
+        let systemPrompt = "Kamu adalah Airish, AI companion yang ramah. PENTING: Jawablah layaknya sedang chatting di WhatsApp. Balas dengan SANGAT SINGKAT (maksimal 1-3 kalimat pendek), natural, dan JANGAN PERNAH membuat list/bullet points. Gunakan bahasa Indonesia santai.";
         let refImage = DEFAULT_REF_IMAGE;
 
         if (persona) {
             systemPrompt = `Namamu adalah ${persona.name}. Sifatmu: ${persona.archetype}. Kerjaanmu: ${persona.craft}. 
 Backstory: ${persona.backstory}. Lingkungan: ${persona.world_context}. 
-Jawablah dengan bahasa Indonesia santai sesuai dengan sifatmu.`;
+
+ATURAN SANGAT PENTING: 
+1. Jawablah layaknya sedang chatting santai di WhatsApp dengan teman.
+2. Balasan harus SANGAT SINGKAT dan natural (maksimal 1-3 kalimat pendek).
+3. JANGAN PERNAH membuat daftar (list) atau bullet points.
+4. Gunakan gaya bahasa sesuai sifatmu, tapi jangan terlalu berlebihan/lebay.`;
             if (persona.reference_image_url) refImage = persona.reference_image_url;
             await logEvent('INFO', 'Persona Loaded', `Menggunakan Persona: ${persona.name}`, userId);
         }
