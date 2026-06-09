@@ -268,12 +268,21 @@ Jawablah dengan bahasa Indonesia santai sesuai dengan sifatmu.`;
             await logEvent('INFO', 'Persona Loaded', `Menggunakan Persona: ${persona.name}`, userId);
         }
 
-        // 2. Ambil Chat History
+        // 2. Ambil Chat History & Long Term Memory
         const { data: history } = await supabase.from('chat_history')
             .select('*')
             .eq('telegram_id', userId)
             .order('created_at', { ascending: false })
             .limit(10);
+
+        const { data: memories } = await supabase.from('memories')
+            .select('fact, event_date')
+            .eq('telegram_id', userId);
+        
+        if (memories && memories.length > 0) {
+            const memoryString = memories.map(m => `- ${m.fact}${m.event_date ? ' (' + m.event_date + ')' : ''}`).join('\n');
+            systemPrompt += `\n\nFakta penting tentang pengguna yang HARUS kamu ingat di setiap obrolan:\n${memoryString}`;
+        }
 
         // Simpan pesan user
         await supabase.from('chat_history').insert({ telegram_id: userId, role: 'user', content: text });
