@@ -63,78 +63,120 @@ async function sendTelegramPhotoBuffer(chatId, buffer) {
     }
 }
 
-
-// --- MISTRAL AI ---
-async function queryMistral(systemPrompt, history, userMessage) {
-    // Karena ini berjalan di dalam proxy, kita bisa menggunakan endpoint proxy itu sendiri
-    const url = process.env.MISTRAL_API_URL || "https://fatsproxyai.vercel.app/api/mistral";
-    const apiKey = process.env.MISTRAL_API_KEY || ""; // Opsional jika proxy sudah punya keys
-
-    const messages = [
-        { role: 'system', content: systemPrompt },
-        ...history.map(h => ({
-            role: h.role === 'user' ? 'user' : 'assistant',
-            content: h.content
-        })),
-        { role: 'user', content: userMessage }
-    ];
-
-    const tools = [
-        {
-            type: "function",
-            function: {
-                name: "generate_selfie",
-                description: "Picu alat ini saat pengguna meminta foto selfie atau gambar diri bot. Mode 'mirror' digunakan jika pengguna meminta outfit/pakaian (di cermin), mode 'direct' jika pengguna meminta foto close-up atau di lokasi tertentu secara langsung.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        context: { type: "string", description: "Deskripsi pose, pakaian, atau lokasi" },
-                        mode: { type: "string", enum: ["mirror", "direct"], description: "Mode foto" }
-                    },
-                    required: ["context", "mode"]
-                }
-            }
-        },
-        {
-            type: "function",
-            function: {
-                name: "save_memory",
-                description: "Simpan fakta penting tentang pengguna agar bot mengingatnya di masa mendatang.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        fact: { type: "string", description: "Fakta penting tentang pengguna" },
-                        event_date: { type: "string", description: "Tanggal kejadian (YYYY-MM-DD)" }
-                    },
-                    required: ["fact"]
-                }
+const AI_TOOLS = [
+    {
+        type: "function",
+        function: {
+            name: "generate_selfie",
+            description: "Picu alat ini saat pengguna meminta foto selfie atau gambar diri bot. Mode 'mirror' digunakan jika pengguna meminta outfit/pakaian (di cermin), mode 'direct' jika pengguna meminta foto close-up atau di lokasi tertentu secara langsung.",
+            parameters: {
+                type: "object",
+                properties: {
+                    context: { type: "string", description: "Deskripsi pose, pakaian, atau lokasi" },
+                    mode: { type: "string", enum: ["mirror", "direct"], description: "Mode foto" }
+                },
+                required: ["context", "mode"]
             }
         }
-    ];
+    },
+    {
+        type: "function",
+        function: {
+            name: "save_memory",
+            description: "Simpan fakta penting tentang pengguna agar bot mengingatnya di masa mendatang.",
+            parameters: {
+                type: "object",
+                properties: {
+                    fact: { type: "string", description: "Fakta penting tentang pengguna" },
+                    event_date: { type: "string", description: "Tanggal kejadian (YYYY-MM-DD)" }
+                },
+                required: ["fact"]
+            }
+        }
+    }
+];
+
+// --- MISTRAL AI ---
+async function queryMistral(systemPrompt, history, userMessage, toolResponseMessages = null) {
+    const url = process.env.MISTRAL_API_URL || "https://fatsproxyai.vercel.app/api/mistral";
+    const apiKey = process.env.MISTRAL_API_KEY || ""; 
+
+    let messages = toolResponseMessages;
+    if (!messages) {
+        messages = [
+            { role: 'system', content: systemPrompt },
+            ...history.map(h => ({
+                role: h.role === 'user' ? 'user' : 'assistant',
+                content: h.content
+            })),
+            { role: 'user', content: userMessage }
+        ];
+    }
 
     const headers = { "Content-Type": "application/json" };
     if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
 
-    const response = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-            model: "mistral-large-latest",
-            messages,
-            tools,
-            tool_choice: "auto"
-        })
-    });
-
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Mistral API Error: ${response.status} - ${errText}`);
+    const body = {
+        model: "mistral-large-latest",
+        messages,
+    };
+    if (!toolResponseMessages) {
+        body.tools = AI_TOOLS;
+        body.tool_choice = "auto";
     }
 
+    const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    if (!response.ok) throw new Error(`Mistral Error: ${response.status} - ${await response.text()}`);
     return response.json();
 }
 
-// --- QWEN AI (ALIBABA DASHSCOPE) ---
+// --- QWEN TEXT AI ---
+async function queryQwen(systemPrompt, history, userMessage, toolResponseMessages = null) {
+    const apiKey = process.env.QWEN_API_KEY || 'sk-ws-H.ILHDHP.fakn.MEYCIQDGQZgkorFTHh9mN1IlzQTeZ8zRIs6mpfQd9UiznuGVOgIhAKIPOHid-8zDdxd5uk0Fpz70IajHWahhfqgiFvq6NL1m';
+    const url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";
+
+    let messages = toolResponseMessages;
+    if (!messages) {
+        messages = [
+            { role: 'system', content: systemPrompt },
+            ...history.map(h => ({
+                role: h.role === 'user' ? 'user' : 'assistant',
+                content: h.content
+            })),
+            { role: 'user', content: userMessage }
+        ];
+    }
+
+    const body = {
+        model: "qwen-plus",
+        messages,
+    };
+    if (!toolResponseMessages) {
+        body.tools = AI_TOOLS;
+        body.tool_choice = "auto";
+    }
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+        body: JSON.stringify(body)
+    });
+    if (!response.ok) throw new Error(`Qwen Text Error: ${response.status} - ${await response.text()}`);
+    return response.json();
+}
+
+// --- AI FALLBACK SYSTEM ---
+async function queryLLMWithFallback(systemPrompt, history, userMessage, toolResponseMessages = null) {
+    try {
+        await logEvent('INFO', 'AI Request', `Mengirim request ke Qwen Plus.`);
+        return await queryQwen(systemPrompt, history, userMessage, toolResponseMessages);
+    } catch (error) {
+        await logEvent('WARN', 'Qwen Failed, Fallback to Mistral', error.message);
+        return await queryMistral(systemPrompt, history, userMessage, toolResponseMessages);
+    }
+}
+
+// --- QWEN IMAGE AI (ALIBABA DASHSCOPE) ---
 async function generateQwenImage(prompt) {
     const apiKey = process.env.QWEN_API_KEY || 'sk-ws-H.ILHDHP.fakn.MEYCIQDGQZgkorFTHh9mN1IlzQTeZ8zRIs6mpfQd9UiznuGVOgIhAKIPOHid-8zDdxd5uk0Fpz70IajHWahhfqgiFvq6NL1m';
     const host = 'https://ws-9eq65lbzoayak8np.ap-southeast-1.maas.aliyuncs.com';
@@ -236,10 +278,9 @@ Jawablah dengan bahasa Indonesia santai sesuai dengan sifatmu.`;
         // Simpan pesan user
         await supabase.from('chat_history').insert({ telegram_id: userId, role: 'user', content: text });
 
-        // 3. Panggil Mistral
-        await logEvent('INFO', 'Mistral Request', `Mengirim request ke Mistral.`, userId);
-        const mistralRes = await queryMistral(systemPrompt, history || [], text);
-        const choice = mistralRes.choices?.[0];
+        // 3. Panggil AI (Qwen with Mistral Fallback)
+        const aiRes = await queryLLMWithFallback(systemPrompt, history || [], text);
+        const choice = aiRes.choices?.[0];
         const message = choice?.message;
 
         // 4. Handle Tools
@@ -248,7 +289,7 @@ Jawablah dengan bahasa Indonesia santai sesuai dengan sifatmu.`;
             const callName = toolCall.function.name;
             const args = JSON.parse(toolCall.function.arguments);
             
-            await logEvent('INFO', 'Mistral Tool Triggered', `Memanggil Tool: ${callName}`, userId);
+            await logEvent('INFO', 'AI Tool Triggered', `Memanggil Tool: ${callName}`, userId);
             
             if (callName === 'generate_selfie') {
                 await sendTelegram('sendMessage', { chat_id: chatId, text: "Bentar ya, aku fotokan dulu... 📸" });
@@ -270,7 +311,7 @@ Jawablah dengan bahasa Indonesia santai sesuai dengan sifatmu.`;
                         await sendTelegram('sendMessage', { chat_id: chatId, text: "Aduh, koneksi ke Telegram putus saat mengirim foto." });
                     }
                 } catch (error) {
-                    await logEvent('ERROR', 'Generate Selfie CF Error', error.message, userId);
+                    await logEvent('ERROR', 'Generate Selfie Error', error.message, userId);
                     await sendTelegram('sendMessage', { chat_id: chatId, text: "Aduh, kamera aku lagi error nih." });
                 }
             } 
@@ -278,7 +319,7 @@ Jawablah dengan bahasa Indonesia santai sesuai dengan sifatmu.`;
                 const fact = args.fact;
                 await supabase.from('memories').insert({ telegram_id: userId, fact: fact, event_date: args.event_date || null });
                 
-                // Follow up to Mistral
+                // Follow up to AI
                 const toolResponseMessages = [
                     { role: 'system', content: systemPrompt },
                     ...(history || []).map((h) => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.content })),
@@ -287,23 +328,12 @@ Jawablah dengan bahasa Indonesia santai sesuai dengan sifatmu.`;
                     { role: 'tool', name: 'save_memory', tool_call_id: toolCall.id, content: JSON.stringify({ success: true }) }
                 ];
 
-                const url = process.env.MISTRAL_API_URL || "https://fatsproxyai.vercel.app/api/mistral";
-                const apiKey = process.env.MISTRAL_API_KEY || "";
-                const headers = { "Content-Type": "application/json" };
-                if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
-
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers,
-                    body: JSON.stringify({ model: "mistral-large-latest", messages: toolResponseMessages })
-                });
-
-                if (response.ok) {
-                    const followupData = await response.json();
+                try {
+                    const followupData = await queryLLMWithFallback(systemPrompt, null, null, toolResponseMessages);
                     const replyText = followupData.choices?.[0]?.message?.content || "Memori telah disimpan!";
                     await sendTelegram('sendMessage', { chat_id: chatId, text: replyText });
                     await supabase.from('chat_history').insert({ telegram_id: userId, role: 'assistant', content: replyText });
-                } else {
+                } catch (e) {
                     await sendTelegram('sendMessage', { chat_id: chatId, text: "Fakta sudah kuingat ya!" });
                 }
             }
