@@ -27,7 +27,22 @@ async function logEvent(level, event, details, telegram_id = null) {
 }
 
 // --- TELEGRAM API ---
+function formatTelegramHTML(text) {
+    if (!text) return text;
+    let html = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+    html = html.replace(/\*(.*?)\*/g, '<i>$1</i>');
+    html = html.replace(/__(.*?)__/g, '<i>$1</i>');
+    html = html.replace(/_(.*?)_/g, '<i>$1</i>');
+    html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+    return html;
+}
+
 async function sendTelegram(method, payload) {
+    if (method === 'sendMessage' && payload.text && !payload.parse_mode) {
+        payload.text = formatTelegramHTML(payload.text);
+        payload.parse_mode = 'HTML';
+    }
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/${method}`;
     try {
         const response = await fetch(url, {
