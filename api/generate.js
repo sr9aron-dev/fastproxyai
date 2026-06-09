@@ -84,6 +84,7 @@ async function handler(event) {
       ok: true,
       provider: output.provider,
       model: output.model,
+      rawResult: output.result,
       ...finalResult,
       usage: output.usage
     });
