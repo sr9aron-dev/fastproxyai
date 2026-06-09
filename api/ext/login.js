@@ -10,38 +10,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { username, password } = req.body;
+    const { email } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({ error: "Username and password are required" });
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
     }
 
     // Check against teepublic_users collection
     const usersRef = db.collection("teepublic_users");
-    const snapshot = await usersRef.where("username", "==", username).get();
+    const snapshot = await usersRef.where("email", "==", email).get();
 
     if (snapshot.empty) {
-      return res.status(401).json({ error: "Invalid username or password" });
+      return res.status(401).json({ error: "Akun email ini tidak terdaftar atau belum diizinkan." });
     }
 
-    let userDoc = null;
-    let userData = null;
-
-    // Find the matching password (case sensitive)
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.password === password) {
-        userDoc = doc;
-        userData = data;
-      }
-    });
-
-    if (!userDoc) {
-      return res.status(401).json({ error: "Invalid username or password" });
-    }
+    const userDoc = snapshot.docs[0];
+    const userData = userDoc.data();
 
     if (userData.active === false) {
-      return res.status(403).json({ error: "Account is disabled" });
+      return res.status(403).json({ error: "Akun ini telah dinonaktifkan." });
     }
 
     // We can use the proxy_token stored in the user document, or generate a simple one
@@ -51,7 +38,8 @@ export default async function handler(req, res) {
       ok: true,
       token,
       user: {
-        username: userData.username,
+        email: userData.email,
+        name: userData.name || userData.email.split('@')[0],
       }
     });
   } catch (error) {
