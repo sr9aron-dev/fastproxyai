@@ -90,7 +90,7 @@
     },
     {
       "source": "/api/ext/login",
-      "destination": "/api/ext/login.js"
+      "destination": "/api/ext-login.js"
     }
   ]
 }

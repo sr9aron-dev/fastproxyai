@@ -1,5 +1,5 @@
-import { db } from "../../src/firebase.mjs";
-import { json, optionsResponse, readJson, vercelHandler } from "../../src/http.mjs";
+import { db } from "../src/firebase.mjs";
+import { json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
 
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
