@@ -265,10 +265,20 @@ async function processMessage(body) {
     try {
         await sendTelegram('sendChatAction', { chat_id: chatId, action: 'typing' });
 
-        // 1. Registrasi & Ambil Persona
-        await logEvent('INFO', 'Supabase Upsert User', `telegram_id: ${userId}`, userId);
-        const { error: upsertErr } = await supabase.from('users').upsert({ telegram_id: userId }, { onConflict: 'telegram_id' });
-        if (upsertErr) throw new Error(`Supabase Upsert Fail: ${upsertErr.message}`);
+        // 1. Registrasi & Ambil Data User (Timezone)
+        await logEvent('INFO', 'Supabase Fetch User', `telegram_id: ${userId}`, userId);
+        let { data: userData } = await supabase.from('users').select('*').eq('telegram_id', userId).single();
+        if (!userData) {
+            const { data: newUser } = await supabase.from('users').insert({ telegram_id: userId }).select().single();
+            userData = newUser || { timezone: 'Asia/Jakarta' };
+        }
+        
+        const userTimezone = userData.timezone || 'Asia/Jakarta';
+        const currentTime = new Date().toLocaleString('id-ID', { 
+            timeZone: userTimezone, 
+            dateStyle: 'full', 
+            timeStyle: 'short' 
+        });
         
         let { data: persona } = await supabase.from('personas').select('*').eq('telegram_id', userId).single();
         
@@ -287,6 +297,9 @@ ATURAN SANGAT PENTING:
             if (persona.reference_image_url) refImage = persona.reference_image_url;
             await logEvent('INFO', 'Persona Loaded', `Menggunakan Persona: ${persona.name}`, userId);
         }
+
+        // Tambahkan konteks waktu ke bot
+        systemPrompt += `\n\n[INFO SISTEM]\nWaktu pengguna saat ini: ${currentTime} (${userTimezone}). Jika ditanya waktu/hari, gunakan info ini.`;
 
         // 2. Ambil Chat History & Long Term Memory
         const { data: history } = await supabase.from('chat_history')
