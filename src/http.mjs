@@ -116,7 +116,8 @@ export function vercelHandler(handler) {
       httpMethod: req.method,
       headers: req.headers,
       body: req.body,
-      queryStringParameters: req.query
+      queryStringParameters: req.query,
+      path: req.url
     };
 
     const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";

@@ -134,28 +134,62 @@ async function queryMistral(systemPrompt, history, userMessage) {
     return response.json();
 }
 
-// --- CLOUDFLARE WORKERS AI (REPLACING FAL.AI) ---
-async function generateSelfieCF(prompt) {
-    const cfAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-    const cfApiToken = process.env.CLOUDFLARE_API_TOKEN;
-    if (!cfAccountId || !cfApiToken) throw new Error("CLOUDFLARE_ACCOUNT_ID atau CLOUDFLARE_API_TOKEN tidak ada di environment.");
+// --- QWEN AI (ALIBABA DASHSCOPE) ---
+async function generateQwenImage(prompt) {
+    const apiKey = process.env.QWEN_API_KEY || 'sk-ws-H.ILHDHP.fakn.MEYCIQDGQZgkorFTHh9mN1IlzQTeZ8zRIs6mpfQd9UiznuGVOgIhAKIPOHid-8zDdxd5uk0Fpz70IajHWahhfqgiFvq6NL1m';
+    const host = 'https://ws-9eq65lbzoayak8np.ap-southeast-1.maas.aliyuncs.com';
+    const endpoint = `${host}/api/v1/services/aigc/multimodal-generation/generation`;
+    const refImageUrl = 'https://fatsproxyai.vercel.app/airish.jpg';
 
-    const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning`, {
+    const response = await fetch(endpoint, {
         method: "POST",
         headers: {
-            "Authorization": `Bearer ${cfApiToken}`,
+            "Authorization": `Bearer ${apiKey}`,
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ prompt: prompt })
+        body: JSON.stringify({
+            model: "qwen-image-edit",
+            input: {
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            { image: refImageUrl },
+                            { text: prompt }
+                        ]
+                    }
+                ]
+            },
+            parameters: {
+                size: "1024*1024",
+                n: 1
+            }
+        })
     });
 
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Cloudflare AI Error: ${text}`);
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Qwen AI Error: ${response.status} ${errorText}`);
     }
 
-    const buffer = await res.arrayBuffer();
-    return buffer;
+    const data = await response.json();
+    const results = data.output?.choices || data.output?.results;
+    if (results && results.length > 0) {
+        const content = results[0].message?.content;
+        let imageUrl = null;
+        
+        if (Array.isArray(content)) {
+            const imgBlock = content.find(c => c.image);
+            if (imgBlock) imageUrl = imgBlock.image;
+        }
+
+        if (imageUrl) {
+            const imgRes = await fetch(imageUrl);
+            if (!imgRes.ok) throw new Error("Failed to download generated image from Qwen");
+            return await imgRes.arrayBuffer();
+        }
+    }
+    throw new Error("Gambar tidak ditemukan di dalam respons Qwen");
 }
 
 // --- MAIN PROCESSOR ---
@@ -227,7 +261,7 @@ Jawablah dengan bahasa Indonesia santai sesuai dengan sifatmu.`;
                     : `A mirror selfie of a beautiful Indonesian girl, ${context}, high quality, photorealistic`;
 
                 try {
-                    const imageBuffer = await generateSelfieCF(prompt);
+                    const imageBuffer = await generateQwenImage(prompt);
                     const success = await sendTelegramPhotoBuffer(chatId, imageBuffer);
 
                     if (success) {
