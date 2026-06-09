@@ -87,6 +87,10 @@
     {
       "source": "/api/start-trial",
       "destination": "/api/subscription.js"
+    },
+    {
+      "source": "/api/ext/login",
+      "destination": "/api/ext/login.js"
     }
   ]
 }
