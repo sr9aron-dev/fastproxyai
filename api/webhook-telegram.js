@@ -82,15 +82,14 @@ const AI_TOOLS = [
     {
         type: "function",
         function: {
-            name: "generate_selfie",
-            description: "HANYA panggil alat ini JIKA DAN HANYA JIKA pengguna secara eksplisit meminta foto dirimu, meminta selfie, meminta pap, atau ingin melihat wajah/pakaianmu. JANGAN panggil alat ini jika pengguna hanya bertanya tentang kemampuanmu atau sedang mengobrol biasa.",
+            name: "generate_photo",
+            description: "HANYA panggil alat ini JIKA DAN HANYA JIKA pengguna secara eksplisit meminta foto dirimu, meminta selfie, pap, atau ingin melihat pakaian/bagian tubuhmu (seperti sepatu, kaki, full body, dll).",
             parameters: {
                 type: "object",
                 properties: {
-                    context: { type: "string", description: "Deskripsi singkat tentang pose, pakaian, atau lokasi berdasarkan permintaan pengguna. Jika tidak ada, isi dengan 'casual'." },
-                    mode: { type: "string", enum: ["mirror", "direct"], description: "Pilih 'mirror' jika pengguna meminta foto outfit/pakaian di cermin. Pilih 'direct' jika pengguna meminta foto wajah/close-up." }
+                    image_prompt: { type: "string", description: "Instruksi gambar dalam bahasa Inggris untuk AI Image Generator. Contoh: 'A photorealistic close-up selfie of this person smiling', atau 'A photo of this person\\'s feet wearing new sneakers', atau 'A full body mirror selfie of this person'. Selalu gunakan kata 'this person' agar AI mengenali wajah aslimu." }
                 },
-                required: ["context", "mode"]
+                required: ["image_prompt"]
             }
         }
     },
@@ -333,14 +332,18 @@ ATURAN SANGAT PENTING:
             
             await logEvent('INFO', 'AI Tool Triggered', `Memanggil Tool: ${callName}`, userId);
             
-            if (callName === 'generate_selfie') {
+            if (callName === 'generate_photo' || callName === 'generate_selfie') {
                 await sendTelegram('sendMessage', { chat_id: chatId, text: "Bentar ya, aku fotokan dulu... 📸" });
                 await sendTelegram('sendChatAction', { chat_id: chatId, action: 'upload_photo' });
 
-                const context = args.context;
-                const prompt = args.mode === 'direct' 
-                    ? `Create a photorealistic close-up selfie of this person. ${context}. Direct eye contact, fully visible face, highly detailed.`
-                    : `Create a photorealistic mirror selfie of this person. ${context}. Highly detailed.`;
+                // Jika AI lama masih pakai args.context, kita beri fallback. Jika pakai image_prompt, gunakan itu.
+                let prompt = args.image_prompt;
+                if (!prompt) {
+                    const context = args.context || 'casual';
+                    prompt = args.mode === 'direct' 
+                        ? `Create a photorealistic close-up selfie of this person. ${context}. Direct eye contact, fully visible face, highly detailed.`
+                        : `Create a photorealistic mirror selfie of this person. ${context}. Highly detailed.`;
+                }
 
                 try {
                     const imageBuffer = await generateQwenImage(prompt);
