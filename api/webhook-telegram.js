@@ -68,12 +68,12 @@ const AI_TOOLS = [
         type: "function",
         function: {
             name: "generate_selfie",
-            description: "Picu alat ini saat pengguna meminta foto selfie atau gambar diri bot. Mode 'mirror' digunakan jika pengguna meminta outfit/pakaian (di cermin), mode 'direct' jika pengguna meminta foto close-up atau di lokasi tertentu secara langsung.",
+            description: "HANYA panggil alat ini JIKA DAN HANYA JIKA pengguna secara eksplisit meminta foto dirimu, meminta selfie, meminta pap, atau ingin melihat wajah/pakaianmu. JANGAN panggil alat ini jika pengguna hanya bertanya tentang kemampuanmu atau sedang mengobrol biasa.",
             parameters: {
                 type: "object",
                 properties: {
-                    context: { type: "string", description: "Deskripsi pose, pakaian, atau lokasi" },
-                    mode: { type: "string", enum: ["mirror", "direct"], description: "Mode foto" }
+                    context: { type: "string", description: "Deskripsi singkat tentang pose, pakaian, atau lokasi berdasarkan permintaan pengguna. Jika tidak ada, isi dengan 'casual'." },
+                    mode: { type: "string", enum: ["mirror", "direct"], description: "Pilih 'mirror' jika pengguna meminta foto outfit/pakaian di cermin. Pilih 'direct' jika pengguna meminta foto wajah/close-up." }
                 },
                 required: ["context", "mode"]
             }
@@ -83,12 +83,12 @@ const AI_TOOLS = [
         type: "function",
         function: {
             name: "save_memory",
-            description: "Simpan fakta penting tentang pengguna agar bot mengingatnya di masa mendatang.",
+            description: "HANYA panggil alat ini JIKA pengguna memberikan informasi atau fakta baru yang penting tentang diri mereka yang harus kamu ingat (misalnya: nama hewan peliharaan, ulang tahun, kesukaan, dll).",
             parameters: {
                 type: "object",
                 properties: {
-                    fact: { type: "string", description: "Fakta penting tentang pengguna" },
-                    event_date: { type: "string", description: "Tanggal kejadian (YYYY-MM-DD)" }
+                    fact: { type: "string", description: "Fakta penting tentang pengguna yang harus disimpan." },
+                    event_date: { type: "string", description: "Tanggal kejadian (YYYY-MM-DD) jika disebutkan. Jika tidak, kosongkan saja." }
                 },
                 required: ["fact"]
             }
