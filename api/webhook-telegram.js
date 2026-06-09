@@ -30,11 +30,11 @@ async function logEvent(level, event, details, telegram_id = null) {
 function formatTelegramHTML(text) {
     if (!text) return text;
     let html = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-    html = html.replace(/\*(.*?)\*/g, '<i>$1</i>');
-    html = html.replace(/__(.*?)__/g, '<i>$1</i>');
-    html = html.replace(/_(.*?)_/g, '<i>$1</i>');
-    html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+    html = html.replace(/\*\*([\s\S]*?)\*\*/g, '<b>$1</b>');
+    html = html.replace(/\*([\s\S]*?)\*/g, '<i>$1</i>');
+    html = html.replace(/__([\s\S]*?)__/g, '<u>$1</u>');
+    html = html.replace(/(^|\s)_([\s\S]*?)_(\s|$)/g, '$1<i>$2</i>$3');
+    html = html.replace(/`([\s\S]*?)`/g, '<code>$1</code>');
     return html;
 }
 
@@ -325,10 +325,9 @@ ATURAN SANGAT PENTING:
                 await sendTelegram('sendChatAction', { chat_id: chatId, action: 'upload_photo' });
 
                 const context = args.context;
-                // Modifikasi prompt untuk Text-to-Image karena CF tidak pakai reference image
                 const prompt = args.mode === 'direct' 
-                    ? `A close-up selfie of a beautiful Indonesian girl, ${context}, direct eye contact, fully visible face, high quality, photorealistic`
-                    : `A mirror selfie of a beautiful Indonesian girl, ${context}, high quality, photorealistic`;
+                    ? `Create a photorealistic close-up selfie of this person. ${context}. Direct eye contact, fully visible face, highly detailed.`
+                    : `Create a photorealistic mirror selfie of this person. ${context}. Highly detailed.`;
 
                 try {
                     const imageBuffer = await generateQwenImage(prompt);
