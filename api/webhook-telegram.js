@@ -1,6 +1,13 @@
 import { json, optionsResponse, readJson, vercelHandler } from "../src/http.mjs";
 import { createClient } from "@supabase/supabase-js";
 import { AI_TOOLS, executeTool, analyzeImage } from "../src/skills/index.mjs";
+import { getWorkingMemory, saveWorkingMemory, getSoulState, saveSoulState } from "../src/memory/working.mjs";
+import { getSemanticMemory } from "../src/memory/semantic.mjs";
+import { parseUserMessage } from "../src/perception/parser.mjs";
+import { calculateSoulState } from "../src/soul/engine.mjs";
+import { buildContext } from "../src/context/builder.mjs";
+import { retrieveEpisodicMemories } from "../src/memory/episodic.mjs";
+import { runReflectionEngine } from "../src/soul/reflection.mjs";
 
 // --- KONFIGURASI SUPABASE ---
 const supabaseUrl = process.env.SUPABASE_URL || "https://dummy.supabase.co";
@@ -283,43 +290,42 @@ async function processMessage(body) {
         
         let { data: persona } = await supabase.from('personas').select('*').eq('telegram_id', userId).single();
         
-        let systemPrompt = "Kamu adalah Airish, AI companion yang ramah. PENTING: Jawablah layaknya sedang chatting di WhatsApp. Balas dengan SANGAT SINGKAT (maksimal 1-3 kalimat pendek), natural, dan JANGAN PERNAH membuat list/bullet points. Gunakan bahasa Indonesia santai.";
         let refImage = DEFAULT_REF_IMAGE;
-
-        if (persona) {
-            systemPrompt = `Namamu adalah ${persona.name}. Sifatmu: ${persona.archetype}. Kerjaanmu: ${persona.craft}. 
-Backstory: ${persona.backstory}. Lingkungan: ${persona.world_context}. 
-
-ATURAN SANGAT PENTING: 
-1. Jawablah layaknya sedang chatting santai di WhatsApp dengan teman.
-2. Balasan harus SANGAT SINGKAT dan natural (maksimal 1-3 kalimat pendek).
-3. JANGAN PERNAH membuat daftar (list) atau bullet points.
-4. Gunakan gaya bahasa sesuai sifatmu, tapi jangan terlalu berlebihan/lebay.`;
-            if (persona.reference_image_url) refImage = persona.reference_image_url;
+        if (persona && persona.reference_image_url) {
+            refImage = persona.reference_image_url;
             await logEvent('INFO', 'Persona Loaded', `Menggunakan Persona: ${persona.name}`, userId);
         }
 
-        // Tambahkan konteks waktu ke bot
-        systemPrompt += `\n\n[INFO SISTEM]\nWaktu pengguna saat ini: ${currentTime} (${userTimezone}). Jika ditanya waktu/hari, gunakan info ini.`;
-
         // 2. Ambil Chat History & Long Term Memory
-        const { data: history } = await supabase.from('chat_history')
-            .select('*')
-            .eq('telegram_id', userId)
-            .order('created_at', { ascending: false })
-            .limit(10);
-
-        const { data: memories } = await supabase.from('memories')
-            .select('fact, event_date')
-            .eq('telegram_id', userId);
+        const history = await getWorkingMemory(userId, 10);
+        let memoryString = await getSemanticMemory(supabase, userId);
         
-        if (memories && memories.length > 0) {
-            const memoryString = memories.map(m => `- ${m.fact}${m.event_date ? ' (' + m.event_date + ')' : ''}`).join('\n');
-            systemPrompt += `\n\nFakta penting tentang pengguna yang HARUS kamu ingat di setiap obrolan:\n${memoryString}`;
+        const episodicMemories = await retrieveEpisodicMemories(supabase, userId, text);
+        if (episodicMemories) {
+            memoryString = (memoryString || "") + "\n\n[MEMORI MASA LALU YANG RELEVAN]\n" + episodicMemories;
         }
-
+        
         // Simpan pesan user
-        await supabase.from('chat_history').insert({ telegram_id: userId, role: 'user', content: text });
+        await saveWorkingMemory(userId, 'user', text);
+
+        // --- SOUL ENGINE PROCESSING (Perception & State) ---
+        const currentState = await getSoulState(userId);
+        const perception = await parseUserMessage(text);
+        const newState = calculateSoulState(currentState, perception);
+        await saveSoulState(userId, newState);
+        
+        await logEvent('INFO', 'Soul State Updated', `Mood: ${newState.mood}, Energy: ${newState.energy}, Emotion Detected: ${perception.emotion}`, userId);
+
+        // --- CONTEXT BUILDER ---
+        const relationship = userData.relationship || null;
+        const systemPrompt = buildContext({ 
+            persona, 
+            currentTime, 
+            userTimezone, 
+            relationship, 
+            memoryString, 
+            soulState: newState 
+        });
 
         // 3. Panggil AI (Qwen with Mistral Fallback)
         const aiRes = await queryLLMWithFallback(systemPrompt, history || [], text);
@@ -341,8 +347,13 @@ ATURAN SANGAT PENTING:
         } else {
             const replyText = message?.content || "Maaf, aku tidak mengerti.";
             await sendTelegram('sendMessage', { chat_id: chatId, text: replyText });
-            await supabase.from('chat_history').insert({ telegram_id: userId, role: 'assistant', content: replyText });
+            await saveWorkingMemory(userId, 'assistant', replyText);
         }
+
+        // --- REFLECTION ENGINE ---
+        // Dijalankan setelah merespons user (Aman dalam limit 60 detik)
+        const recentHistory = await getWorkingMemory(userId, 6);
+        await runReflectionEngine(supabase, userId, recentHistory);
 
     } catch (error) {
         await logEvent('ERROR', 'Process Message Exception', `Err: ${error.message}`, userId);
@@ -369,4 +380,5 @@ async function handler(event) {
     return json(200, { ok: true });
 }
 
+export const maxDuration = 60;
 export default vercelHandler(handler);

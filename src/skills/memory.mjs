@@ -1,3 +1,5 @@
+import { saveWorkingMemory } from '../memory/working.mjs';
+
 export const memoryToolDefinition = {
     type: "function",
     function: {
@@ -34,7 +36,7 @@ export async function executeMemoryTool(args, context, services) {
         const followupData = await queryLLMWithFallback(systemPrompt, null, null, toolResponseMessages);
         const replyText = followupData.choices?.[0]?.message?.content || "Memori telah disimpan!";
         await sendTelegram('sendMessage', { chat_id: chatId, text: replyText });
-        await supabase.from('chat_history').insert({ telegram_id: userId, role: 'assistant', content: replyText });
+        await saveWorkingMemory(userId, 'assistant', replyText);
     } catch (e) {
         await sendTelegram('sendMessage', { chat_id: chatId, text: "Fakta sudah kuingat ya!" });
     }
