@@ -31,7 +31,7 @@ export async function analyzeImageWithGroq(imageBase64) {
 
     const url = "https://api.groq.com/openai/v1/chat/completions";
     const body = {
-        model: "llama-3.2-11b-vision-instruct",
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
         messages: [
             {
                 role: "user",

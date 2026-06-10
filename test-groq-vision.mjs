@@ -1,11 +1,11 @@
 import { analyzeImageWithGroq } from "./src/skills/vision.mjs";
 
 async function testGroqVision() {
-    // 1x1 red pixel JPEG base64
-    const base64Image = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+    // Test with a real image URL
+    const imageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1200px-Cat03.jpg";
     
     console.log("Mengirim ke Groq Vision...");
-    const result = await analyzeImageWithGroq(base64Image);
+    const result = await analyzeImageWithGroq(imageUrl);
     console.log("Hasil:", result);
 }
 
