@@ -1,5 +1,5 @@
 import { saveWorkingMemory } from '../memory/working.mjs';
-import { analyzeImageWithGroq } from './vision.mjs';
+import { analyzeImage } from './vision.mjs';
 
 export const photoToolDefinition = {
     type: "function",
@@ -36,9 +36,9 @@ export async function executePhotoTool(args, context, services) {
         const success = await sendTelegramPhotoBuffer(chatId, imageBuffer);
 
         if (success) {
-            // Biarkan LLM Vision melihat foto yang baru saja dibuat
+            // Karena Groq Vision (LLaMA) sedang decommissioned/mati, kita kembali memakai Qwen Vision yang lebih akurat
             const base64Image = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
-            const description = await analyzeImageWithGroq(base64Image);
+            const description = await analyzeImage(base64Image);
             
             // Simpan ke Working Memory agar AI "ingat" dan "sadar" dengan foto yang baru saja dikirimnya
             const memoryText = `[Sistem: Kamu baru saja mengirimkan foto dirimu sendiri (selfie/pap) kepada user. Ini adalah apa yang kamu lihat di fotomu sendiri: "${description}"]`;
