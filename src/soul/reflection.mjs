@@ -33,7 +33,7 @@ export async function runReflectionEngine(supabase, userId, workingMemory) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "llama3-8b-8192", // Sangat cepat untuk ekstraksi
+                model: "llama-3.1-8b-instant", // Model terbaru dari Groq
                 messages: [
                     { role: "system", content: REFLECTION_PROMPT },
                     { role: "user", content: conversationString }

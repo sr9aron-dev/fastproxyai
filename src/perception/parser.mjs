@@ -31,7 +31,7 @@ export async function parseUserMessage(userMessage) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "llama3-8b-8192", // Sangat cepat untuk JSON parsing
+                model: "llama-3.1-8b-instant", // Model terbaru dari Groq
                 messages: [
                     { role: "system", content: PERCEPTION_SYSTEM_PROMPT },
                     { role: "user", content: userMessage }
