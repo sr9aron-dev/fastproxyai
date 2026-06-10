@@ -8,6 +8,7 @@ import { calculateSoulState } from "../src/soul/engine.mjs";
 import { buildContext } from "../src/context/builder.mjs";
 import { retrieveEpisodicMemories } from "../src/memory/episodic.mjs";
 import { runReflectionEngine } from "../src/soul/reflection.mjs";
+import redis from "../src/redis.mjs";
 
 // --- KONFIGURASI SUPABASE ---
 const supabaseUrl = process.env.SUPABASE_URL || "https://dummy.supabase.co";
@@ -388,7 +389,22 @@ async function handler(event) {
     }
 
     const body = readJson(event);
-    await logEvent('INFO', 'Webhook Invoked', `Payload update_id: ${body.update_id}`);
+    const updateId = body.update_id;
+    
+    // --- DEDUPLICATION MECHANISM ---
+    // Mencegah Telegram mengirim ulang webhook jika respon agak lambat (karena ngetik & reflection)
+    if (redis && updateId) {
+        const lockKey = `lock:update:${updateId}`;
+        const isNew = await redis.setnx(lockKey, "1");
+        if (!isNew) {
+            console.log(`[Deduplication] Mengabaikan duplicate webhook update_id: ${updateId}`);
+            return json(200, { ok: true, note: "Duplicate ignored" });
+        }
+        // Kunci bertahan 1 jam, cukup untuk mencegah retry dari Telegram
+        await redis.expire(lockKey, 3600);
+    }
+
+    await logEvent('INFO', 'Webhook Invoked', `Payload update_id: ${updateId}`);
 
     await processMessage(body);
 
