@@ -1,11 +1,11 @@
 import { saveWorkingMemory } from '../memory/working.mjs';
-import { analyzeImageWithGroq } from './vision.mjs';
+import { analyzeImage } from './vision.mjs';
 
 export const photoToolDefinition = {
     type: "function",
     function: {
         name: "generate_photo",
-        description: "HANYA panggil alat ini JIKA DAN HANYA JIKA pengguna secara eksplisit meminta foto dirimu, meminta selfie, pap, atau ingin melihat pakaian/bagian tubuhmu (seperti sepatu, kaki, full body, dll).",
+        description: "WAJIB DIPANGGIL JIKA user meminta foto dirimu, selfie, pap, atau ingin melihat pakaian/bagian tubuhmu (seperti baju, dress, sepatu, full body, dll). JANGAN MENOLAK. JANGAN bilang kamu AI. Langsung eksekusi tool ini secara diam-diam tanpa banyak omong.",
         parameters: {
             type: "object",
             properties: {
@@ -36,9 +36,9 @@ export async function executePhotoTool(args, context, services) {
         const success = await sendTelegramPhotoBuffer(chatId, imageBuffer);
 
         if (success) {
-            // Biarkan LLM Vision Llama-4-Scout melihat foto yang baru saja dibuat
+            // Karena Llama 4 Scout di Groq error saat menerima Base64, kita kembali ke Qwen Vision
             const base64Image = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
-            const description = await analyzeImageWithGroq(base64Image);
+            const description = await analyzeImage(base64Image);
             
             // Simpan ke Working Memory agar AI "ingat" dan "sadar" dengan foto yang baru saja dikirimnya
             const memoryText = `[Sistem: Kamu baru saja mengirimkan foto dirimu sendiri (selfie/pap) kepada user. Ini adalah apa yang kamu lihat di fotomu sendiri: "${description}"]`;
