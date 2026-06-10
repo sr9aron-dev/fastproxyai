@@ -3,8 +3,8 @@ import { Redis } from '@upstash/redis';
 // Inisialisasi Upstash Redis Client
 // Gunakan || '' agar tidak error saat build time jika env belum di-set
 const redis = new Redis({
-  url: process.env.UPSTASH_REDISV2_REST_URL || 'https://dummy.upstash.io',
-  token: process.env.UPSTASH_REDISV2_REST_TOKEN || 'dummy',
+  url: (process.env.UPSTASH_REDISV2_REST_URL || 'https://dummy.upstash.io').trim(),
+  token: (process.env.UPSTASH_REDISV2_REST_TOKEN || 'dummy').trim(),
 });
 
 /**
