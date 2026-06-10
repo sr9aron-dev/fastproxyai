@@ -90,9 +90,15 @@ async function sendTelegramPhotoBuffer(chatId, buffer) {
 // AI_TOOLS dipindahkan ke src/skills/index.mjs
 
 // --- MISTRAL AI ---
+const mistralKeys = (process.env.MISTRAL_KEYS || "").split(',').map(k => k.trim()).filter(Boolean);
+function getRandomMistralKey() {
+    if (mistralKeys.length === 0) return "";
+    return mistralKeys[Math.floor(Math.random() * mistralKeys.length)];
+}
+
 async function queryMistral(systemPrompt, history, userMessage, toolResponseMessages = null) {
-    const url = process.env.MISTRAL_API_URL || "https://fatsproxyai.vercel.app/api/mistral";
-    const apiKey = process.env.MISTRAL_API_KEY || ""; 
+    const url = "https://api.mistral.ai/v1/chat/completions";
+    const apiKey = getRandomMistralKey();
 
     let messages = toolResponseMessages;
     if (!messages) {
@@ -163,11 +169,11 @@ async function queryQwen(systemPrompt, history, userMessage, toolResponseMessage
 // --- AI FALLBACK SYSTEM ---
 async function queryLLMWithFallback(systemPrompt, history, userMessage, toolResponseMessages = null) {
     try {
-        await logEvent('INFO', 'AI Request', `Mengirim request ke Qwen Plus.`);
-        return await queryQwen(systemPrompt, history, userMessage, toolResponseMessages);
-    } catch (error) {
-        await logEvent('WARN', 'Qwen Failed, Fallback to Mistral', error.message);
+        await logEvent('INFO', 'AI Request', `Mengirim request ke Mistral Large.`);
         return await queryMistral(systemPrompt, history, userMessage, toolResponseMessages);
+    } catch (error) {
+        await logEvent('WARN', 'Mistral Failed, Fallback to Qwen', error.message);
+        return await queryQwen(systemPrompt, history, userMessage, toolResponseMessages);
     }
 }
 
