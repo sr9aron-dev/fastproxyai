@@ -1,19 +1,25 @@
 // src/memory/episodic.mjs
 
-const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || "";
+const mistralKeys = (process.env.MISTRAL_KEYS || process.env.MISTRAL_API_KEY || "").split(',').map(k => k.trim()).filter(Boolean);
+
+function getRandomMistralKey() {
+    if (mistralKeys.length === 0) return "";
+    return mistralKeys[Math.floor(Math.random() * mistralKeys.length)];
+}
 
 /**
  * Menghasilkan Vektor Embedding menggunakan model Mistral.
  * Model ini menghasilkan dimensi 1024 yang cocok dengan pgvector kita.
  */
 export async function getMistralEmbedding(text) {
-    if (!MISTRAL_API_KEY) throw new Error("MISTRAL_API_KEY tidak tersedia untuk fitur Embedding.");
+    const apiKey = getRandomMistralKey();
+    if (!apiKey) throw new Error("MISTRAL_KEYS tidak tersedia untuk fitur Embedding.");
     
     const response = await fetch("https://api.mistral.ai/v1/embeddings", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${MISTRAL_API_KEY}`
+            "Authorization": `Bearer ${apiKey}`
         },
         body: JSON.stringify({
             model: "mistral-embed",
