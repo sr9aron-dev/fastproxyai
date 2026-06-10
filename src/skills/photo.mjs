@@ -1,4 +1,5 @@
 import { saveWorkingMemory } from '../memory/working.mjs';
+import { analyzeImageWithGroq } from './vision.mjs';
 
 export const photoToolDefinition = {
     type: "function",
@@ -35,8 +36,12 @@ export async function executePhotoTool(args, context, services) {
         const success = await sendTelegramPhotoBuffer(chatId, imageBuffer);
 
         if (success) {
-            // Simpan ke Working Memory agar AI ingat apa yang baru saja dikirimnya
-            const memoryText = `[Sistem: Kamu baru saja mengirimkan foto kepada pengguna dengan deskripsi: "${prompt}"]`;
+            // Biarkan LLM Vision melihat foto yang baru saja dibuat
+            const base64Image = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
+            const description = await analyzeImageWithGroq(base64Image);
+            
+            // Simpan ke Working Memory agar AI "ingat" dan "sadar" dengan foto yang baru saja dikirimnya
+            const memoryText = `[Sistem: Kamu baru saja mengirimkan foto dirimu sendiri (selfie/pap) kepada user. Ini adalah apa yang kamu lihat di fotomu sendiri: "${description}"]`;
             await saveWorkingMemory(userId, 'assistant', memoryText);
         } else {
             await sendTelegram('sendMessage', { chat_id: chatId, text: "Aduh, koneksi ke Telegram putus saat mengirim foto." });
