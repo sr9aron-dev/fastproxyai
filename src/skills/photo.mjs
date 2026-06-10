@@ -1,3 +1,5 @@
+import { saveWorkingMemory } from '../memory/working.mjs';
+
 export const photoToolDefinition = {
     type: "function",
     function: {
@@ -33,7 +35,9 @@ export async function executePhotoTool(args, context, services) {
         const success = await sendTelegramPhotoBuffer(chatId, imageBuffer);
 
         if (success) {
-            await supabase.from('chat_history').insert({ telegram_id: userId, role: 'assistant', content: "[Mengirim foto]" });
+            // Simpan ke Working Memory agar AI ingat apa yang baru saja dikirimnya
+            const memoryText = `[Sistem: Kamu baru saja mengirimkan foto kepada pengguna dengan deskripsi: "${prompt}"]`;
+            await saveWorkingMemory(userId, 'assistant', memoryText);
         } else {
             await sendTelegram('sendMessage', { chat_id: chatId, text: "Aduh, koneksi ke Telegram putus saat mengirim foto." });
         }
