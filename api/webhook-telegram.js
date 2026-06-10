@@ -346,7 +346,22 @@ async function processMessage(body) {
             await executeTool(callName, args, context, services);
         } else {
             const replyText = message?.content || "Maaf, aku tidak mengerti.";
-            await sendTelegram('sendMessage', { chat_id: chatId, text: replyText });
+            
+            // Pisahkan pesan berdasarkan karakter pipe "|" agar menjadi banyak bubble chat
+            const bubbles = replyText.split('|').map(b => b.trim()).filter(b => b.length > 0);
+            
+            for (const bubble of bubbles) {
+                // Tampilkan status "typing" sejenak sebelum mengirim bubble selanjutnya
+                await sendTelegram('sendChatAction', { chat_id: chatId, action: 'typing' });
+                
+                // Jeda dinamis berdasarkan panjang teks (antara 0.5s - 2s) agar natural
+                const typingDelay = Math.min(2000, Math.max(500, bubble.length * 30));
+                await new Promise(resolve => setTimeout(resolve, typingDelay));
+                
+                await sendTelegram('sendMessage', { chat_id: chatId, text: bubble });
+            }
+            
+            // Simpan ke memory sebagai satu kesatuan utuh
             await saveWorkingMemory(userId, 'assistant', replyText);
         }
 

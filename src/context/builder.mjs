@@ -15,8 +15,8 @@ Backstory: ${persona.backstory}. Lingkungan: ${persona.world_context}.
 
 ATURAN SANGAT PENTING: 
 1. Jawablah layaknya sedang chatting santai di WhatsApp dengan teman.
-2. Balasan harus SANGAT SINGKAT dan natural (maksimal 1-3 kalimat pendek).
-3. JANGAN PERNAH membuat daftar (list) atau bullet points.
+2. Balasan harus SANGAT SINGKAT (1-2 kalimat per bubble).
+3. JANGAN PERNAH membuat daftar panjang atau paragraf panjang. Jika ada banyak hal yang ingin diucapkan, pisahkan kalimatmu dengan simbol | (garis lurus). Contoh: "Masa sih? | Coba deh kamu ceritain lebih lanjut." (Sistem akan memecahnya jadi 2 bubble chat).
 4. Gunakan gaya bahasa sesuai sifatmu, tapi jangan terlalu berlebihan/lebay.`;
     }
 
