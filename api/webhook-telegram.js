@@ -349,7 +349,13 @@ async function processMessage(body) {
             const replyText = message?.content || "Maaf, aku tidak mengerti.";
             
             // Pisahkan pesan berdasarkan karakter pipe "|" agar menjadi banyak bubble chat
-            const bubbles = replyText.split('|').map(b => b.trim()).filter(b => b.length > 0);
+            let bubbles = replyText.split('|').map(b => b.trim()).filter(b => b.length > 0);
+            
+            // FALLBACK: Jika AI bandel membalas paragraf panjang tanpa pipe, paksa pecah per kalimat!
+            if (bubbles.length === 1 && replyText.length > 120) {
+                // Memecah berdasarkan titik/tanya/seru yang diikuti spasi
+                bubbles = replyText.split(/(?<=[.?!])\s+/).map(b => b.trim()).filter(b => b.length > 0);
+            }
             
             for (const bubble of bubbles) {
                 // Tampilkan status "typing" sejenak sebelum mengirim bubble selanjutnya
