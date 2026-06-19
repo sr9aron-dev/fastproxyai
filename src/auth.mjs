@@ -47,11 +47,16 @@ export async function checkSubscription(email) {
     }
     const configId = process.env.CONFIG_ID || "";
     const usersCollection = configId ? `users-${configId}` : "users";
-    const docRef = db.collection(usersCollection).doc(email);
-    const doc = await docRef.get();
+    let docRef = db.collection(usersCollection).doc(email);
+    let doc = await docRef.get();
     
     if (!doc.exists) {
-      return { active: false, status: "none" };
+      const teepubCollection = configId ? `teepublicUsers-${configId}` : "teepublicUsers";
+      docRef = db.collection(teepubCollection).doc(email);
+      doc = await docRef.get();
+      if (!doc.exists) {
+        return { active: false, status: "none" };
+      }
     }
     
     const data = doc.data();
@@ -80,7 +85,7 @@ export async function checkSubscription(email) {
   }
 }
 
-export async function extendSubscription(email, days = 30) {
+export async function extendSubscription(email, days = 30, customCollection = null) {
   if (!email) throw new Error("Email is required");
 
   if (!db) {
@@ -88,7 +93,8 @@ export async function extendSubscription(email, days = 30) {
   }
 
   const configId = process.env.CONFIG_ID || "";
-  const usersCollection = configId ? `users-${configId}` : "users";
+  const baseCollection = customCollection ? customCollection : "users";
+  const usersCollection = configId ? `${baseCollection}-${configId}` : baseCollection;
   const docRef = db.collection(usersCollection).doc(email);
   const doc = await docRef.get();
   

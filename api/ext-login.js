@@ -15,8 +15,8 @@ async function handler(event) {
       return json(400, { ok: false, error: "Email is required" });
     }
 
-    // Check against teepublic_users collection
-    const usersRef = db.collection("teepublic_users");
+    // Check against teepublicUsers collection
+    const usersRef = db.collection("teepublicUsers");
     const snapshot = await usersRef.where("email", "==", email).get();
 
     if (snapshot.empty) {
