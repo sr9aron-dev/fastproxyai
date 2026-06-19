@@ -46,13 +46,36 @@ async function handler(event) {
     const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const activeToday = config.extensionKeys?.filter(k => k.lastUsedAt && k.lastUsedAt > last24h).length || 0;
 
+    // Count TeePublic Users
+    const tpSnap = await db.collection("teepublicUsers").get();
+    let tpTotal = 0, tpActive = 0;
+    const now = new Date();
+    tpSnap.forEach(doc => {
+      tpTotal++;
+      const data = doc.data();
+      const expiry = data.subscriptionExpiry ? new Date(data.subscriptionExpiry) : null;
+      if (expiry && expiry > now) tpActive++;
+    });
+
+    // Count Smart Keyword Pro Users
+    const skSnap = await db.collection("users").get();
+    let skTotal = 0, skActive = 0;
+    skSnap.forEach(doc => {
+      skTotal++;
+      const data = doc.data();
+      const expiry = data.subscriptionExpiry ? new Date(data.subscriptionExpiry) : null;
+      if (expiry && expiry > now) skActive++;
+    });
+
     return json(200, { 
       ok: true, 
       stats,
       users: {
         total: totalKeys,
         active: activeKeys,
-        onlineToday: activeToday
+        onlineToday: activeToday,
+        teepublic: { total: tpTotal, active: tpActive },
+        smartkeyword: { total: skTotal, active: skActive }
       }
     });
   } catch (error) {

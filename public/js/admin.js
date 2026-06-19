@@ -423,7 +423,8 @@ async function loadStats() {
         $('stat-total').textContent = total.toLocaleString();
         $('stat-rate').textContent = rate + '%';
         $('stat-active-users').textContent = data.users.onlineToday.toLocaleString();
-        $('stat-total-users').textContent = data.users.total.toLocaleString();
+        $('stat-tp-active').textContent = data.users.teepublic?.active?.toLocaleString() || '0';
+        $('stat-sk-active').textContent = data.users.smartkeyword?.active?.toLocaleString() || '0';
         
         // Render Chart
         renderUsageChart(stats.history || {});
