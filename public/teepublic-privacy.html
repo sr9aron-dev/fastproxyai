@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — TeePublic Keyword Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #09090e;
+            --bg-card: rgba(18, 18, 28, 0.6);
+            --accent: #8b5cf6;
+            --accent-hover: #a78bfa;
+            --text: #f8fafc;
+            --text2: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.8;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Ambient blobs */
+        .blob {
+            position: fixed;
+            filter: blur(120px);
+            z-index: 0;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .blob-1 { top: -80px; left: -80px; width: 350px; height: 350px; background: rgba(139, 92, 246, 0.3); }
+        .blob-2 { bottom: -100px; right: -60px; width: 400px; height: 400px; background: rgba(16, 185, 129, 0.15); }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 24px 80px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .header .badge {
+            display: inline-block;
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: var(--accent-hover);
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 40px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a78bfa, #c4b5fd, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+        }
+
+        .header .subtitle {
+            color: var(--text2);
+            font-size: 15px;
+        }
+
+        .header .date {
+            color: var(--text2);
+            font-size: 13px;
+            margin-top: 8px;
+            opacity: 0.7;
+        }
+
+        /* Content card */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            margin: 32px 0 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h2:first-child {
+            margin-top: 0;
+        }
+
+        h2 .num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            border-radius: 8px;
+            font-size: 14px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        p {
+            color: var(--text2);
+            font-size: 15px;
+            margin-bottom: 14px;
+        }
+
+        ul {
+            list-style: none;
+            margin: 12px 0 18px;
+            padding: 0;
+        }
+
+        ul li {
+            color: var(--text2);
+            font-size: 14px;
+            padding: 8px 0 8px 28px;
+            position: relative;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        ul li:last-child { border-bottom: none; }
+
+        ul li::before {
+            content: '→';
+            position: absolute;
+            left: 4px;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        a {
+            color: var(--accent-hover);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        a:hover { color: #c4b5fd; text-decoration: underline; }
+
+        .highlight-box {
+            background: rgba(139, 92, 246, 0.08);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            font-size: 14px;
+            color: var(--text2);
+        }
+
+        .highlight-box.green {
+            background: rgba(16, 185, 129, 0.08);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 32px 0;
+            color: var(--text2);
+            font-size: 13px;
+            opacity: 0.6;
+        }
+
+        @media (max-width: 640px) {
+            .container { padding: 32px 16px 48px; }
+            .card { padding: 24px; }
+            .header h1 { font-size: 28px; }
+            h2 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div class="container">
+        <div class="header">
+            <div class="badge">Legal Document</div>
+            <h1>Privacy Policy</h1>
+            <p class="subtitle">TeePublic Keyword Pro — Chrome Extension</p>
+            <p class="date">Last Updated: June 19, 2026</p>
+        </div>
+
+        <div class="card">
+            <h2><span class="num">1</span> Introduction</h2>
+            <p>TeePublic Keyword Pro ("the Extension") is a Chrome extension designed to help print-on-demand sellers automate and optimize their design metadata using AI. This Privacy Policy describes how we collect, use, and protect your information.</p>
+            <p>By installing and using the Extension, you agree to the practices described in this Privacy Policy.</p>
+
+            <h2><span class="num">2</span> Information We Collect</h2>
+            <p>We collect only the absolute minimum information necessary to provide our services:</p>
+
+            <p><strong>a) Account Information (Optional)</strong></p>
+            <ul>
+                <li><strong>Email address</strong> — collected via Google Sign-In when you choose to log in to activate or manage a subscription or trial.</li>
+                <li><strong>Google display name and profile photo</strong> — used exclusively to personalize the Extension's interface.</li>
+            </ul>
+
+            <div class="highlight-box green">
+                <strong>What we DO NOT collect:</strong> We do not collect, store, or transmit your actual design files, artwork, browsing history, form data, passwords, or payment card details.
+            </div>
+
+            <h2><span class="num">3</span> How We Use Your Information</h2>
+            <ul>
+                <li><strong>Email</strong> — strictly used to authenticate your account and manage your active subscription or trial status.</li>
+                <li><strong>AI Processing</strong> — Design preview images are sent securely to our AI backend solely to generate temporary metadata (titles and tags). The images are never saved, stored, or used to train any AI models.</li>
+            </ul>
+
+            <h2><span class="num">4</span> Third-Party Services</h2>
+            <p>The Extension integrates with the following trusted third-party services:</p>
+            <ul>
+                <li><strong>Google Firebase</strong> (Authentication & Firestore) — for secure user login and subscription storage. Subject to <a href="https://firebase.google.com/support/privacy" target="_blank">Google's Privacy Policy</a>.</li>
+                <li><strong>Google Gemini AI / Third-Party AI APIs</strong> — used dynamically via our backend to generate tags. Image data is processed ephemerally and discarded immediately.</li>
+            </ul>
+
+            <h2><span class="num">5</span> Data Storage & Security</h2>
+            <ul>
+                <li>Account data (email and subscription expiry) is securely stored in <strong>Google Firebase Firestore</strong>, protected by strict security rules.</li>
+                <li>All network communications between the extension, TeePublic, and our servers use <strong>HTTPS encryption</strong>.</li>
+            </ul>
+
+            <h2><span class="num">6</span> Permissions Justification</h2>
+            <p>The Extension requests the following Chrome permissions, strictly for its core functionality:</p>
+            <ul>
+                <li><strong>storage</strong> — to save your settings (e.g., maximum tag limits) locally.</li>
+                <li><strong>activeTab & scripting</strong> — to read the preview image and automatically fill out the upload form on TeePublic securely.</li>
+                <li><strong>identity</strong> — to enable secure Google Sign-In for subscription management without requiring manual passwords.</li>
+                <li><strong>Host permissions</strong> — limited strictly to TeePublic domains and our backend proxy servers.</li>
+            </ul>
+
+            <h2><span class="num">7</span> Data Deletion</h2>
+            <p>You have full control over your data. To request the complete deletion of your account and subscription records from our database, please contact us at the email below.</p>
+
+            <h2><span class="num">8</span> Contact Us</h2>
+            <p>If you have any questions or concerns about this Privacy Policy, please contact us:</p>
+            <div class="highlight-box">
+                <strong>Email:</strong> <a href="mailto:sr7aron@gmail.com">sr7aron@gmail.com</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            &copy; 2026 TeePublic Keyword Pro. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>
