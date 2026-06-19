@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pembayaran Berhasil - TeePublic AI Pro</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --primary: #8b5cf6;
+      --success: #10b981;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .card {
+      background: var(--card);
+      padding: 40px;
+      border-radius: 20px;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      text-align: center;
+      max-width: 450px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .icon-success {
+      width: 80px;
+      height: 80px;
+      color: var(--success);
+      margin-bottom: 20px;
+      background: rgba(16, 185, 129, 0.1);
+      border-radius: 50%;
+      padding: 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 26px;
+    }
+    p {
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    .instruction {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: left;
+      font-size: 14px;
+      border: 1px solid rgba(255,255,255,0.05);
+      margin-bottom: 30px;
+    }
+    .instruction ol {
+      margin: 10px 0 0 0;
+      padding-left: 20px;
+      color: var(--text-muted);
+    }
+    .instruction li { margin-bottom: 8px; }
+    .btn {
+      background: var(--primary);
+      color: white;
+      text-decoration: none;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      display: inline-block;
+      width: 100%;
+      box-sizing: border-box;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    .btn:hover {
+      background: #7c3aed;
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+    </div>
+    <h1>Terima Kasih!</h1>
+    <p>Pembayaran langganan <strong>TeePublic AI Pro</strong> Anda telah berhasil diproses.</p>
+    
+    <div class="instruction">
+      <strong style="color: #f8fafc;">Langkah Selanjutnya:</strong>
+      <ol>
+        <li>Buka kembali ekstensi <strong>TeePublic AI Pro</strong> di browser Chrome Anda.</li>
+        <li>Pastikan Anda sudah login menggunakan Google.</li>
+        <li>Klik ikon <strong>Refresh (Muat Ulang Status)</strong> di Dashboard.</li>
+        <li>Status Anda akan otomatis berubah menjadi Aktif!</li>
+      </ol>
+    </div>
+
+    <button onclick="window.close();" class="btn">Tutup Halaman Ini</button>
+  </div>
+</body>
+</html>
