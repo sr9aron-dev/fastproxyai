@@ -1,5 +1,7 @@
 import { json, optionsResponse, readJson, requireAdmin, vercelHandler } from "../../src/http.mjs";
 import { callGroq, callGemini, callMistral, callNvidia } from "../../src/providers.mjs";
+import { loadConfig } from "../../src/store.mjs";
+import { maskKey } from "../../src/crypto.mjs";
 
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return optionsResponse();
@@ -15,11 +17,21 @@ async function handler(event) {
       return json(400, { ok: false, message: "Provider and keys array are required" });
     }
 
+    const config = await loadConfig();
+    const currentKeys = config[provider]?.keys || [];
+
     const testPrompt = "Reply with exactly one word: 'OK'";
-    const results = await Promise.all(keys.map(async (key) => {
-      // If key is masked, we skip it (we can't test masked keys from the frontend)
-      if (key.includes("...")) {
-        return { key, status: "skipped", message: "Cannot test masked key" };
+    const results = await Promise.all(keys.map(async (frontendKey) => {
+      let keyToTest = frontendKey;
+      
+      // If key is masked, try to restore its original value from DB
+      if (frontendKey.includes("...")) {
+        const original = currentKeys.find(k => maskKey(k) === frontendKey);
+        if (original) {
+          keyToTest = original;
+        } else {
+          return { key: frontendKey, status: "skipped", message: "Cannot resolve masked key" };
+        }
       }
 
       try {
@@ -40,10 +52,10 @@ async function handler(event) {
           defaultModel = "mistralai/mistral-large-3-675b-instruct-2512";
         }
 
-        await caller({ key, model: model || defaultModel, prompt: testPrompt });
-        return { key, status: "valid" };
+        await caller({ key: keyToTest, model: model || defaultModel, prompt: testPrompt });
+        return { key: frontendKey, status: "valid" };
       } catch (err) {
-        return { key, status: "invalid", message: err.message };
+        return { key: frontendKey, status: "invalid", message: err.message };
       }
     }));
 
