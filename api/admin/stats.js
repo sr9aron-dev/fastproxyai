@@ -48,23 +48,29 @@ async function handler(event) {
 
     // Count TeePublic Users
     const tpSnap = await db.collection("teepublicUsers").get();
-    let tpTotal = 0, tpActive = 0;
+    let tpTotal = 0, tpActivePro = 0, tpActiveTrial = 0;
     const now = new Date();
     tpSnap.forEach(doc => {
       tpTotal++;
       const data = doc.data();
       const expiry = data.subscriptionExpiry ? new Date(data.subscriptionExpiry) : null;
-      if (expiry && expiry > now) tpActive++;
+      if (expiry && expiry > now) {
+        if (data.isTrial) tpActiveTrial++;
+        else tpActivePro++;
+      }
     });
 
     // Count Smart Keyword Pro Users
     const skSnap = await db.collection("users").get();
-    let skTotal = 0, skActive = 0;
+    let skTotal = 0, skActivePro = 0, skActiveTrial = 0;
     skSnap.forEach(doc => {
       skTotal++;
       const data = doc.data();
       const expiry = data.subscriptionExpiry ? new Date(data.subscriptionExpiry) : null;
-      if (expiry && expiry > now) skActive++;
+      if (expiry && expiry > now) {
+        if (data.isTrial) skActiveTrial++;
+        else skActivePro++;
+      }
     });
 
     return json(200, { 
@@ -74,8 +80,8 @@ async function handler(event) {
         total: totalKeys,
         active: activeKeys,
         onlineToday: activeToday,
-        teepublic: { total: tpTotal, active: tpActive },
-        smartkeyword: { total: skTotal, active: skActive }
+        teepublic: { total: tpTotal, activePro: tpActivePro, activeTrial: tpActiveTrial },
+        smartkeyword: { total: skTotal, activePro: skActivePro, activeTrial: skActiveTrial }
       }
     });
   } catch (error) {

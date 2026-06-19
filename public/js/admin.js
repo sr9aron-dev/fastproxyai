@@ -423,8 +423,17 @@ async function loadStats() {
         $('stat-total').textContent = total.toLocaleString();
         $('stat-rate').textContent = rate + '%';
         $('stat-active-users').textContent = data.users.onlineToday.toLocaleString();
-        $('stat-tp-active').textContent = data.users.teepublic?.active?.toLocaleString() || '0';
-        $('stat-sk-active').textContent = data.users.smartkeyword?.active?.toLocaleString() || '0';
+        
+        const tpStats = data.users.teepublic || { activePro: 0, activeTrial: 0 };
+        const skStats = data.users.smartkeyword || { activePro: 0, activeTrial: 0 };
+
+        $('stat-tp-active').textContent = (tpStats.activePro + tpStats.activeTrial).toLocaleString();
+        $('stat-tp-pro').textContent = tpStats.activePro.toLocaleString();
+        $('stat-tp-trial').textContent = tpStats.activeTrial.toLocaleString();
+        
+        $('stat-sk-active').textContent = (skStats.activePro + skStats.activeTrial).toLocaleString();
+        $('stat-sk-pro').textContent = skStats.activePro.toLocaleString();
+        $('stat-sk-trial').textContent = skStats.activeTrial.toLocaleString();
         
         // Render Chart
         renderUsageChart(stats.history || {});
