@@ -140,7 +140,11 @@ export function normalizeMetadata(providerText, settings = {}) {
     category,
     peopleOrProperty,
     fileTypeFlag,
-    legacyResult
+    legacyResult,
+    description: data?.description || "",
+    main_tag: data?.main_tag || "",
+    supporting_tags: data?.supporting_tags || [],
+    mature: data?.mature || false
   };
 }
 
